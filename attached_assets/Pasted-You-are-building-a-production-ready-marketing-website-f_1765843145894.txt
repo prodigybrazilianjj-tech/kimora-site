@@ -1,0 +1,144 @@
+You are building a production-ready marketing website for a sports nutrition brand called **Kimora**.
+
+High-level:
+- Tech stack: plain HTML, CSS, and minimal vanilla JavaScript (no frameworks).
+- Output a complete project with: `index.html`, `faq.html`, `styles.css`, and `main.js`.
+- It should be responsive and look premium on desktop and mobile.
+
+Brand:
+- Brand name: **KIMORA**
+- Tagline: **Grow Stronger. Think Sharper.**
+- Product: daily **creatine + electrolytes** in single-serve stick packs.
+- Audience: Brazilian jiu-jitsu / combat sports athletes, lifters, and anyone who wants to get stronger, recover better, and stay sharp.
+- Vibe: dark, cinematic, clean, a bit “fight gym meets high-end tech brand.”
+
+Design direction:
+- Dark background (#0d0d0f or similar) with soft gradient lighting.
+- Accent colors: deep teal/green for CTAs; warm off-white text.
+- Use **Bebas Neue** for big headings and **Inter** for body text.
+- Smooth rounded cards, subtle drop shadows, generous spacing.
+- Sticky top nav that stays visible as you scroll most of the page.
+- Overall layout can be very similar to a modern landing page: hero, benefits, product lineup, details, FAQ, footer.
+
+Navigation:
+- Sticky header with brand wordmark “KIMORA” left and links right:
+  - Flavors → scroll to flavors section
+  - Formula → scroll to formula section
+  - Why Not a Tub? → scroll to comparison section
+  - About → scroll to about section
+  - Join Waitlist → scroll to email form section
+- On small screens, keep it simple (horizontal scrollable nav is fine; no need for a hamburger menu if not necessary).
+
+Pages & sections:
+
+1) `index.html` – main landing page
+
+Sections in order:
+
+(a) Hero
+- Big centered **KIMORA** heading.
+- Sub-badge text: “CREATINE · ELECTROLYTES · DAILY”.
+- Tagline: “GROW STRONGER. THINK SHARPER.”
+- Small micro-tag: “BUILT FOR BJJ · MMA · MUAY THAI · LIFTERS”.
+- Primary CTA button: “JOIN THE WAITLIST” → scrolls to the email form.
+- Background: dark gradient, maybe a faint vignette or radial glow.
+
+(b) Product lineup (3 flavors)
+- A card layout showing 3 stand-up pouches (use placeholder PNGs like `/img/kimora-strawberry.png`, etc.).
+- Flavors:
+  - Strawberry Guava — “Tart, tropical, and refreshingly smooth.”
+  - Lemon Yuzu — “Bright citrus with a crisp, clean finish.”
+  - Raspberry Dragonfruit — “Bold, juicy, and perfectly balanced.”
+- Under each pouch, show those flavor descriptions.
+
+(c) Benefits cards
+Three equal cards labeled:
+- **Cognition** — “Supports brain energy metabolism and sharp decision-making under pressure.”
+- **Recovery** — “Creatine + electrolytes help restore energy and hydration so you bounce back between sessions.”
+- **Strength** — “Fuels higher training volume for heavier lifts, harder rolls, and longer rounds.”
+
+(d) Waitlist email capture
+- Centered section with short copy:
+  - “Daily creatine you’ll actually remember to take. Join the waitlist for launch updates and early access pricing.”
+- Email form:
+  - One email input + a “JOIN THE WAITLIST” button.
+  - Form should submit to Formspree: `https://formspree.io/f/xovnojzg`.
+  - After successful submit, show a friendly confirmation message under the form (handled in `main.js`).
+
+(e) “What’s Inside Each Stick” (Formula)
+- Section title: “WHAT’S INSIDE EACH STICK”.
+- Short intro paragraph: “Every Kimora stick is built around 5 g of micronized creatine monohydrate and a balanced electrolyte blend, with a clean acid system and monk fruit for sweetness — no sugar, no stevia, and no artificial colors or fillers.”
+- Two columns:
+
+Left column: “PERFORMANCE & HYDRATION”
+- 5 g creatine monohydrate — strength & power  
+- ~500 mg sodium — hydration & performance  
+- 250 mg potassium — muscle function  
+- 60 mg magnesium — recovery & cramp support  
+
+Right column: “CLEAN, DAILY FORMULA”
+- Monk fruit only — no sugar, no sugar alcohols  
+- Citric · malic · ascorbic acid flavor system  
+- Natural flavors — nothing artificial  
+- Rice hull flow agent — no silicon dioxide  
+
+- Below the columns add two small centered lines:
+  - “No artificial colors, sweeteners, or fillers.”
+  - “Mix 1 stick into 12–20 oz of water and drink once daily.”
+
+(f) “Why Not Just a Huge Tub of Plain Creatine?”
+- Title: “WHY NOT JUST A HUGE TUB OF PLAIN CREATINE?”
+- Paragraph explaining:
+  - Most people buy a tub, take it a few weeks, then fall off.
+  - Kimora is built to be the opposite: single-serve sticks that taste good, travel easily, and pair creatine with electrolytes so you actually look forward to taking it.
+- Three checkmark bullets:
+  - “Single-serve sticks you can throw in your bag”
+  - “No scoops · no clumps · no guesswork”
+  - “Creatine + electrolytes in one daily habit”
+
+(g) About Kimora
+- Title: “ABOUT KIMORA”.
+- Paragraph explaining:
+  - Created by people who train on the mats and in the gym.
+  - Daily creatine habit that feels good to stick with.
+  - Clean formula, bold flavors, and packaging athletes aren’t embarrassed to pull out of their bag.
+  - Built for combat sports athletes, lifters, and anyone who wants to grow stronger and think sharper long-term.
+
+(h) FAQ preview
+- Small “FAQ” section on the homepage with 2–3 quick Q&As:
+  - “Do I need to load creatine?” → “No. Just take one 5 g stick daily and let your levels build over time.”
+  - “When should I take it?” → “Whenever you’ll actually remember it — morning, pre-training, post-training, or with a meal.”
+- Under those, a link: “View all FAQs →” that navigates to `faq.html`.
+
+(i) Footer
+- Tag line in caps: “OUT-TRAIN. OUT-SMART. OUT-LAST.”
+- Brand copyright: “Kimora Co. © 2025. All rights reserved.”
+- Email: `alex@kimoraco.com` as a mailto link.
+- Small FDA disclaimer text:
+  - “These statements have not been evaluated by the Food and Drug Administration. This product is not intended to diagnose, treat, cure, or prevent any disease. Always consult your healthcare provider before starting any new supplement.”
+
+2) `faq.html` – full FAQ page
+
+- Use the same header, nav, fonts, and dark theme.
+- Big “FAQ” heading and a subheading like “A few quick answers from the mats, the gym, and between rounds.”
+- Use an accordion or simple stacked list for FAQs (no external libraries needed).
+- Include questions such as:
+  - Do I need to load Kimora?
+  - When should I take it?
+  - Can I stack this with pre-workout or other electrolyte drinks?
+  - Will creatine make me bloated or “puffy”?
+  - Do I have to be a fighter to use Kimora?
+- Add a “Back to main site” link or button that goes to `index.html`.
+
+JavaScript (`main.js`):
+- Handle smooth scrolling when nav links (like #flavors, #formula, etc.) are clicked.
+- Handle the email form submission with fetch to Formspree and show a success/error message without navigating away.
+- Optional: simple FAQ accordion behavior on `faq.html`.
+
+General requirements:
+- Make sure the layout looks good on 320px wide screens up to large desktops.
+- Use semantic HTML5 tags (`header`, `main`, `section`, `footer`, etc.).
+- Organize CSS in `styles.css`, avoid inline styles unless absolutely necessary.
+- Keep the visuals clean and minimal; no stock photos needed, just layout and placeholder images for the pouches.
+
+Please generate the full project (HTML, CSS, JS, and any necessary asset placeholders) so it can be deployed as-is.

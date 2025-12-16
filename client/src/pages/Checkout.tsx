@@ -75,9 +75,9 @@ export default function Checkout() {
                     <DialogHeader>
                       <DialogTitle className="text-2xl font-display">Checkout Coming Soon</DialogTitle>
                       <DialogDescription className="text-muted-foreground pt-4">
-                        We are currently in pre-launch mode. Payment processing is not yet active. 
+                        We are currently finalizing our payment processor integration. 
                         <br /><br />
-                        Please join our waitlist on the homepage to be notified when we officially launch.
+                        Please check back soon to place your order.
                       </DialogDescription>
                     </DialogHeader>
                     <Link href="/">

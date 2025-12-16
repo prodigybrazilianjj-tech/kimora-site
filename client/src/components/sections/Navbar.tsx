@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,28 +19,12 @@ export function Navbar() {
     ? "bg-background/90 backdrop-blur-md border-border py-4" 
     : "bg-transparent py-6";
 
-  // Handle scroll listener only on home
-  useState(() => {
+  useEffect(() => {
     if (!isHome) {
       setIsScrolled(true);
       return;
     }
 
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }); // Note: useState instead of useEffect in this quick edit might trigger lint warning, but logic is sound for mockup. 
-  // Actually, let's correct that to useEffect.
-  
-  // Re-implementing correctly with useEffect
-  const React = require("react");
-  React.useEffect(() => {
-    if (!isHome) {
-      setIsScrolled(true);
-      return;
-    }
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
@@ -75,10 +59,8 @@ export function Navbar() {
       )}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-        <Link href="/">
-          <a className="text-3xl font-display font-bold tracking-wider text-white hover:text-primary transition-colors">
-            KIMORA
-          </a>
+        <Link href="/" className="text-3xl font-display font-bold tracking-wider text-white hover:text-primary transition-colors">
+          KIMORA
         </Link>
 
         {/* Desktop Nav */}
@@ -96,15 +78,13 @@ export function Navbar() {
             </button>
           ))}
           
-          <Link href="/cart">
-            <a className="relative text-muted-foreground hover:text-white transition-colors">
-              <ShoppingBag className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                  {cartCount}
-                </span>
-              )}
-            </a>
+          <Link href="/cart" className="relative text-muted-foreground hover:text-white transition-colors">
+            <ShoppingBag className="w-5 h-5" />
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                {cartCount}
+              </span>
+            )}
           </Link>
 
           <Button 
@@ -117,15 +97,13 @@ export function Navbar() {
 
         {/* Mobile Nav */}
         <div className="md:hidden flex items-center gap-4">
-          <Link href="/cart">
-            <a className="relative text-white">
-              <ShoppingBag className="w-6 h-6" />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                  {cartCount}
-                </span>
-              )}
-            </a>
+          <Link href="/cart" className="relative text-white">
+            <ShoppingBag className="w-6 h-6" />
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                {cartCount}
+              </span>
+            )}
           </Link>
           
           <Sheet>

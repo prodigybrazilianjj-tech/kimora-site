@@ -1,26 +1,23 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
-import strawberryImg from "@assets/generated_images/strawberry_guava_creatine_pouch.png";
-import lemonImg from "@assets/generated_images/lemon_yuzu_creatine_pouch.png";
-import raspberryImg from "@assets/generated_images/raspberry_dragonfruit_creatine_pouch.png";
 
 const products = [
   {
     name: "Strawberry Guava",
     desc: "Tart, tropical, and refreshingly smooth.",
-    image: strawberryImg,
+    image: "/assets/products/strawberry-guava/pouch.webp",
     accent: "from-pink-500/20 to-transparent",
   },
   {
     name: "Lemon Yuzu",
     desc: "Bright citrus with a crisp, clean finish.",
-    image: lemonImg,
+    image: "/assets/products/lemon-yuzu/pouch.webp",
     accent: "from-yellow-500/20 to-transparent",
   },
   {
     name: "Raspberry Dragonfruit",
     desc: "Bold, juicy, and perfectly balanced.",
-    image: raspberryImg,
+    image: "/assets/products/raspberry-dragonfruit/pouch.webp",
     accent: "from-purple-500/20 to-transparent",
   },
 ];

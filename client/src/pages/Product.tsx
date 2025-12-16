@@ -16,7 +16,7 @@ const productData: Record<string, any> = {
     desc: "Tart, tropical, and refreshingly smooth. A perfect balance of island sweetness and punchy tartness.",
     color: "text-pink-500",
     gradient: "from-pink-500/20",
-    pouch: "/assets/products/strawberry-guava/pouch.png",
+    pouch: "/assets/products/strawberry-guava/pouch.webp",
     stick: "/assets/products/strawberry-guava/stick.png",
   },
   "lemon-yuzu": {
@@ -24,7 +24,7 @@ const productData: Record<string, any> = {
     desc: "Bright citrus with a crisp, clean finish. Zesty, aromatic, and incredibly refreshing over ice.",
     color: "text-yellow-400",
     gradient: "from-yellow-500/20",
-    pouch: "/assets/products/lemon-yuzu/pouch.png",
+    pouch: "/assets/products/lemon-yuzu/pouch.webp",
     stick: "/assets/products/lemon-yuzu/stick.png",
   },
   "raspberry-dragonfruit": {
@@ -32,7 +32,7 @@ const productData: Record<string, any> = {
     desc: "Bold, juicy, and perfectly balanced. Deep berry notes with a smooth, exotic finish.",
     color: "text-purple-500",
     gradient: "from-purple-500/20",
-    pouch: "/assets/products/raspberry-dragonfruit/pouch.png",
+    pouch: "/assets/products/raspberry-dragonfruit/pouch.webp",
     stick: "/assets/products/raspberry-dragonfruit/stick.png",
   },
 };

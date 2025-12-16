@@ -88,10 +88,10 @@ export function Navbar() {
           </Link>
 
           <Button 
-            onClick={() => scrollToSection("#waitlist")}
+            onClick={() => window.location.href = "/shop"}
             className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider"
           >
-            Join Waitlist
+            Shop Now
           </Button>
         </div>
 
@@ -124,10 +124,10 @@ export function Navbar() {
                   </button>
                 ))}
                 <Button 
-                  onClick={() => scrollToSection("#waitlist")}
+                  onClick={() => window.location.href = "/shop"}
                   className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider mt-4"
                 >
-                  Join Waitlist
+                  Shop Now
                 </Button>
               </div>
             </SheetContent>

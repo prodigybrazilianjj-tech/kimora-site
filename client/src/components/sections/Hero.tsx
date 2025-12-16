@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 
 export function Hero() {
-  const scrollToWaitlist = () => {
-    document.querySelector("#waitlist")?.scrollIntoView({ behavior: "smooth" });
+  const scrollToShop = () => {
+    window.location.href = "/shop";
   };
 
   return (
@@ -41,10 +41,10 @@ export function Hero() {
           <div className="pt-8">
             <Button 
               size="lg" 
-              onClick={scrollToWaitlist}
+              onClick={scrollToShop}
               className="h-14 px-8 bg-primary hover:bg-primary/90 text-white text-lg font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(0,191,165,0.3)] hover:shadow-[0_0_30px_rgba(0,191,165,0.5)] transition-all duration-300"
             >
-              Join the Waitlist <ChevronRight className="ml-2 h-5 w-5" />
+              Shop Now <ChevronRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
         </motion.div>

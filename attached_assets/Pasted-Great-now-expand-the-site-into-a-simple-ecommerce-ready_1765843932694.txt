@@ -1,0 +1,53 @@
+Great — now expand the site into a simple ecommerce-ready experience.
+
+Create these additional pages and wire them into the existing sticky nav:
+
+NEW PAGES
+1) `shop.html`
+- “Shop Kimora” page with three product cards (Strawberry Guava, Lemon Yuzu, Raspberry Dragonfruit).
+- Each card has: product image placeholder, short description, price placeholder, and a “Select” button that links to `product.html?flavor=strawberry-guava` (and similarly for the other flavors).
+- Add a toggle or pills at the top: “One-time” / “Subscribe & Save” that updates the displayed price (simple JS is fine).
+
+2) `product.html` (single template page)
+- This page reads the `flavor` query param and dynamically populates:
+  - flavor name, description, image, and accent color
+  - “What’s inside” mini bullets (5g creatine + electrolytes, monk fruit, etc.)
+- Provide two purchase options as selectable cards:
+  A) One-time purchase
+  B) Subscribe & Save (with a small benefit line like “Save 10% + free shipping” as placeholder text)
+- Subscription frequency selector: every 2 weeks / 4 weeks / 6 weeks (default 4).
+- Quantity selector (1–6).
+- A prominent “Add to Cart” button.
+- Add reassurance row under CTA: “Secure checkout • Cancel anytime (subscription) • Ships in 1–3 business days” (placeholders ok).
+
+3) `cart.html`
+- Simple cart UI (line item, qty stepper, remove).
+- Shows subtotal, shipping placeholder, total.
+- Checkout button → goes to `checkout.html`.
+
+4) `checkout.html`
+- A checkout form UI (name, email, shipping address, etc.) but DO NOT integrate real payments.
+- Instead, create a stub “Place Order” button that shows “Checkout coming soon” / “We’ll notify you at launch” modal.
+- Optional: capture email as a fallback (can reuse Formspree).
+
+SITE-WIDE REQUIREMENTS
+- Add “Shop” link to the sticky nav (between Flavors and Formula).
+- Keep the exact same brand styling (dark cinematic, Bebas Neue headings, Inter body, teal CTA).
+- Keep everything responsive and consistent across pages (shared header/footer).
+- Put shared CSS in `styles.css` and shared JS in `main.js`.
+- Use localStorage to store the cart contents across pages.
+- Use clean, semantic HTML and accessible form labels.
+
+DATA / COPY
+- Use placeholders where you need actual pricing, but structure it like:
+  - One-time: $XX.XX
+  - Subscribe: $XX.XX (10% off)
+- Product size: “30 sticks · 1 month supply”
+- Flavors in this order everywhere: Strawberry Guava, Lemon Yuzu, Raspberry Dragonfruit.
+
+OUTPUT
+- Provide the full updated project structure with code for:
+  - `shop.html`, `product.html`, `cart.html`, `checkout.html`
+  - updated `index.html` nav links
+  - updated `styles.css` and `main.js` with cart + product param logic
+- Make sure all links work and pages load without errors.

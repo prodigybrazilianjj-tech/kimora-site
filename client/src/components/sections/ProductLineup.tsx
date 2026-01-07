@@ -52,11 +52,12 @@ export function ProductLineup() {
               transition={{ delay: index * 0.2 }}
               viewport={{ once: true }}
             >
-              <Link
+               <Link
                 to={`/product?flavor=${product.slug}`}
+                onClick={() => console.log("clicked", product.slug)}
                 className="block rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/60"
                 aria-label={`View ${product.name}`}
-              >
+               >
                 <Card className="bg-card/50 border-white/5 hover:border-white/10 transition-colors duration-300 overflow-hidden group cursor-pointer">
                   <CardContent className="p-0 relative">
                     {/* Image Background Glow */}

@@ -17,7 +17,7 @@ const products = [
     priceOneTime: 49.99,
     priceSub: 44.99,
     accent: "text-pink-500",
-    bgAccent: "from-pink-500/20",
+    bgAccent: "from-orange-500/20",
   },
   {
     id: "lemon-yuzu",
@@ -37,7 +37,7 @@ const products = [
     priceOneTime: 49.99,
     priceSub: 44.99,
     accent: "text-purple-500",
-    bgAccent: "from-purple-500/20",
+    bgAccent: "from-pink-500/20",
   },
 ];
 

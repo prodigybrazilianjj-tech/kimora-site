@@ -21,9 +21,9 @@ const benefits = [
 
 export function Benefits() {
   return (
-    <section className="py-24 bg-secondary/20">
+    <section className="py-12 md:py-16 bg-secondary/20">
       <div className="container px-4 mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {benefits.map((benefit, index) => (
             <Card key={benefit.title} className="bg-card border-white/5">
               <CardContent className="p-8 flex flex-col items-center text-center">

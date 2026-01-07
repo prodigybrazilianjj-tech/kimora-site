@@ -16,7 +16,7 @@ const products = [
     image: "/assets/products/strawberry-guava/pouch.webp",
     priceOneTime: 49.99,
     priceSub: 44.99,
-    accent: "text-pink-500",
+    accent: "from-orange-600/20 to-transparent"
     bgAccent: "from-orange-500/20",
   },
   {
@@ -26,7 +26,7 @@ const products = [
     image: "/assets/products/lemon-yuzu/pouch.webp",
     priceOneTime: 49.99,
     priceSub: 44.99,
-    accent: "text-yellow-400",
+    accent: "from-yellow-500/20 to-transparent",
     bgAccent: "from-yellow-500/20",
   },
   {
@@ -36,8 +36,8 @@ const products = [
     image: "/assets/products/raspberry-dragonfruit/pouch.webp",
     priceOneTime: 49.99,
     priceSub: 44.99,
-    accent: "text-purple-500",
-    bgAccent: "from-pink-500/20",
+    accent: "from-rose-600/25 to-transparent",
+    bgAccent: "from-rose-500/20",
   },
 ];
 

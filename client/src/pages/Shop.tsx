@@ -16,7 +16,7 @@ const products = [
     image: "/assets/products/strawberry-guava/pouch.webp",
     priceOneTime: 49.99,
     priceSub: 44.99,
-    accent: "from-orange-600/20 to-transparent"
+    accent: "from-orange-600/20 to-transparent",
     bgAccent: "from-orange-500/20",
   },
   {

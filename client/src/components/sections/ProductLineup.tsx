@@ -6,7 +6,7 @@ const products = [
     name: "Strawberry Guava",
     desc: "Tart, tropical, and refreshingly smooth.",
     image: "/assets/products/strawberry-guava/pouch.webp",
-    accent: "from-pink-500/20 to-transparent",
+    accent: "from-orange-600/20 to-transparent",
   },
   {
     name: "Lemon Yuzu",
@@ -18,7 +18,7 @@ const products = [
     name: "Raspberry Dragonfruit",
     desc: "Bold, juicy, and perfectly balanced.",
     image: "/assets/products/raspberry-dragonfruit/pouch.webp",
-    accent: "from-purple-500/20 to-transparent",
+    accent: "from-amber-600/20 to-transparent",
   },
 ];
 

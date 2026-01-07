@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 
 const products = [
@@ -52,17 +51,17 @@ export function ProductLineup() {
               transition={{ delay: index * 0.2 }}
               viewport={{ once: true }}
             >
-               <Link
-                to={`/product?flavor=${product.slug}`}
-                onClick={() => console.log("clicked", product.slug)}
+              {/* Use a plain anchor tag so navigation works regardless of router setup */}
+              <a
+                href={`/product?flavor=${product.slug}`}
                 className="block rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/60"
                 aria-label={`View ${product.name}`}
-               >
+              >
                 <Card className="bg-card/50 border-white/5 hover:border-white/10 transition-colors duration-300 overflow-hidden group cursor-pointer">
                   <CardContent className="p-0 relative">
-                    {/* Image Background Glow */}
+                    {/* Image Background Glow (don't let it steal clicks) */}
                     <div
-                      className={`absolute inset-0 bg-gradient-to-t ${product.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+                      className={`pointer-events-none absolute inset-0 bg-gradient-to-t ${product.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
                     />
 
                     <div className="aspect-[3/4] p-6 flex items-center justify-center relative z-10">
@@ -83,7 +82,7 @@ export function ProductLineup() {
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
+              </a>
             </motion.div>
           ))}
         </div>

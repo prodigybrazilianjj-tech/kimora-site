@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
@@ -59,22 +59,42 @@ export default function Product() {
   const [purchaseType, setPurchaseType] = useState<"onetime" | "subscribe">(
     "subscribe"
   );
-  const [frequency, setFrequency] = useState("4");
+  const [frequency, setFrequency] = useState<"2" | "4" | "6">("4");
   const [quantity, setQuantity] = useState(1);
   const [currentImage, setCurrentImage] = useState<"pouch" | "stick">("pouch");
 
   const { addToCart } = useCart();
 
+  // Pricing
   const priceOneTime = 49.99;
-  const priceSub = 44.99;
-  const currentPrice = purchaseType === "subscribe" ? priceSub : priceOneTime;
+  const pricePerShipmentSub = 44.99;
+
+  // What the customer pays per order/renewal (NOT "monthly")
+  const currentUnitPrice =
+    purchaseType === "subscribe" ? pricePerShipmentSub : priceOneTime;
+
+  // Display-only helper (makes it obvious that 2-week is billed twice as often)
+  const estimatedMonthly = useMemo(() => {
+    if (purchaseType !== "subscribe") return null;
+
+    if (frequency === "2") return pricePerShipmentSub * 2;
+    if (frequency === "4") return pricePerShipmentSub;
+
+    // 6-week: roughly 4 weeks / 6 weeks of the price (estimate only)
+    return (pricePerShipmentSub * 4) / 6;
+  }, [purchaseType, frequency]);
 
   const handleAddToCart = () => {
+    const id =
+      purchaseType === "subscribe"
+        ? `${flavor}-sub-${frequency}` // IMPORTANT: frequency in ID so 2/4/6wk are unique
+        : `${flavor}-onetime`;
+
     addToCart({
-      id: `${flavor}-${purchaseType}`,
+      id,
       flavor: product.name,
       type: purchaseType,
-      price: currentPrice,
+      price: currentUnitPrice,
       quantity,
       frequency: purchaseType === "subscribe" ? frequency : undefined,
       image: product.pouch,
@@ -167,6 +187,7 @@ export default function Product() {
             </div>
 
             <div className="space-y-4 mb-8">
+              {/* Subscribe */}
               <div
                 className={cn(
                   "border rounded-xl p-4 cursor-pointer transition-all relative overflow-hidden",
@@ -199,7 +220,14 @@ export default function Product() {
                       </span>
                     </div>
                   </div>
-                  <span className="font-bold text-white">${priceSub}</span>
+
+                  <span className="font-bold text-white">
+                    ${pricePerShipmentSub}
+                    <span className="text-xs text-muted-foreground font-normal">
+                      {" "}
+                      / shipment
+                    </span>
+                  </span>
                 </div>
 
                 {purchaseType === "subscribe" && (
@@ -207,7 +235,11 @@ export default function Product() {
                     <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-2 block">
                       Delivery Frequency
                     </Label>
-                    <Select value={frequency} onValueChange={setFrequency}>
+
+                    <Select
+                      value={frequency}
+                      onValueChange={(v) => setFrequency(v as "2" | "4" | "6")}
+                    >
                       <SelectTrigger className="w-full bg-background border-white/10">
                         <SelectValue />
                       </SelectTrigger>
@@ -219,10 +251,21 @@ export default function Product() {
                         <SelectItem value="6">Every 6 Weeks</SelectItem>
                       </SelectContent>
                     </Select>
+
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Billed every {frequency} weeks
+                      {estimatedMonthly !== null && (
+                        <>
+                          {" "}
+                          • Est. monthly: ${estimatedMonthly.toFixed(2)}
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
 
+              {/* One-time */}
               <div
                 className={cn(
                   "border rounded-xl p-4 cursor-pointer transition-all",
@@ -279,7 +322,7 @@ export default function Product() {
                 onClick={handleAddToCart}
                 className="flex-1 h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg"
               >
-                Add to Cart - ${(currentPrice * quantity).toFixed(2)}
+                Add to Cart - ${(currentUnitPrice * quantity).toFixed(2)}
               </Button>
             </div>
 

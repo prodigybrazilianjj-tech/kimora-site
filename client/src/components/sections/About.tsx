@@ -7,10 +7,10 @@ export function About() {
         </h2>
         <div className="space-y-6 text-lg text-muted-foreground leading-relaxed">
           <p>
-            Created by people who train on the mats and in the gym. We wanted a daily creatine habit that feels good to stick with.
+            Kimora was built on the belief that what you do every day shapes who you become.
           </p>
           <p>
-            Clean formula, bold flavors, and packaging athletes aren’t embarrassed to pull out of their bag. Built for combat sports athletes, lifters, and anyone who wants to grow stronger and think sharper long-term.
+            Inspired by jiu-jitsu, Kimora reflects the idea that discipline becomes strength, and commitment becomes clarity. Every product is designed with integrity, humility, and purpose—made for athletes who understand that long-term growth is earned through consistent effort.
           </p>
         </div>
       </div>

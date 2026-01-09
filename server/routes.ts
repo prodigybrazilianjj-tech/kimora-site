@@ -1,153 +1,99 @@
-import type { Express, Request, Response } from "express";
-import { type Server } from "http";
-import { storage } from "./storage";
+import type { Express } from "express";
+import type { Server } from "http";
 import { stripe } from "./stripe";
 
-type CheckoutBody = {
-  flavor: string; // "Strawberry Guava" etc
-  frequency?: "2" | "4" | "6"; // weeks between shipments (UI selection)
-  quantity?: number; // number of pouches per shipment
+type Flavor = "strawberry-guava" | "lemon-yuzu" | "raspberry-dragonfruit";
+type PurchaseType = "onetime" | "subscribe";
+type Frequency = "2" | "4" | "6";
+
+const ONE_TIME_PRICE_ID: Record<Flavor, string> = {
+  "strawberry-guava": process.env.STRIPE_PRICE_ONETIME_STRAWBERRY_GUAVA!,
+  "lemon-yuzu": process.env.STRIPE_PRICE_ONETIME_LEMON_YUZU!,
+  "raspberry-dragonfruit": process.env.STRIPE_PRICE_ONETIME_RASPBERRY_DRAGONFRUIT!,
 };
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express,
-): Promise<Server> {
-  // -----------------------------
-  // Helpers
-  // -----------------------------
-  const siteUrl = process.env.PUBLIC_SITE_URL;
-  if (!siteUrl) {
-    throw new Error("PUBLIC_SITE_URL is not set");
-  }
+const SUB_PRICE_ID: Record<Flavor, Record<Frequency, string>> = {
+  "strawberry-guava": {
+    "2": process.env.STRIPE_PRICE_SUB_STRAWBERRY_GUAVA_2W!,
+    "4": process.env.STRIPE_PRICE_SUB_STRAWBERRY_GUAVA_4W!,
+    "6": process.env.STRIPE_PRICE_SUB_STRAWBERRY_GUAVA_6W!,
+  },
+  "lemon-yuzu": {
+    "2": process.env.STRIPE_PRICE_SUB_LEMON_YUZU_2W!,
+    "4": process.env.STRIPE_PRICE_SUB_LEMON_YUZU_4W!,
+    "6": process.env.STRIPE_PRICE_SUB_LEMON_YUZU_6W!,
+  },
+  "raspberry-dragonfruit": {
+    "2": process.env.STRIPE_PRICE_SUB_RASPBERRY_DRAGONFRUIT_2W!,
+    "4": process.env.STRIPE_PRICE_SUB_RASPBERRY_DRAGONFRUIT_4W!,
+    "6": process.env.STRIPE_PRICE_SUB_RASPBERRY_DRAGONFRUIT_6W!,
+  },
+};
 
-  const clampInt = (n: unknown, min: number, max: number, fallback: number) => {
-    const x = typeof n === "number" ? n : parseInt(String(n ?? ""), 10);
-    if (!Number.isFinite(x)) return fallback;
-    return Math.max(min, Math.min(max, x));
-  };
+function requiredEnv(name: string) {
+  const v = process.env[name];
+  if (!v) throw new Error(`${name} is not set`);
+  return v;
+}
 
-  const normalizeFrequency = (f: unknown): "2" | "4" | "6" => {
-    const v = String(f ?? "4");
-    return v === "2" || v === "6" ? v : "4";
-  };
-
-  // -----------------------------
-  // SUBSCRIPTION CHECKOUT
-  // -----------------------------
-  app.post("/api/checkout", async (req: Request, res: Response) => {
+export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+  app.post("/api/stripe/checkout", async (req, res) => {
     try {
-      const body = req.body as CheckoutBody;
+      const { flavor, purchaseType, frequency, quantity } = req.body as {
+        flavor: Flavor;
+        purchaseType: PurchaseType;
+        frequency?: Frequency;
+        quantity?: number;
+      };
 
-      const flavor = String(body.flavor || "").trim();
-      if (!flavor) {
-        return res.status(400).json({ error: "Missing flavor" });
+      if (!flavor || !purchaseType) {
+        return res.status(400).json({ message: "Missing flavor or purchaseType" });
       }
 
-      const frequency = normalizeFrequency(body.frequency);
-      const quantity = clampInt(body.quantity, 1, 6, 1);
+      const qty = Math.max(1, Math.min(6, Number(quantity ?? 1)));
 
-      // Your pricing:
-      // - Subscription base = $44.99 per pouch shipment
-      const unitAmount = 4499;
+      const siteUrl = requiredEnv("PUBLIC_SITE_URL"); // e.g. https://www.kimoraco.com
+      const successUrl = `${siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${siteUrl}/shop`;
 
-      // Stripe can't do "every 2 weeks" natively for subs in all configs.
-      // So we map:
-      // - every 2 weeks  => bill every 1 month, quantity 2  (2 shipments per month)
-      // - every 4 weeks  => bill every 1 month, quantity 1
-      // - every 6 weeks  => bill every 2 months, quantity 1 (closest clean fit)
-      //
-      // This keeps "what they receive" aligned with billing and is easy to reason about.
-      const recurring =
-        frequency === "2"
-          ? { interval: "month" as const, interval_count: 1 }
-          : frequency === "6"
-            ? { interval: "month" as const, interval_count: 2 }
-            : { interval: "month" as const, interval_count: 1 };
+      if (purchaseType === "onetime") {
+        const priceId = ONE_TIME_PRICE_ID[flavor];
+        if (!priceId) return res.status(400).json({ message: "Invalid flavor" });
 
-      const effectiveQty = frequency === "2" ? quantity * 2 : quantity;
+        const session = await stripe.checkout.sessions.create({
+          mode: "payment",
+          line_items: [{ price: priceId, quantity: qty }],
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          automatic_tax: { enabled: false },
+        });
+
+        return res.json({ url: session.url });
+      }
+
+      // subscribe
+      const freq = frequency ?? "4";
+      if (!["2", "4", "6"].includes(freq)) {
+        return res.status(400).json({ message: "Invalid frequency" });
+      }
+
+      const subPriceId = SUB_PRICE_ID[flavor]?.[freq as Frequency];
+      if (!subPriceId) return res.status(400).json({ message: "Invalid subscription price" });
 
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
-        payment_method_types: ["card"],
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              unit_amount: unitAmount,
-              product_data: {
-                name: `Kimora Creatine + Electrolytes — ${flavor}`,
-              },
-              recurring,
-            },
-            quantity: effectiveQty,
-          },
-        ],
-        allow_promotion_codes: true,
-        // You can switch these pages later
-        success_url: `${siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${siteUrl}/shop`,
-        metadata: {
-          flavor,
-          frequency_weeks: frequency,
-          quantity: String(quantity),
-          type: "subscription",
-        },
+        line_items: [{ price: subPriceId, quantity: qty }],
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        automatic_tax: { enabled: false },
+        // optional: collects phone/address
+        // customer_creation: "always",
       });
 
       return res.json({ url: session.url });
     } catch (err: any) {
-      console.error("Checkout (subscription) error:", err);
-      return res.status(500).json({ error: "Failed to create checkout session" });
-    }
-  });
-
-  // -----------------------------
-  // ONE-TIME CHECKOUT
-  // -----------------------------
-  app.post("/api/checkout-onetime", async (req: Request, res: Response) => {
-    try {
-      const body = req.body as CheckoutBody;
-
-      const flavor = String(body.flavor || "").trim();
-      if (!flavor) {
-        return res.status(400).json({ error: "Missing flavor" });
-      }
-
-      const quantity = clampInt(body.quantity, 1, 6, 1);
-
-      // One-time price = $49.99
-      const unitAmount = 4999;
-
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        payment_method_types: ["card"],
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              unit_amount: unitAmount,
-              product_data: {
-                name: `Kimora Creatine + Electrolytes — ${flavor}`,
-              },
-            },
-            quantity,
-          },
-        ],
-        allow_promotion_codes: true,
-        success_url: `${siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${siteUrl}/shop`,
-        metadata: {
-          flavor,
-          quantity: String(quantity),
-          type: "onetime",
-        },
-      });
-
-      return res.json({ url: session.url });
-    } catch (err: any) {
-      console.error("Checkout (one-time) error:", err);
-      return res.status(500).json({ error: "Failed to create checkout session" });
+      console.error(err);
+      return res.status(500).json({ message: err?.message ?? "Server error" });
     }
   });
 

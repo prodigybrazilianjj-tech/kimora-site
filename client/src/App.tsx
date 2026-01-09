@@ -9,6 +9,9 @@ import Shop from "@/pages/Shop";
 import Product from "@/pages/Product";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
+import Refunds from "@/pages/Refunds";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -20,6 +23,12 @@ function Router() {
       <Route path="/product" component={Product} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
+
+      {/* Legal */}
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/refunds" component={Refunds} />
+
       <Route component={NotFound} />
     </Switch>
   );
@@ -34,6 +43,10 @@ function App() {
       </CartProvider>
     </QueryClientProvider>
   );
+}
+
+export default App;
+
 }
 
 export default App;

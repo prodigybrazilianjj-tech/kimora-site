@@ -3,15 +3,18 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { CartProvider } from "@/lib/cart";
+
 import Home from "@/pages/Home";
 import FAQ from "@/pages/FAQ";
 import Shop from "@/pages/Shop";
 import Product from "@/pages/Product";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
+
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import Refunds from "@/pages/Refunds";
+
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -34,7 +37,7 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <CartProvider>
@@ -44,9 +47,3 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-export default App;
-
-}
-
-export default App;

@@ -2,98 +2,126 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { stripe } from "./stripe";
 
-type Flavor = "strawberry-guava" | "lemon-yuzu" | "raspberry-dragonfruit";
-type PurchaseType = "onetime" | "subscribe";
-type Frequency = "2" | "4" | "6";
-
-const ONE_TIME_PRICE_ID: Record<Flavor, string> = {
-  "strawberry-guava": process.env.STRIPE_PRICE_ONETIME_STRAWBERRY_GUAVA!,
-  "lemon-yuzu": process.env.STRIPE_PRICE_ONETIME_LEMON_YUZU!,
-  "raspberry-dragonfruit": process.env.STRIPE_PRICE_ONETIME_RASPBERRY_DRAGONFRUIT!,
+type CheckoutItem = {
+  flavor: string; // e.g. "strawberry-guava"
+  type: "onetime" | "subscribe";
+  frequency?: "2" | "4" | "6"; // required when type === "subscribe"
+  quantity: number;
 };
 
-const SUB_PRICE_ID: Record<Flavor, Record<Frequency, string>> = {
-  "strawberry-guava": {
-    "2": process.env.STRIPE_PRICE_SUB_STRAWBERRY_GUAVA_2W!,
-    "4": process.env.STRIPE_PRICE_SUB_STRAWBERRY_GUAVA_4W!,
-    "6": process.env.STRIPE_PRICE_SUB_STRAWBERRY_GUAVA_6W!,
-  },
-  "lemon-yuzu": {
-    "2": process.env.STRIPE_PRICE_SUB_LEMON_YUZU_2W!,
-    "4": process.env.STRIPE_PRICE_SUB_LEMON_YUZU_4W!,
-    "6": process.env.STRIPE_PRICE_SUB_LEMON_YUZU_6W!,
-  },
-  "raspberry-dragonfruit": {
-    "2": process.env.STRIPE_PRICE_SUB_RASPBERRY_DRAGONFRUIT_2W!,
-    "4": process.env.STRIPE_PRICE_SUB_RASPBERRY_DRAGONFRUIT_4W!,
-    "6": process.env.STRIPE_PRICE_SUB_RASPBERRY_DRAGONFRUIT_6W!,
-  },
-};
-
-function requiredEnv(name: string) {
-  const v = process.env[name];
-  if (!v) throw new Error(`${name} is not set`);
-  return v;
+function slugToEnvKey(slug: string) {
+  // "strawberry-guava" -> "STRAWBERRY_GUAVA"
+  return slug.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 
-export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-  app.post("/api/stripe/checkout", async (req, res) => {
+function getSiteUrl(req: any) {
+  // Use Render env in prod; fallback for dev
+  return (
+    process.env.PUBLIC_SITE_URL ||
+    req.headers.origin ||
+    "http://localhost:5173"
+  );
+}
+
+function getPriceId(item: CheckoutItem) {
+  const flavorKey = slugToEnvKey(item.flavor);
+
+  if (item.type === "onetime") {
+    const envName = `STRIPE_PRICE_${flavorKey}_ONETIME`;
+    const priceId = process.env[envName];
+    if (!priceId) throw new Error(`Missing env var: ${envName}`);
+    return priceId;
+  }
+
+  // subscribe
+  if (!item.frequency) throw new Error("Missing frequency for subscription.");
+  const envName = `STRIPE_PRICE_${flavorKey}_SUB_${item.frequency}W`;
+  const priceId = process.env[envName];
+  if (!priceId) throw new Error(`Missing env var: ${envName}`);
+  return priceId;
+}
+
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express,
+): Promise<Server> {
+  // Health check (optional)
+  app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+  // Create Stripe Checkout Session
+  app.post("/api/checkout", async (req, res) => {
     try {
-      const { flavor, purchaseType, frequency, quantity } = req.body as {
-        flavor: Flavor;
-        purchaseType: PurchaseType;
-        frequency?: Frequency;
-        quantity?: number;
-      };
+      const body = req.body ?? {};
 
-      if (!flavor || !purchaseType) {
-        return res.status(400).json({ message: "Missing flavor or purchaseType" });
+      // Allow either { item: {...} } or { items: [...] }
+      const items: CheckoutItem[] = Array.isArray(body.items)
+        ? body.items
+        : body.item
+          ? [body.item]
+          : [];
+
+      if (!items.length) {
+        return res.status(400).json({ message: "No checkout items provided." });
       }
 
-      const qty = Math.max(1, Math.min(6, Number(quantity ?? 1)));
+      // Validate
+      for (const it of items) {
+        if (!it.flavor) return res.status(400).json({ message: "Missing flavor." });
+        if (it.type !== "onetime" && it.type !== "subscribe") {
+          return res.status(400).json({ message: "Invalid type." });
+        }
+        if (!Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > 20) {
+          return res.status(400).json({ message: "Invalid quantity." });
+        }
+        if (it.type === "subscribe") {
+          if (it.frequency !== "2" && it.frequency !== "4" && it.frequency !== "6") {
+            return res.status(400).json({ message: "Invalid frequency." });
+          }
+        }
+      }
 
-      const siteUrl = requiredEnv("PUBLIC_SITE_URL"); // e.g. https://www.kimoraco.com
-      const successUrl = `${siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${siteUrl}/shop`;
-
-      if (purchaseType === "onetime") {
-        const priceId = ONE_TIME_PRICE_ID[flavor];
-        if (!priceId) return res.status(400).json({ message: "Invalid flavor" });
-
-        const session = await stripe.checkout.sessions.create({
-          mode: "payment",
-          line_items: [{ price: priceId, quantity: qty }],
-          success_url: successUrl,
-          cancel_url: cancelUrl,
-          automatic_tax: { enabled: false },
+      // Stripe Checkout cannot mix payment + subscription in one session
+      const hasSub = items.some((i) => i.type === "subscribe");
+      const hasOne = items.some((i) => i.type === "onetime");
+      if (hasSub && hasOne) {
+        return res.status(400).json({
+          message:
+            "You can’t checkout subscription and one-time items together. Please checkout separately.",
         });
-
-        return res.json({ url: session.url });
       }
 
-      // subscribe
-      const freq = frequency ?? "4";
-      if (!["2", "4", "6"].includes(freq)) {
-        return res.status(400).json({ message: "Invalid frequency" });
-      }
-
-      const subPriceId = SUB_PRICE_ID[flavor]?.[freq as Frequency];
-      if (!subPriceId) return res.status(400).json({ message: "Invalid subscription price" });
+      const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
+      const siteUrl = getSiteUrl(req);
 
       const session = await stripe.checkout.sessions.create({
-        mode: "subscription",
-        line_items: [{ price: subPriceId, quantity: qty }],
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        automatic_tax: { enabled: false },
-        // optional: collects phone/address
-        // customer_creation: "always",
+        mode,
+        line_items: items.map((it) => ({
+          price: getPriceId(it),
+          quantity: it.quantity,
+        })),
+
+        billing_address_collection: "required",
+        shipping_address_collection: { allowed_countries: ["US"] },
+
+        // Adjust these routes if you want different pages
+        success_url: `${siteUrl}/checkout?success=1&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${siteUrl}/cart`,
+
+        // Helpful for debugging / later fulfillment
+        metadata: {
+          source: "kimora-site",
+          mode,
+        },
       });
+
+      if (!session.url) {
+        return res.status(500).json({ message: "Stripe session created, but no URL returned." });
+      }
 
       return res.json({ url: session.url });
     } catch (err: any) {
-      console.error(err);
-      return res.status(500).json({ message: err?.message ?? "Server error" });
+      console.error("POST /api/checkout error:", err);
+      return res.status(500).json({ message: err?.message || "Checkout failed." });
     }
   });
 

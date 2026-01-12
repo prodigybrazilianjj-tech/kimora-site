@@ -9,4 +9,3 @@ if (!secretKey) {
 export const stripe = new Stripe(secretKey, {
   apiVersion: "2024-06-20",
 });
-

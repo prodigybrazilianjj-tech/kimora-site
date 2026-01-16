@@ -40,6 +40,9 @@ export const orders = pgTable(
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
 
+    // ✅ NEW: required for Stripe Customer Portal
+    stripeCustomerId: text("stripe_customer_id"),
+
     customerEmail: text("customer_email"),
 
     currency: text("currency").notNull().default("usd"),
@@ -114,5 +117,3 @@ export const orderItems = pgTable(
     ),
   }),
 );
-
-

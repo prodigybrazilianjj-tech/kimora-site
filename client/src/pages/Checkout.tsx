@@ -1,224 +1,207 @@
-import { useState } from "react";
-import { Link } from "wouter";
+import { useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useCart } from "@/lib/cart";
 
 type CheckoutItem = {
-  flavor: string; // slug e.g. "lemon-yuzu"
+  flavor: string; // e.g. "lemon-yuzu"
   type: "onetime" | "subscribe";
   frequency?: "2" | "4" | "6";
   quantity: number;
 };
 
-function toKebabSlug(v: unknown) {
-  if (typeof v !== "string") return "unknown";
-  return v.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+function prettyFlavor(slug: string) {
+  return slug
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 export default function Checkout() {
-  const { subtotal, items } = useCart() as any;
+  const [, setLocation] = useLocation();
+  const { items, subtotal } = useCart() as any;
 
-  // TEMP: verify cart item shape in browser console
-  // Remove after verification
-  console.log("CART ITEMS:", items);
-
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handlePlaceOrder() {
+  const payloadItems: CheckoutItem[] = useMemo(() => {
+    const safeItems = Array.isArray(items) ? items : [];
+    return safeItems
+      .map((it: any) => ({
+        flavor: String(it?.flavor ?? ""),
+        type: it?.type === "subscribe" ? "subscribe" : "onetime",
+        frequency: it?.type === "subscribe" ? it?.frequency : undefined,
+        quantity: Number.isFinite(it?.quantity) ? Math.max(1, it.quantity) : 1,
+      }))
+      .filter((it) => {
+        if (!it.flavor) return false;
+        if (it.type === "subscribe" && !it.frequency) return false;
+        return true;
+      });
+  }, [items]);
+
+  const isEmpty = payloadItems.length === 0;
+
+  async function handleStripeCheckout() {
+    if (isEmpty || loading) return;
+
     setError(null);
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      const payloadItems: CheckoutItem[] = (items ?? []).map((it: any) => {
-        const id = String(it?.id || "");
-        // expected:
-        // "lemon-yuzu-onetime"
-        // "lemon-yuzu-sub-2" | "-sub-4" | "-sub-6"
-        const m = id.match(/^(.+?)-(onetime|sub)(?:-(2|4|6))?$/);
-
-        let flavorSlug = toKebabSlug(it?.flavorSlug ?? it?.flavor);
-        let type: "onetime" | "subscribe" = it?.type === "subscribe" ? "subscribe" : "onetime";
-        let frequency: "2" | "4" | "6" | undefined = undefined;
-
-        if (m) {
-          flavorSlug = m[1];
-          type = m[2] === "sub" ? "subscribe" : "onetime";
-          const freq = m[3];
-          if (type === "subscribe" && (freq === "2" || freq === "4" || freq === "6")) {
-            frequency = freq;
-          }
-        }
-
-        return {
-          flavor: flavorSlug,
-          type,
-          frequency,
-          quantity: it?.quantity ?? 1,
-        };
-      });
-
-      if (!payloadItems.length) {
-        setError("Your cart is empty.");
-        return;
-      }
-
-      // TEMP: verify payload
-      // Remove after verification
-      console.log("CHECKOUT PAYLOAD:", payloadItems);
-
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // credentials: "include", // optional (safe to keep if you ever use cookies)
         body: JSON.stringify({ items: payloadItems }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      // Don’t assume JSON on errors
+      const contentType = res.headers.get("content-type") || "";
+      const isJson = contentType.includes("application/json");
+
+      const data: any = isJson ? await res.json().catch(() => ({})) : null;
+      const text: string = !isJson ? await res.text().catch(() => "") : "";
 
       if (!res.ok) {
-        throw new Error((data as any)?.message || "Checkout failed.");
+        const msg =
+          (data && (data.message || data.error)) ||
+          text ||
+          `Checkout failed (${res.status}).`;
+        throw new Error(msg);
       }
 
-      if (!(data as any)?.url) {
+      const url = data?.url;
+      if (!url) {
         throw new Error("Stripe session created, but no URL returned.");
       }
 
-      window.location.href = (data as any).url;
+      // Redirect to Stripe Checkout (hosted)
+      window.location.href = url;
+
+      // Do not setLoading(false) here — we’re leaving the page
     } catch (e: any) {
       setError(e?.message || "Checkout failed.");
-    } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
+
       <main className="pt-32 pb-24">
         <div className="container px-4 mx-auto max-w-5xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Checkout Form */}
+            {/* Left: Summary + CTA */}
             <div>
-              <h1 className="text-3xl font-display font-bold text-white mb-8">Checkout</h1>
+              <h1 className="text-3xl font-display font-bold text-white mb-6">
+                Checkout
+              </h1>
 
-              <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-white uppercase tracking-wider border-b border-white/10 pb-2">
-                    Contact
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="alex@example.com"
-                        className="bg-white/5 border-white/10 text-white"
-                      />
-                    </div>
-                  </div>
+              <p className="text-muted-foreground mb-8">
+                You’ll enter shipping and payment details on Stripe (secure).
+              </p>
+
+              {error ? (
+                <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+                  {error}
                 </div>
+              ) : null}
 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-white uppercase tracking-wider border-b border-white/10 pb-2">
-                    Shipping
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="firstName"
-                        placeholder="First Name"
-                        className="bg-white/5 border-white/10 text-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        placeholder="Last Name"
-                        className="bg-white/5 border-white/10 text-white"
-                      />
-                    </div>
-                    <div className="col-span-2 space-y-2">
-                      <Label htmlFor="address">Address</Label>
-                      <Input
-                        id="address"
-                        placeholder="123 Main St"
-                        className="bg-white/5 border-white/10 text-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input
-                        id="city"
-                        placeholder="City"
-                        className="bg-white/5 border-white/10 text-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="zip">ZIP Code</Label>
-                      <Input
-                        id="zip"
-                        placeholder="ZIP"
-                        className="bg-white/5 border-white/10 text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-                    {error}
-                  </div>
-                )}
+              <div className="flex flex-col gap-3">
+                <Button
+                  type="button"
+                  onClick={handleStripeCheckout}
+                  disabled={loading || isEmpty}
+                  className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg"
+                >
+                  {loading ? "Redirecting to Stripe..." : "Continue to Payment"}
+                </Button>
 
                 <Button
                   type="button"
-                  onClick={handlePlaceOrder}
-                  disabled={isLoading}
-                  className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg mt-8 disabled:opacity-60"
+                  variant="secondary"
+                  className="w-full h-12 bg-white/10 hover:bg-white/20 text-white"
+                  onClick={() => setLocation("/cart")}
                 >
-                  {isLoading ? "Processing..." : "Place Order"}
+                  Back to Cart
                 </Button>
 
-                <div className="text-xs text-muted-foreground">
-                  You’ll be redirected to Stripe Checkout.
-                  <span className="ml-2">
-                    <Link href="/cart" className="underline underline-offset-4">
-                      Back to cart
-                    </Link>
-                  </span>
-                </div>
-              </form>
+                <p className="text-xs text-white/50 mt-2">
+                  Powered by Stripe. We never see your card details.
+                </p>
+              </div>
             </div>
 
-            {/* Order Preview */}
+            {/* Right: Order Preview */}
             <div className="lg:pl-12 lg:border-l border-white/10">
               <div className="bg-card/50 p-6 rounded-xl border border-white/5 sticky top-32">
-                <h3 className="text-lg font-bold text-white mb-6">Order Summary</h3>
+                <h3 className="text-lg font-bold text-white mb-6">
+                  Order Summary
+                </h3>
+
+                {payloadItems.length ? (
+                  <div className="space-y-3 mb-6">
+                    {payloadItems.map((it, idx) => (
+                      <div
+                        key={`${it.flavor}-${it.type}-${it.frequency ?? "n"}-${idx}`}
+                        className="flex justify-between gap-4"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-white font-medium truncate">
+                            {prettyFlavor(it.flavor)}
+                          </div>
+                          <div className="text-xs text-white/60">
+                            {it.type === "subscribe"
+                              ? `Subscription • every ${it.frequency} weeks`
+                              : "One-time purchase"}
+                            {` • qty ${it.quantity}`}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-white/60 mb-6">
+                    Your cart is empty.{" "}
+                    <Link href="/shop" className="underline text-white">
+                      Go shop
+                    </Link>
+                    .
+                  </div>
+                )}
+
                 <div className="flex justify-between mb-4">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="text-white font-medium">${subtotal.toFixed(2)}</span>
+                  <span className="text-white font-medium">
+                    ${Number(subtotal || 0).toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex justify-between mb-4">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span className="text-white font-medium">Free</span>
+                  <span className="text-white font-medium">
+                    Calculated on Stripe
+                  </span>
                 </div>
                 <div className="border-t border-white/10 pt-4 flex justify-between">
                   <span className="text-xl font-bold text-white">Total</span>
-                  <span className="text-xl font-bold text-primary">${subtotal.toFixed(2)}</span>
+                  <span className="text-xl font-bold text-primary">
+                    ${Number(subtotal || 0).toFixed(2)}
+                  </span>
                 </div>
+
+                <p className="text-xs text-white/50 mt-4">
+                  Taxes/shipping (if any) are finalized in Stripe Checkout.
+                </p>
               </div>
             </div>
-            {/* end grid */}
           </div>
         </div>
       </main>
+
       <Footer />
     </div>
   );

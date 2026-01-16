@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { stripe } from "./stripe";
 
 import { db } from "./db";
@@ -122,6 +122,12 @@ export async function registerRoutes(
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
 
+        // ✅ Stripe Customer ID (required for Billing Portal)
+        const stripeCustomerId =
+          typeof session.customer === "string"
+            ? session.customer
+            : session.customer?.id ?? null;
+
         // Pull line items from Stripe (source of truth)
         const lineItems = await stripe.checkout.sessions.listLineItems(
           session.id,
@@ -135,6 +141,9 @@ export async function registerRoutes(
             stripeCheckoutSessionId: session.id,
             stripePaymentIntentId: session.payment_intent ?? null,
             stripeSubscriptionId: session.subscription ?? null,
+
+            // ✅ NEW
+            stripeCustomerId: stripeCustomerId,
 
             customerEmail:
               session.customer_details?.email ??
@@ -166,6 +175,14 @@ export async function registerRoutes(
             .limit(1);
 
           orderId = existing?.[0]?.id;
+
+          // ✅ Backfill stripe_customer_id for existing rows (idempotent)
+          if (stripeCustomerId) {
+            await db
+              .update(orders)
+              .set({ stripeCustomerId })
+              .where(eq(orders.stripeCheckoutSessionId, session.id));
+          }
         }
 
         if (orderId) {
@@ -209,6 +226,49 @@ export async function registerRoutes(
       return res
         .status(400)
         .send(`Webhook Error: ${err?.message || "Unknown error"}`);
+    }
+  });
+
+  // Create Stripe Customer Portal Session (manage subscription)
+  app.post("/api/customer-portal", async (req, res) => {
+    try {
+      const email = String(req.body?.email ?? "").trim().toLowerCase();
+      if (!email) {
+        return res.status(400).json({ message: "Email is required." });
+      }
+
+      const siteUrl = getSiteUrl(req);
+
+      // Get most recent order for this email that has a stripe customer id
+      const found = await db
+        .select({
+          stripeCustomerId: orders.stripeCustomerId,
+        })
+        .from(orders)
+        .where(eq(orders.customerEmail, email))
+        .orderBy(desc(orders.createdAt))
+        .limit(1);
+
+      const stripeCustomerId = found?.[0]?.stripeCustomerId ?? null;
+
+      if (!stripeCustomerId) {
+        return res.status(404).json({
+          message:
+            "We couldn't find a customer for that email yet. Use the email from your Stripe receipt.",
+        });
+      }
+
+      const portal = await stripe.billingPortal.sessions.create({
+        customer: stripeCustomerId,
+        return_url: `${siteUrl}/account`,
+      });
+
+      return res.json({ url: portal.url });
+    } catch (err: any) {
+      console.error("POST /api/customer-portal error:", err);
+      return res
+        .status(500)
+        .json({ message: err?.message || "Failed to create portal session." });
     }
   });
 
@@ -271,6 +331,10 @@ export async function registerRoutes(
 
       const session = await stripe.checkout.sessions.create({
         mode,
+
+        // ✅ Recommended: ensure a Stripe customer exists for Billing Portal
+        customer_creation: "always",
+
         line_items: items.map((it) => ({
           price: getPriceId(it),
           quantity: it.quantity,
@@ -279,7 +343,7 @@ export async function registerRoutes(
         billing_address_collection: "required",
         shipping_address_collection: { allowed_countries: ["US"] },
 
-        // Redirects (UPDATED)
+        // Redirects
         success_url: `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${siteUrl}/cart`,
 

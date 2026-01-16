@@ -1,3 +1,4 @@
+```tsx
 import { useState } from "react";
 import { Link } from "wouter";
 import { Navbar } from "@/components/sections/Navbar";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useCart } from "@/lib/cart";
 
 type CheckoutItem = {
-  flavor: string;
+  flavor: string; // slug e.g. "lemon-yuzu"
   type: "onetime" | "subscribe";
   frequency?: "2" | "4" | "6";
   quantity: number;
@@ -29,17 +30,52 @@ export default function Checkout() {
 
     try {
       // Map cart -> API payload expected by /api/checkout
-      const payloadItems: CheckoutItem[] = (items ?? []).map((it: any) => ({
-        flavor: it.flavor, // e.g. "strawberry-guava"
-        type: it.type, // "onetime" | "subscribe"
-        frequency: it.frequency, // "2" | "4" | "6" (only if subscribe)
-        quantity: it.quantity ?? 1,
-      }));
+      // Your cart items appear to have an id like: "lemon-yuzu-sub-6"
+      const payloadItems: CheckoutItem[] = (items ?? []).map((it: any) => {
+        // expected id patterns:
+        //   "lemon-yuzu-onetime"
+        //   "lemon-yuzu-sub-2" | "lemon-yuzu-sub-4" | "lemon-yuzu-sub-6"
+        const id: string = String(it.id || "");
+        const m = id.match(/^(.+?)-(onetime|sub)(?:-(2|4|6))?$/);
+
+        // Defaults (fallbacks)
+        let flavorSlug =
+          it.flavorSlug ||
+          (typeof it.flavor === "string"
+            ? it.flavor.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")
+            : "unknown");
+
+        let type: "onetime" | "subscribe" =
+          it.type === "subscribe" ? "subscribe" : "onetime";
+
+        let frequency: "2" | "4" | "6" | undefined = undefined;
+
+        if (m) {
+          flavorSlug = m[1]; // "lemon-yuzu"
+          const kind = m[2]; // "onetime" | "sub"
+          const freq = m[3]; // "2" | "4" | "6" | undefined
+
+          type = kind === "sub" ? "subscribe" : "onetime";
+          if (type === "subscribe" && (freq === "2" || freq === "4" || freq === "6")) {
+            frequency = freq;
+          }
+        }
+
+        return {
+          flavor: flavorSlug,
+          type,
+          frequency,
+          quantity: it.quantity ?? 1,
+        };
+      });
 
       if (!payloadItems.length) {
         setError("Your cart is empty.");
         return;
       }
+
+      // TEMP: verify what we are about to send to /api/checkout
+      console.log("CHECKOUT PAYLOAD:", payloadItems);
 
       const res = await fetch("/api/checkout", {
         method: "POST",
@@ -201,3 +237,4 @@ export default function Checkout() {
     </div>
   );
 }
+

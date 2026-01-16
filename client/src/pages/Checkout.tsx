@@ -1,4 +1,3 @@
-```tsx
 import { useState } from "react";
 import { Link } from "wouter";
 import { Navbar } from "@/components/sections/Navbar";
@@ -15,10 +14,16 @@ type CheckoutItem = {
   quantity: number;
 };
 
+function toKebabSlug(v: unknown) {
+  if (typeof v !== "string") return "unknown";
+  return v.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 export default function Checkout() {
   const { subtotal, items } = useCart() as any;
 
   // TEMP: verify cart item shape in browser console
+  // Remove after verification
   console.log("CART ITEMS:", items);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -29,33 +34,21 @@ export default function Checkout() {
     setIsLoading(true);
 
     try {
-      // Map cart -> API payload expected by /api/checkout
-      // Your cart items appear to have an id like: "lemon-yuzu-sub-6"
       const payloadItems: CheckoutItem[] = (items ?? []).map((it: any) => {
-        // expected id patterns:
-        //   "lemon-yuzu-onetime"
-        //   "lemon-yuzu-sub-2" | "lemon-yuzu-sub-4" | "lemon-yuzu-sub-6"
-        const id: string = String(it.id || "");
+        const id = String(it?.id || "");
+        // expected:
+        // "lemon-yuzu-onetime"
+        // "lemon-yuzu-sub-2" | "-sub-4" | "-sub-6"
         const m = id.match(/^(.+?)-(onetime|sub)(?:-(2|4|6))?$/);
 
-        // Defaults (fallbacks)
-        let flavorSlug =
-          it.flavorSlug ||
-          (typeof it.flavor === "string"
-            ? it.flavor.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")
-            : "unknown");
-
-        let type: "onetime" | "subscribe" =
-          it.type === "subscribe" ? "subscribe" : "onetime";
-
+        let flavorSlug = toKebabSlug(it?.flavorSlug ?? it?.flavor);
+        let type: "onetime" | "subscribe" = it?.type === "subscribe" ? "subscribe" : "onetime";
         let frequency: "2" | "4" | "6" | undefined = undefined;
 
         if (m) {
-          flavorSlug = m[1]; // "lemon-yuzu"
-          const kind = m[2]; // "onetime" | "sub"
-          const freq = m[3]; // "2" | "4" | "6" | undefined
-
-          type = kind === "sub" ? "subscribe" : "onetime";
+          flavorSlug = m[1];
+          type = m[2] === "sub" ? "subscribe" : "onetime";
+          const freq = m[3];
           if (type === "subscribe" && (freq === "2" || freq === "4" || freq === "6")) {
             frequency = freq;
           }
@@ -65,7 +58,7 @@ export default function Checkout() {
           flavor: flavorSlug,
           type,
           frequency,
-          quantity: it.quantity ?? 1,
+          quantity: it?.quantity ?? 1,
         };
       });
 
@@ -74,7 +67,8 @@ export default function Checkout() {
         return;
       }
 
-      // TEMP: verify what we are about to send to /api/checkout
+      // TEMP: verify payload
+      // Remove after verification
       console.log("CHECKOUT PAYLOAD:", payloadItems);
 
       const res = await fetch("/api/checkout", {
@@ -86,14 +80,14 @@ export default function Checkout() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data?.message || "Checkout failed.");
+        throw new Error((data as any)?.message || "Checkout failed.");
       }
 
-      if (!data?.url) {
+      if (!(data as any)?.url) {
         throw new Error("Stripe session created, but no URL returned.");
       }
 
-      window.location.href = data.url;
+      window.location.href = (data as any).url;
     } catch (e: any) {
       setError(e?.message || "Checkout failed.");
     } finally {
@@ -109,9 +103,7 @@ export default function Checkout() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Checkout Form */}
             <div>
-              <h1 className="text-3xl font-display font-bold text-white mb-8">
-                Checkout
-              </h1>
+              <h1 className="text-3xl font-display font-bold text-white mb-8">Checkout</h1>
 
               <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-4">
@@ -208,14 +200,10 @@ export default function Checkout() {
             {/* Order Preview */}
             <div className="lg:pl-12 lg:border-l border-white/10">
               <div className="bg-card/50 p-6 rounded-xl border border-white/5 sticky top-32">
-                <h3 className="text-lg font-bold text-white mb-6">
-                  Order Summary
-                </h3>
+                <h3 className="text-lg font-bold text-white mb-6">Order Summary</h3>
                 <div className="flex justify-between mb-4">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="text-white font-medium">
-                    ${subtotal.toFixed(2)}
-                  </span>
+                  <span className="text-white font-medium">${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between mb-4">
                   <span className="text-muted-foreground">Shipping</span>
@@ -223,9 +211,7 @@ export default function Checkout() {
                 </div>
                 <div className="border-t border-white/10 pt-4 flex justify-between">
                   <span className="text-xl font-bold text-white">Total</span>
-                  <span className="text-xl font-bold text-primary">
-                    ${subtotal.toFixed(2)}
-                  </span>
+                  <span className="text-xl font-bold text-primary">${subtotal.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -237,4 +223,3 @@ export default function Checkout() {
     </div>
   );
 }
-

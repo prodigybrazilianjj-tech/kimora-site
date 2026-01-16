@@ -82,7 +82,7 @@ export const orderItems = pgTable(
 
     // Stripe identifiers for idempotency
     // Price ID should be present for Checkout line items
-    stripePriceId: text("stripe_price_id").notNull(), // e.g. price_123
+    stripePriceId: text("stripe_price_id"), // e.g. price_123
     // Line item id is usually present, but keep nullable just in case
     stripeLineItemId: text("stripe_line_item_id"), // e.g. li_123
 

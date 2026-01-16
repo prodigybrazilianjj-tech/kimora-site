@@ -279,8 +279,8 @@ export async function registerRoutes(
         billing_address_collection: "required",
         shipping_address_collection: { allowed_countries: ["US"] },
 
-        // Redirects
-        success_url: `${siteUrl}/checkout?success=1&session_id={CHECKOUT_SESSION_ID}`,
+        // Redirects (UPDATED)
+        success_url: `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${siteUrl}/cart`,
 
         metadata: {

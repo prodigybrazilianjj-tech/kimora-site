@@ -10,6 +10,7 @@ import Shop from "@/pages/Shop";
 import Product from "@/pages/Product";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
+import OrderSuccess from "@/pages/OrderSuccess";
 
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/refunds" component={Refunds} />
+      <Route path="/order-success" component={OrderSuccess} />
 
       <Route component={NotFound} />
     </Switch>

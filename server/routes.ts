@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import type { Server } from "http";
+import { eq } from "drizzle-orm";
 import { stripe } from "./stripe";
 
 import { db } from "./db";
@@ -117,16 +118,17 @@ export async function registerRoutes(
 
       const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
 
+      // Only handle the event(s) you care about
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
 
-        // Pull line items from Stripe
+        // Pull line items from Stripe (source of truth)
         const lineItems = await stripe.checkout.sessions.listLineItems(
           session.id,
           { limit: 100 },
         );
 
-        // Create order row
+        // ---- ORDER: idempotent insert (do nothing on conflict), then fetch id if needed ----
         const inserted = await db
           .insert(orders)
           .values({
@@ -149,13 +151,27 @@ export async function registerRoutes(
             shippingName: session.shipping_details?.name ?? null,
             shippingAddress: session.shipping_details?.address ?? null,
           })
+          .onConflictDoNothing({
+            target: orders.stripeCheckoutSessionId,
+          })
           .returning({ id: orders.id });
 
-        const orderId = inserted?.[0]?.id;
+        let orderId = inserted?.[0]?.id;
+
+        if (!orderId) {
+          const existing = await db
+            .select({ id: orders.id })
+            .from(orders)
+            .where(eq(orders.stripeCheckoutSessionId, session.id))
+            .limit(1);
+
+          orderId = existing?.[0]?.id;
+        }
 
         if (orderId) {
+          // ---- ORDER ITEMS: idempotent inserts (ignore duplicates) ----
           for (const li of lineItems.data) {
-            const priceId = li.price?.id;
+            const priceId = li.price?.id ?? null;
             const qty = li.quantity ?? 1;
 
             const mapped = priceId
@@ -166,14 +182,22 @@ export async function registerRoutes(
                   frequencyWeeks: null,
                 };
 
-            await db.insert(orderItems).values({
-              orderId,
-              flavor: mapped.flavor,
-              purchaseType: mapped.purchaseType,
-              frequencyWeeks: mapped.frequencyWeeks,
-              quantity: qty,
-              unitAmount: li.price?.unit_amount ?? null,
-            });
+            await db
+              .insert(orderItems)
+              .values({
+                orderId,
+
+                // These columns must exist in your schema (recommended)
+                stripePriceId: priceId,
+                stripeLineItemId: li.id ?? null,
+
+                flavor: mapped.flavor,
+                purchaseType: mapped.purchaseType,
+                frequencyWeeks: mapped.frequencyWeeks,
+                quantity: qty,
+                unitAmount: li.price?.unit_amount ?? null,
+              })
+              .onConflictDoNothing();
           }
         }
       }
@@ -181,6 +205,7 @@ export async function registerRoutes(
       return res.json({ received: true });
     } catch (err: any) {
       console.error("Stripe webhook error:", err?.message || err);
+      // Stripe expects non-2xx to retry; keep 400 for signature/construct errors
       return res
         .status(400)
         .send(`Webhook Error: ${err?.message || "Unknown error"}`);
@@ -218,7 +243,11 @@ export async function registerRoutes(
           return res.status(400).json({ message: "Invalid quantity." });
         }
         if (it.type === "subscribe") {
-          if (it.frequency !== "2" && it.frequency !== "4" && it.frequency !== "6") {
+          if (
+            it.frequency !== "2" &&
+            it.frequency !== "4" &&
+            it.frequency !== "6"
+          ) {
             return res.status(400).json({ message: "Invalid frequency." });
           }
         }

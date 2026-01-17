@@ -122,7 +122,7 @@ export async function registerRoutes(
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
 
-        // ✅ Stripe Customer ID (required for Billing Portal)
+        // Stripe Customer ID (required for Billing Portal)
         const stripeCustomerId =
           typeof session.customer === "string"
             ? session.customer
@@ -142,7 +142,6 @@ export async function registerRoutes(
             stripePaymentIntentId: session.payment_intent ?? null,
             stripeSubscriptionId: session.subscription ?? null,
 
-            // ✅ NEW
             stripeCustomerId: stripeCustomerId,
 
             customerEmail:
@@ -176,7 +175,7 @@ export async function registerRoutes(
 
           orderId = existing?.[0]?.id;
 
-          // ✅ Backfill stripe_customer_id for existing rows (idempotent)
+          // Backfill stripe_customer_id for existing rows (idempotent)
           if (stripeCustomerId) {
             await db
               .update(orders)
@@ -204,7 +203,6 @@ export async function registerRoutes(
               .values({
                 orderId,
 
-                // These columns must exist in your schema (recommended)
                 stripePriceId: priceId,
                 stripeLineItemId: li.id ?? null,
 
@@ -222,7 +220,6 @@ export async function registerRoutes(
       return res.json({ received: true });
     } catch (err: any) {
       console.error("Stripe webhook error:", err?.message || err);
-      // Stripe expects non-2xx to retry; keep 400 for signature/construct errors
       return res
         .status(400)
         .send(`Webhook Error: ${err?.message || "Unknown error"}`);
@@ -295,19 +292,11 @@ export async function registerRoutes(
         if (it.type !== "onetime" && it.type !== "subscribe") {
           return res.status(400).json({ message: "Invalid type." });
         }
-        if (
-          !Number.isInteger(it.quantity) ||
-          it.quantity < 1 ||
-          it.quantity > 20
-        ) {
+        if (!Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > 20) {
           return res.status(400).json({ message: "Invalid quantity." });
         }
         if (it.type === "subscribe") {
-          if (
-            it.frequency !== "2" &&
-            it.frequency !== "4" &&
-            it.frequency !== "6"
-          ) {
+          if (it.frequency !== "2" && it.frequency !== "4" && it.frequency !== "6") {
             return res.status(400).json({ message: "Invalid frequency." });
           }
         }
@@ -323,17 +312,14 @@ export async function registerRoutes(
         });
       }
 
-      const mode: "payment" | "subscription" = hasSub
-        ? "subscription"
-        : "payment";
-
+      const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
       const siteUrl = getSiteUrl(req);
 
       const session = await stripe.checkout.sessions.create({
         mode,
 
-        // ✅ Recommended: ensure a Stripe customer exists for Billing Portal
-        customer_creation: "always",
+        // Only allowed in payment mode
+        ...(mode === "payment" ? { customer_creation: "always" } : {}),
 
         line_items: items.map((it) => ({
           price: getPriceId(it),
@@ -343,7 +329,6 @@ export async function registerRoutes(
         billing_address_collection: "required",
         shipping_address_collection: { allowed_countries: ["US"] },
 
-        // Redirects
         success_url: `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${siteUrl}/cart`,
 

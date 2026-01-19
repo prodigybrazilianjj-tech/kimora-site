@@ -27,6 +27,12 @@ function getSiteUrl(req: any) {
   );
 }
 
+/**
+ * Resolve Stripe Price ID from env vars.
+ * Expected env keys:
+ * - STRIPE_PRICE_<FLAVOR>_ONETIME
+ * - STRIPE_PRICE_<FLAVOR>_SUB_2W / _SUB_4W / _SUB_6W
+ */
 function getPriceId(item: CheckoutItem) {
   const flavorKey = slugToEnvKey(item.flavor);
 
@@ -37,25 +43,37 @@ function getPriceId(item: CheckoutItem) {
     return priceId;
   }
 
-  // subscribe
-  if (!item.frequency) throw new Error("Missing frequency for subscription.");
-  const envName = `STRIPE_PRICE_${flavorKey}_SUB_${item.frequency}W`;
-  const priceId = process.env[envName];
-  if (!priceId) throw new Error(`Missing env var: ${envName}`);
-  return priceId;
+  if (item.type === "subscribe") {
+    if (!item.frequency) throw new Error("Missing frequency for subscription.");
+    const envName = `STRIPE_PRICE_${flavorKey}_SUB_${item.frequency}W`;
+    const priceId = process.env[envName];
+    if (!priceId) throw new Error(`Missing env var: ${envName}`);
+    return priceId;
+  }
+
+  // Defensive: should never happen because type is union, but prevents silent fall-through
+  throw new Error(`Invalid checkout item type: ${(item as any)?.type}`);
 }
 
+/**
+ * Safe env lookup helper used by mapPriceIdToItem.
+ * Avoids generating SUB_undefinedW when frequency is missing.
+ */
 function envPriceId(
   flavor: string,
   type: "onetime" | "subscribe",
   frequency?: "2" | "4" | "6",
 ) {
   const flavorKey = slugToEnvKey(flavor);
-  const envName =
-    type === "onetime"
-      ? `STRIPE_PRICE_${flavorKey}_ONETIME`
-      : `STRIPE_PRICE_${flavorKey}_SUB_${frequency}W`;
 
+  if (type === "onetime") {
+    const envName = `STRIPE_PRICE_${flavorKey}_ONETIME`;
+    return process.env[envName] || null;
+  }
+
+  if (!frequency) return null;
+
+  const envName = `STRIPE_PRICE_${flavorKey}_SUB_${frequency}W`;
   return process.env[envName] || null;
 }
 
@@ -160,7 +178,7 @@ export async function registerRoutes(
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
 
-        // ✅ Stripe Customer ID (required for Billing Portal)
+        // Stripe Customer ID (required for Billing Portal)
         const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(
           session,
         );
@@ -179,7 +197,6 @@ export async function registerRoutes(
             stripePaymentIntentId: session.payment_intent ?? null,
             stripeSubscriptionId: session.subscription ?? null,
 
-            // ✅ NEW
             stripeCustomerId,
 
             customerEmail:
@@ -211,7 +228,7 @@ export async function registerRoutes(
 
           orderId = existing?.[0]?.id;
 
-          // ✅ Backfill stripe_customer_id for existing rows (idempotent)
+          // Backfill stripe_customer_id for existing rows (idempotent)
           if (stripeCustomerId) {
             await db
               .update(orders)

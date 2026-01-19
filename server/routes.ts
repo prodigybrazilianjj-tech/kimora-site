@@ -122,17 +122,40 @@ export async function registerRoutes(
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
 
-        // Stripe Customer ID (required for Billing Portal)
-        const stripeCustomerId =
-          typeof session.customer === "string"
-            ? session.customer
-            : session.customer?.id ?? null;
+          // ✅ Stripe Customer ID (required for Billing Portal)
+  // 1) Try directly from the session
+  // 2) If missing but this is a subscription, retrieve it from Stripe
+  let stripeCustomerId: string | null =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer?.id ?? null;
 
-        // Pull line items from Stripe (source of truth)
-        const lineItems = await stripe.checkout.sessions.listLineItems(
-          session.id,
-          { limit: 100 },
-        );
+  if (!stripeCustomerId && session.subscription) {
+    try {
+      const subscription =
+        typeof session.subscription === "string"
+          ? await stripe.subscriptions.retrieve(session.subscription)
+          : await stripe.subscriptions.retrieve(session.subscription.id);
+
+      stripeCustomerId =
+        typeof subscription.customer === "string"
+          ? subscription.customer
+          : subscription.customer?.id ?? null;
+    } catch (err) {
+      console.warn(
+        "Failed to retrieve subscription to backfill customer:",
+        err,
+      );
+    }
+  }
+
+  // Pull line items from Stripe (source of truth)
+  const lineItems = await stripe.checkout.sessions.listLineItems(
+    session.id,
+    { limit: 100 },
+  );
+
+      
 
         // ---- ORDER: idempotent insert (do nothing on conflict), then fetch id if needed ----
         const inserted = await db

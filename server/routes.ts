@@ -88,6 +88,45 @@ function mapPriceIdToItem(priceId: string): {
   return { flavor: "unknown", purchaseType: "onetime", frequencyWeeks: null };
 }
 
+/**
+ * Stripe customer id is sometimes missing from checkout.session.completed in subscription mode.
+ * This helper backfills via the subscription if necessary.
+ */
+async function getStripeCustomerIdFromCheckoutSession(
+  session: any,
+): Promise<string | null> {
+  // 1) Try directly from the session
+  let stripeCustomerId: string | null =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer?.id ?? null;
+
+  // 2) If missing but subscription exists, backfill from subscription
+  if (!stripeCustomerId && session.subscription) {
+    try {
+      const subId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id;
+
+      if (subId) {
+        const subscription = await stripe.subscriptions.retrieve(subId);
+        stripeCustomerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer?.id ?? null;
+      }
+    } catch (err) {
+      console.warn(
+        "Failed to retrieve subscription to backfill stripe customer id:",
+        err,
+      );
+    }
+  }
+
+  return stripeCustomerId;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
@@ -118,44 +157,19 @@ export async function registerRoutes(
 
       const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
 
-      // Only handle the event(s) you care about
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
 
-          // ✅ Stripe Customer ID (required for Billing Portal)
-  // 1) Try directly from the session
-  // 2) If missing but this is a subscription, retrieve it from Stripe
-  let stripeCustomerId: string | null =
-    typeof session.customer === "string"
-      ? session.customer
-      : session.customer?.id ?? null;
+        // ✅ Stripe Customer ID (required for Billing Portal)
+        const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(
+          session,
+        );
 
-  if (!stripeCustomerId && session.subscription) {
-    try {
-      const subscription =
-        typeof session.subscription === "string"
-          ? await stripe.subscriptions.retrieve(session.subscription)
-          : await stripe.subscriptions.retrieve(session.subscription.id);
-
-      stripeCustomerId =
-        typeof subscription.customer === "string"
-          ? subscription.customer
-          : subscription.customer?.id ?? null;
-    } catch (err) {
-      console.warn(
-        "Failed to retrieve subscription to backfill customer:",
-        err,
-      );
-    }
-  }
-
-  // Pull line items from Stripe (source of truth)
-  const lineItems = await stripe.checkout.sessions.listLineItems(
-    session.id,
-    { limit: 100 },
-  );
-
-      
+        // Pull line items from Stripe (source of truth)
+        const lineItems = await stripe.checkout.sessions.listLineItems(
+          session.id,
+          { limit: 100 },
+        );
 
         // ---- ORDER: idempotent insert (do nothing on conflict), then fetch id if needed ----
         const inserted = await db
@@ -165,12 +179,11 @@ export async function registerRoutes(
             stripePaymentIntentId: session.payment_intent ?? null,
             stripeSubscriptionId: session.subscription ?? null,
 
-            stripeCustomerId: stripeCustomerId,
+            // ✅ NEW
+            stripeCustomerId,
 
             customerEmail:
-              session.customer_details?.email ??
-              session.customer_email ??
-              null,
+              session.customer_details?.email ?? session.customer_email ?? null,
 
             currency: session.currency ?? "usd",
             amountSubtotal: session.amount_subtotal ?? null,
@@ -198,7 +211,7 @@ export async function registerRoutes(
 
           orderId = existing?.[0]?.id;
 
-          // Backfill stripe_customer_id for existing rows (idempotent)
+          // ✅ Backfill stripe_customer_id for existing rows (idempotent)
           if (stripeCustomerId) {
             await db
               .update(orders)
@@ -225,13 +238,13 @@ export async function registerRoutes(
               .insert(orderItems)
               .values({
                 orderId,
-
                 stripePriceId: priceId,
                 stripeLineItemId: li.id ?? null,
 
                 flavor: mapped.flavor,
                 purchaseType: mapped.purchaseType,
                 frequencyWeeks: mapped.frequencyWeeks,
+
                 quantity: qty,
                 unitAmount: li.price?.unit_amount ?? null,
               })
@@ -243,6 +256,7 @@ export async function registerRoutes(
       return res.json({ received: true });
     } catch (err: any) {
       console.error("Stripe webhook error:", err?.message || err);
+      // Stripe expects non-2xx to retry; keep 400 for signature/construct errors
       return res
         .status(400)
         .send(`Webhook Error: ${err?.message || "Unknown error"}`);
@@ -259,7 +273,7 @@ export async function registerRoutes(
 
       const siteUrl = getSiteUrl(req);
 
-      // Get most recent order for this email that has a stripe customer id
+      // Get most recent order for this email
       const found = await db
         .select({
           stripeCustomerId: orders.stripeCustomerId,
@@ -310,16 +324,25 @@ export async function registerRoutes(
 
       // Validate
       for (const it of items) {
-        if (!it.flavor)
+        if (!it.flavor) {
           return res.status(400).json({ message: "Missing flavor." });
+        }
         if (it.type !== "onetime" && it.type !== "subscribe") {
           return res.status(400).json({ message: "Invalid type." });
         }
-        if (!Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > 20) {
+        if (
+          !Number.isInteger(it.quantity) ||
+          it.quantity < 1 ||
+          it.quantity > 20
+        ) {
           return res.status(400).json({ message: "Invalid quantity." });
         }
         if (it.type === "subscribe") {
-          if (it.frequency !== "2" && it.frequency !== "4" && it.frequency !== "6") {
+          if (
+            it.frequency !== "2" &&
+            it.frequency !== "4" &&
+            it.frequency !== "6"
+          ) {
             return res.status(400).json({ message: "Invalid frequency." });
           }
         }
@@ -335,13 +358,17 @@ export async function registerRoutes(
         });
       }
 
-      const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
+      const mode: "payment" | "subscription" = hasSub
+        ? "subscription"
+        : "payment";
       const siteUrl = getSiteUrl(req);
 
       const session = await stripe.checkout.sessions.create({
         mode,
 
-        // Only allowed in payment mode
+        // IMPORTANT:
+        // customer_creation is ONLY allowed in payment mode.
+        // In subscription mode, Stripe will create a customer automatically when needed.
         ...(mode === "payment" ? { customer_creation: "always" } : {}),
 
         line_items: items.map((it) => ({

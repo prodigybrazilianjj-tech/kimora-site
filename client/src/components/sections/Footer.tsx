@@ -28,6 +28,10 @@ export function Footer() {
               Privacy Policy
             </Link>
 
+            <Link href="/manage-subscription" className="hover:text-white transition-colors">
+              Manage Subscription
+            </Link>
+
             <Link href="/refunds" className="hover:text-white transition-colors">
               Refund Policy
             </Link>

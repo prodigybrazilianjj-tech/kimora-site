@@ -34,13 +34,12 @@ export const orders = pgTable(
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
 
-    // Keep uniqueness via the named unique index below (not both)
+    // Stripe identifiers
     stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull(),
-
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
 
-    // ✅ NEW: required for Stripe Customer Portal
+    // Stripe customer id (needed for portal)
     stripeCustomerId: text("stripe_customer_id"),
 
     customerEmail: text("customer_email"),
@@ -50,7 +49,6 @@ export const orders = pgTable(
     amountTotal: integer("amount_total"),
 
     isSubscription: boolean("is_subscription").notNull().default(false),
-
     status: text("status").notNull().default("paid"),
 
     shippingName: text("shipping_name"),
@@ -61,17 +59,21 @@ export const orders = pgTable(
       .defaultNow(),
   },
   (t) => ({
-    // Unique constraint you will target in your webhook:
+    // Webhook idempotency: one order per checkout session
     checkoutSessionUnique: uniqueIndex("orders_checkout_session_unique").on(
       t.stripeCheckoutSessionId,
     ),
 
-    // Optional performance indexes
+    // Performance indexes
     paymentIntentIdx: index("orders_payment_intent_idx").on(t.stripePaymentIntentId),
     subscriptionIdx: index("orders_subscription_idx").on(t.stripeSubscriptionId),
     customerEmailIdx: index("orders_customer_email_idx").on(t.customerEmail),
+    stripeCustomerIdx: index("orders_stripe_customer_idx").on(t.stripeCustomerId),
   }),
 );
+
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = typeof orders.$inferInsert;
 
 /** ORDER ITEMS */
 export const orderItems = pgTable(
@@ -83,11 +85,9 @@ export const orderItems = pgTable(
       .notNull()
       .references(() => orders.id, { onDelete: "cascade" }),
 
-    // Stripe identifiers for idempotency
-    // Price ID should be present for Checkout line items
-    stripePriceId: text("stripe_price_id"), // e.g. price_123
-    // Line item id is usually present, but keep nullable just in case
-    stripeLineItemId: text("stripe_line_item_id"), // e.g. li_123
+    // Stripe identifiers
+    stripePriceId: text("stripe_price_id"),
+    stripeLineItemId: text("stripe_line_item_id"),
 
     flavor: text("flavor").notNull(),
     purchaseType: text("purchase_type").notNull(), // "onetime" | "subscribe"
@@ -103,17 +103,53 @@ export const orderItems = pgTable(
   (t) => ({
     orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
 
-    // Strong fallback: one price should only appear once per order
+    // Fallback uniqueness: one price per order
     orderPriceUnique: uniqueIndex("order_items_order_price_unique").on(
       t.orderId,
       t.stripePriceId,
     ),
 
-    // If you DO have line item ids, this is even more specific
-    // (You can use this as the conflict target if you prefer.)
+    // More specific uniqueness when line item id exists
     orderLineItemUnique: uniqueIndex("order_items_order_line_item_unique").on(
       t.orderId,
       t.stripeLineItemId,
     ),
   }),
 );
+
+export type OrderItem = typeof orderItems.$inferSelect;
+export type InsertOrderItem = typeof orderItems.$inferInsert;
+
+/** PORTAL TOKENS (single-use magic links) */
+export const portalTokens = pgTable(
+  "portal_tokens",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    // store sha256(rawToken) only — never store raw token
+    tokenHash: text("token_hash").notNull(),
+
+    // normalized email (lowercase)
+    email: text("email").notNull(),
+
+    // optional: store customer id for speed/stability
+    stripeCustomerId: text("stripe_customer_id"),
+
+    // expiry + single-use enforcement
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    tokenHashUnique: uniqueIndex("portal_tokens_token_hash_unique").on(t.tokenHash),
+    emailIdx: index("portal_tokens_email_idx").on(t.email),
+    expiresAtIdx: index("portal_tokens_expires_at_idx").on(t.expiresAt),
+    stripeCustomerIdx: index("portal_tokens_stripe_customer_idx").on(t.stripeCustomerId),
+  }),
+);
+
+export type PortalToken = typeof portalTokens.$inferSelect;
+export type InsertPortalToken = typeof portalTokens.$inferInsert;

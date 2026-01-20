@@ -11,6 +11,7 @@ import Product from "@/pages/Product";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import OrderSuccess from "@/pages/OrderSuccess";
+import ManageSubscription from "./pages/ManageSubscription";
 
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
@@ -27,6 +28,8 @@ function Router() {
       <Route path="/product" component={Product} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/manage-subscription" component={ManageSubscription} />
+
 
       {/* Legal */}
       <Route path="/terms" component={Terms} />

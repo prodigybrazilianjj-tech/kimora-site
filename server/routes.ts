@@ -133,7 +133,10 @@ function unbase64url(input: string) {
 }
 function signToken(payload: object, secret: string) {
   const body = base64url(JSON.stringify(payload));
-  const sig = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+  const sig = crypto
+    .createHmac("sha256", secret)
+    .update(body)
+    .digest("base64url");
   return `${body}.${sig}`;
 }
 function verifyToken<T extends { exp?: number }>(
@@ -144,7 +147,14 @@ function verifyToken<T extends { exp?: number }>(
   if (parts.length !== 2) return null;
 
   const [body, sig] = parts;
-  const expected = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(body)
+    .digest("base64url");
+
+  // timingSafeEqual throws if lengths differ — guard it.
+  if (sig.length !== expected.length) return null;
+
   const ok = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
   if (!ok) return null;
 
@@ -156,6 +166,14 @@ function verifyToken<T extends { exp?: number }>(
   } catch {
     return null;
   }
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export async function registerRoutes(
@@ -186,11 +204,15 @@ export async function registerRoutes(
 
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
-        const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(session);
+        const stripeCustomerId =
+          await getStripeCustomerIdFromCheckoutSession(session);
 
-        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
-          limit: 100,
-        });
+        const lineItems = await stripe.checkout.sessions.listLineItems(
+          session.id,
+          {
+            limit: 100,
+          },
+        );
 
         const inserted = await db
           .insert(orders)
@@ -277,17 +299,24 @@ export async function registerRoutes(
    * Body: { email }
    */
   app.post("/api/customer-portal/request", async (req, res) => {
+    const genericOk = () =>
+      res.json({
+        ok: true,
+        message: "If that email is in our system, you’ll receive a link shortly.",
+      });
+
     try {
-      const email = String(req.body?.email ?? "").trim().toLowerCase();
-      if (!email) return res.status(400).json({ message: "Email is required." });
+      const emailRaw = String(req.body?.email ?? "");
+      const email = normalizeEmail(emailRaw);
+
+      if (!email || !isValidEmail(email)) return genericOk();
 
       const sessionSecret = process.env.SESSION_SECRET;
       if (!sessionSecret) {
+        console.error("[portal] Missing SESSION_SECRET");
         return res.status(500).json({ message: "Missing SESSION_SECRET" });
       }
 
-      // Don’t reveal whether an email exists (prevents enumeration)
-      // But we only send if we have a customer id
       const found = await db
         .select({ stripeCustomerId: orders.stripeCustomerId })
         .from(orders)
@@ -297,67 +326,90 @@ export async function registerRoutes(
 
       const stripeCustomerId = found?.[0]?.stripeCustomerId ?? null;
 
-      // Always respond 200, but only send if valid customer exists
-      if (stripeCustomerId) {
-        const siteUrl = getSiteUrl(req);
+      console.log("[portal] request email:", email);
+      console.log("[portal] found stripeCustomerId:", stripeCustomerId);
 
-        const token = signToken(
-          {
-            email,
-            // 15 minute expiry
-            exp: Math.floor(Date.now() / 1000) + 15 * 60,
-            v: 1,
-          },
-          sessionSecret,
+      // Always respond 200, only send if we have a customer id.
+      if (!stripeCustomerId) return genericOk();
+
+      const siteUrl = getSiteUrl(req);
+
+      const token = signToken(
+        {
+          email,
+          exp: Math.floor(Date.now() / 1000) + 15 * 60, // 15 min
+          v: 1,
+        },
+        sessionSecret,
+      );
+
+      const manageUrl = `${siteUrl}/manage-subscription?token=${encodeURIComponent(
+        token,
+      )}`;
+
+      const resendKey = process.env.RESEND_API_KEY;
+      // Support either name; prefer RESEND_FROM_EMAIL
+      const fromEmail =
+        process.env.RESEND_FROM_EMAIL ||
+        process.env.EMAIL_FROM ||
+        "";
+
+      console.log("[portal] resend api key present:", Boolean(resendKey));
+      console.log("[portal] from env value:", fromEmail);
+
+      if (!resendKey || !fromEmail) {
+        console.warn(
+          "[portal] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM)",
         );
-
-        const manageUrl = `${siteUrl}/manage-subscription?token=${encodeURIComponent(
-          token,
-        )}`;
-
-        const resendKey = process.env.RESEND_API_KEY;
-        const from = process.env.EMAIL_FROM;
-
-        if (!resendKey || !from) {
-          console.warn("Resend not configured (missing RESEND_API_KEY or EMAIL_FROM)");
-        } else {
-          const resend = new Resend(resendKey);
-
-          await resend.emails.send({
-            from,
-            to: email,
-            subject: "Manage your Kimora subscription",
-            html: `
-              <div style="font-family: Arial, sans-serif; line-height: 1.4;">
-                <p>Here’s your secure link to manage your Kimora subscription:</p>
-                <p><a href="${manageUrl}">Manage Subscription</a></p>
-                <p>This link expires in 15 minutes.</p>
-                <p>If you didn’t request this, you can ignore this email.</p>
-              </div>
-            `,
-          });
-        }
+        return genericOk();
       }
 
-      return res.json({
-        ok: true,
-        message: "If that email is in our system, you’ll receive a link shortly.",
-      });
+      const resend = new Resend(resendKey);
+
+      try {
+        const from = fromEmail.includes("<")
+          ? fromEmail
+          : `Kimora Co <${fromEmail}>`;
+
+        const result = await resend.emails.send({
+          from,
+          to: email,
+          subject: "Manage your Kimora subscription",
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.4;">
+              <p>Here’s your secure link to manage your Kimora subscription:</p>
+              <p><a href="${manageUrl}">Manage Subscription</a></p>
+              <p>This link expires in 15 minutes.</p>
+              <p>If you didn’t request this, you can ignore this email.</p>
+            </div>
+          `,
+        });
+
+        console.log("[portal] resend send: OK", result?.data || result);
+      } catch (e: any) {
+        console.error("[portal] resend send: FAILED", e?.message || e, e);
+      }
+
+      return genericOk();
     } catch (err: any) {
       console.error("POST /api/customer-portal/request error:", err);
-      return res.status(500).json({
-        message: err?.message || "Failed to send portal link.",
-      });
+      // Still return generic ok to avoid leaking information
+      return genericOk();
     }
   });
 
   /**
    * STEP 2: Exchange token for a Stripe Billing Portal session URL
-   * Body: { token }
+   * Supports:
+   *  - POST body: { token }
+   *  - GET query: ?token=...
    */
-  app.post("/api/customer-portal", async (req, res) => {
+  async function handleCustomerPortal(req: any, res: any) {
     try {
-      const token = String(req.body?.token ?? "").trim();
+      const token =
+        String(req.body?.token ?? "").trim() ||
+        String(req.query?.token ?? "").trim();
+
       if (!token) return res.status(400).json({ message: "Token is required." });
 
       const sessionSecret = process.env.SESSION_SECRET;
@@ -373,7 +425,7 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Invalid or expired link." });
       }
 
-      const email = payload.email.trim().toLowerCase();
+      const email = normalizeEmail(payload.email);
       const siteUrl = getSiteUrl(req);
 
       const found = await db
@@ -385,7 +437,9 @@ export async function registerRoutes(
 
       const stripeCustomerId = found?.[0]?.stripeCustomerId ?? null;
       if (!stripeCustomerId) {
-        return res.status(404).json({ message: "No customer found for that link." });
+        return res
+          .status(404)
+          .json({ message: "No customer found for that link." });
       }
 
       const portal = await stripe.billingPortal.sessions.create({
@@ -395,12 +449,15 @@ export async function registerRoutes(
 
       return res.json({ url: portal.url });
     } catch (err: any) {
-      console.error("POST /api/customer-portal error:", err);
+      console.error("Customer portal error:", err);
       return res
         .status(500)
         .json({ message: err?.message || "Failed to create portal session." });
     }
-  });
+  }
+
+  app.post("/api/customer-portal", handleCustomerPortal);
+  app.get("/api/customer-portal", handleCustomerPortal);
 
   // Create Stripe Checkout Session (unchanged)
   app.post("/api/checkout", async (req, res) => {
@@ -418,7 +475,8 @@ export async function registerRoutes(
       }
 
       for (const it of items) {
-        if (!it.flavor) return res.status(400).json({ message: "Missing flavor." });
+        if (!it.flavor)
+          return res.status(400).json({ message: "Missing flavor." });
         if (it.type !== "onetime" && it.type !== "subscribe") {
           return res.status(400).json({ message: "Invalid type." });
         }
@@ -459,7 +517,9 @@ export async function registerRoutes(
       });
 
       if (!session.url) {
-        return res.status(500).json({ message: "Stripe session created, but no URL returned." });
+        return res.status(500).json({
+          message: "Stripe session created, but no URL returned.",
+        });
       }
 
       return res.json({ url: session.url });

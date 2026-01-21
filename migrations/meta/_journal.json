@@ -1,4 +1,4 @@
-{
+﻿{
   "version": "7",
   "dialect": "postgresql",
   "entries": [
@@ -7,6 +7,13 @@
       "version": "7",
       "when": 1768590907464,
       "tag": "0000_friendly_king_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768950071547,
+      "tag": "0001_outstanding_kronos",
       "breakpoints": true
     }
   ]

@@ -476,7 +476,7 @@ Need help? Reply to this email or contact alex@kimoraco.com
         customer: stripeCustomerId,
         // Optional: return them to your manage page after portal actions
         // return_url: `${siteUrl}/manage-subscription`,
-        return_url: `${siteUrl}/account`,
+        return_url: `${siteUrl}/manage-subscription`,
       });
 
       return res.json({ url: portal.url });

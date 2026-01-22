@@ -1,0 +1,3 @@
+﻿-- 0000_friendly_king_bedlam.sql
+-- Schema already exists in database.
+-- No-op placeholder to satisfy drizzle migration history.

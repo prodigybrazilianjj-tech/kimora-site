@@ -1,0 +1,3 @@
+﻿-- 0001_outstanding_kronos.sql
+-- portal_tokens + stripe_customer_id were applied manually.
+-- No-op placeholder to satisfy drizzle migration history.

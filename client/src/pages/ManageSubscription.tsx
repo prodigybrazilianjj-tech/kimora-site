@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 
+type Status = "redirecting" | "request" | "sent" | "error";
+
 export default function ManageSubscription() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"redirecting" | "request" | "sent" | "error">(
-    "redirecting",
-  );
+  const [status, setStatus] = useState<Status>("redirecting");
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
@@ -24,11 +24,11 @@ export default function ManageSubscription() {
     (async () => {
       try {
         setStatus("redirecting");
-        const res = await fetch("/api/customer-portal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
-        });
+        setMessage("");
+
+        const res = await fetch(
+          `/api/customer-portal?token=${encodeURIComponent(token)}`,
+        );
 
         const data = await res.json();
         if (!res.ok || !data.url) {
@@ -39,7 +39,9 @@ export default function ManageSubscription() {
       } catch (err: any) {
         console.error(err);
         setStatus("request");
-        setMessage(err?.message || "Link invalid or expired. Request a new one below.");
+        setMessage(
+          err?.message || "Link invalid or expired. Request a new one below.",
+        );
       }
     })();
   }, [token]);
@@ -47,13 +49,14 @@ export default function ManageSubscription() {
   async function requestNewLink() {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
-      setMessage("Please enter the email used at checkout.");
       setStatus("error");
+      setMessage("Please enter the email used at checkout.");
       return;
     }
 
     setLoading(true);
     setMessage("");
+    setStatus("request");
 
     try {
       const res = await fetch("/api/customer-portal/request", {
@@ -63,6 +66,7 @@ export default function ManageSubscription() {
       });
 
       const data = await res.json();
+
       // Always returns ok:true for anti-enumeration
       setStatus("sent");
       setMessage(
@@ -79,51 +83,73 @@ export default function ManageSubscription() {
   }
 
   return (
-    <div style={{ padding: "4rem", textAlign: "center", maxWidth: 560, margin: "0 auto" }}>
-      {status === "redirecting" ? (
-        <>
-          <h2>Redirecting…</h2>
-          <p>Taking you to your subscription management page.</p>
-        </>
-      ) : (
-        <>
-          <h2>Manage Subscription</h2>
-
-          {message ? (
-            <p style={{ marginTop: 12, opacity: 0.9 }}>{message}</p>
-          ) : (
-            <p style={{ marginTop: 12, opacity: 0.8 }}>
-              Enter the email used at checkout and we’ll send a secure link.
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-card/50 border border-white/10 rounded-2xl p-6 text-center">
+        {status === "redirecting" ? (
+          <>
+            <h2 className="text-2xl font-display font-bold text-white">
+              Redirecting…
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              Taking you to your subscription management page.
             </p>
-          )}
-
-          <div style={{ marginTop: 18 }}>
-            <input
-              type="email"
-              placeholder="Email used at checkout"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(0,0,0,0.35)",
-                color: "white",
-                marginBottom: 12,
-              }}
-            />
-
-            <Button onClick={requestNewLink} disabled={loading} className="w-full">
-              {loading ? "Sending…" : "Email me a secure link"}
-            </Button>
-
-            <p style={{ marginTop: 14, fontSize: 12, opacity: 0.7 }}>
-              Link expires in 15 minutes. If it expires, just request another.
+            <p className="text-xs text-white/40 mt-4">
+              If this takes more than a few seconds, your link may be expired.
             </p>
-          </div>
-        </>
-      )}
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl font-display font-bold text-white">
+              Manage Subscription
+            </h2>
+
+            {message ? (
+              <p
+                className={`text-sm mt-3 ${
+                  status === "error" ? "text-red-400" : "text-muted-foreground"
+                }`}
+              >
+                {message}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-3">
+                Enter the email used at checkout and we’ll send a secure link.
+              </p>
+            )}
+
+            <div className="mt-5 space-y-3">
+              <input
+                type="email"
+                placeholder="Email used at checkout"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") requestNewLink();
+                }}
+                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+              />
+
+              <Button
+                onClick={requestNewLink}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading ? "Sending…" : "Email me a secure link"}
+              </Button>
+
+              <p className="text-xs text-white/40">
+                Link expires in 15 minutes. If it expires, just request another.
+              </p>
+
+              {status === "sent" && (
+                <p className="text-xs text-white/40">
+                  Tip: check spam/promotions if you don’t see it.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

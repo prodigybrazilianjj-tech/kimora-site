@@ -70,7 +70,12 @@ export default function OrderSuccess() {
             </h3>
 
             <p className="text-xs text-white/50 mb-4 text-center">
-              Enter the email you used at checkout and we’ll send a secure link.
+              Enter the email you used at checkout and we’ll send a secure link. You can also manage your
+              subscription anytime at{" "}
+              <Link href="/manage-subscription" className="underline underline-offset-4 hover:text-white">
+              kimoraco.com/manage-subscription
+              </Link>{" "}
+              (also linked in the footer).
             </p>
 
             {error && (

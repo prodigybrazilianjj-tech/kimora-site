@@ -1,129 +1,129 @@
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function ManageSubscription() {
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState<"redirecting" | "request" | "sent" | "error">(
+    "redirecting",
+  );
+  const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const token = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("token");
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("token");
   }, []);
 
-  // If we have a token, try to exchange it for a Stripe portal URL and redirect.
+  // If token exists, exchange it for Stripe portal URL
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setStatus("request");
+      return;
+    }
 
     (async () => {
       try {
-        setRedirecting(true);
-        setError(null);
-
+        setStatus("redirecting");
         const res = await fetch("/api/customer-portal", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
         });
 
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok || !data?.url) {
+        const data = await res.json();
+        if (!res.ok || !data.url) {
           throw new Error(data?.message || "Invalid or expired link.");
         }
 
         window.location.href = data.url;
-      } catch (e: any) {
-        // Remove token from URL so refresh doesn't keep re-triggering the error
-        window.history.replaceState({}, "", "/manage-subscription");
-
-        setRedirecting(false);
-        setError(e?.message || "Invalid or expired link.");
+      } catch (err: any) {
+        console.error(err);
+        setStatus("request");
+        setMessage(err?.message || "Link invalid or expired. Request a new one below.");
       }
     })();
   }, [token]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function requestNewLink() {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setMessage("Please enter the email used at checkout.");
+      setStatus("error");
+      return;
+    }
+
     setLoading(true);
-    setError(null);
+    setMessage("");
 
     try {
       const res = await fetch("/api/customer-portal/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
 
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data?.message || "Failed to send link.");
-      }
-
-      setSent(true);
+      const data = await res.json();
+      // Always returns ok:true for anti-enumeration
+      setStatus("sent");
+      setMessage(
+        data?.message ||
+          "If that email is in our system, you’ll receive a link shortly.",
+      );
     } catch (err: any) {
-      setError(err?.message || "Something went wrong.");
+      console.error(err);
+      setStatus("error");
+      setMessage(err?.message || "Failed to request link. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
-      <div className="w-full max-w-md text-center">
-        <h1 className="text-2xl font-semibold mb-2">Manage subscription</h1>
+    <div style={{ padding: "4rem", textAlign: "center", maxWidth: 560, margin: "0 auto" }}>
+      {status === "redirecting" ? (
+        <>
+          <h2>Redirecting…</h2>
+          <p>Taking you to your subscription management page.</p>
+        </>
+      ) : (
+        <>
+          <h2>Manage Subscription</h2>
 
-        <p className="text-sm text-muted-foreground mb-6">
-          Enter the email you used at checkout and we’ll send you a secure link.
-        </p>
-
-        <div className="rounded-lg border border-white/10 bg-black/40 p-6">
-          {redirecting ? (
-            <div className="text-sm text-muted-foreground">
-              Redirecting you to Stripe…
-            </div>
+          {message ? (
+            <p style={{ marginTop: 12, opacity: 0.9 }}>{message}</p>
           ) : (
-            <>
-              {error && (
-                <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-                  {error}
-                </div>
-              )}
-
-              {!sent ? (
-                <form onSubmit={submit} className="flex gap-3">
-                  <input
-                    type="email"
-                    required
-                    placeholder="you@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="flex-1 rounded-md bg-black border border-white/10 px-3 py-2 text-sm"
-                  />
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="rounded-md bg-white text-black px-4 text-sm font-medium"
-                  >
-                    {loading ? "Sending…" : "Email link"}
-                  </button>
-                </form>
-              ) : (
-                <p className="text-sm">
-                  If that email is in our system, you’ll receive a link shortly.
-                </p>
-              )}
-
-              <p className="mt-4 text-xs text-muted-foreground">
-                Links expire after ~15 minutes for security. If it expires, just request a new one.
-              </p>
-            </>
+            <p style={{ marginTop: 12, opacity: 0.8 }}>
+              Enter the email used at checkout and we’ll send a secure link.
+            </p>
           )}
-        </div>
-      </div>
+
+          <div style={{ marginTop: 18 }}>
+            <input
+              type="email"
+              placeholder="Email used at checkout"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(0,0,0,0.35)",
+                color: "white",
+                marginBottom: 12,
+              }}
+            />
+
+            <Button onClick={requestNewLink} disabled={loading} className="w-full">
+              {loading ? "Sending…" : "Email me a secure link"}
+            </Button>
+
+            <p style={{ marginTop: 14, fontSize: 12, opacity: 0.7 }}>
+              Link expires in 15 minutes. If it expires, just request another.
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }

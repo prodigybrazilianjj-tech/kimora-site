@@ -18,11 +18,17 @@ function slugToEnvKey(slug: string) {
   return slug.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 
-function getSiteUrl(req: any) {
+/**
+ * IMPORTANT:
+ * Never use req.headers.origin for security/correctness.
+ * For emails and Stripe return URLs we want a stable canonical base URL.
+ */
+function getSiteUrl() {
   return (
     process.env.PUBLIC_SITE_URL ||
-    req.headers.origin ||
-    "http://localhost:5173"
+    (process.env.NODE_ENV === "production"
+      ? "https://kimoraco.com"
+      : "http://localhost:5173")
   );
 }
 
@@ -332,7 +338,7 @@ export async function registerRoutes(
       // Always respond 200, only send if we have a customer id.
       if (!stripeCustomerId) return genericOk();
 
-      const siteUrl = getSiteUrl(req);
+      const siteUrl = getSiteUrl();
 
       const token = signToken(
         {
@@ -343,16 +349,14 @@ export async function registerRoutes(
         sessionSecret,
       );
 
-      const manageUrl = `${siteUrl}/manage-subscription?token=${encodeURIComponent(
+      const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(
         token,
       )}`;
+      const fallbackLink = `${siteUrl}/manage-subscription`;
 
       const resendKey = process.env.RESEND_API_KEY;
       // Support either name; prefer RESEND_FROM_EMAIL
-      const fromEmail =
-        process.env.RESEND_FROM_EMAIL ||
-        process.env.EMAIL_FROM ||
-        "";
+      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
 
       console.log("[portal] resend api key present:", Boolean(resendKey));
       console.log("[portal] from env value:", fromEmail);
@@ -366,23 +370,52 @@ export async function registerRoutes(
 
       const resend = new Resend(resendKey);
 
+      const subject = "Manage your Kimora subscription";
+
+      const text = `Manage your Kimora subscription
+
+Secure link (expires in 15 minutes):
+${portalLink}
+
+If your link expired, request a fresh one here:
+${fallbackLink}
+
+Need help? Reply to this email or contact alex@kimoraco.com
+`;
+
+      const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
+  <h2 style="margin:0 0 8px;">Manage your Kimora subscription</h2>
+  <p style="margin:0 0 16px;">
+    Use the secure link below (expires in <b>15 minutes</b>):
+  </p>
+
+  <p style="margin:0 0 18px;">
+    <a href="${portalLink}"
+       style="display:inline-block;padding:12px 16px;border-radius:10px;background:#111;color:#fff;text-decoration:none;">
+      Open subscription portal
+    </a>
+  </p>
+
+  <p style="margin:0 0 10px;font-size:14px;color:#444;">
+    If this link expired, request a fresh one here:
+    <a href="${fallbackLink}">${fallbackLink}</a>
+  </p>
+
+  <p style="margin:18px 0 0;font-size:12px;color:#666;">
+    Need help? Reply to this email or contact <a href="mailto:alex@kimoraco.com">alex@kimoraco.com</a>.
+  </p>
+</div>`;
+
       try {
-        const from = fromEmail.includes("<")
-          ? fromEmail
-          : `Kimora Co <${fromEmail}>`;
+        const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
 
         const result = await resend.emails.send({
           from,
           to: email,
-          subject: "Manage your Kimora subscription",
-          html: `
-            <div style="font-family: Arial, sans-serif; line-height: 1.4;">
-              <p>Here’s your secure link to manage your Kimora subscription:</p>
-              <p><a href="${manageUrl}">Manage Subscription</a></p>
-              <p>This link expires in 15 minutes.</p>
-              <p>If you didn’t request this, you can ignore this email.</p>
-            </div>
-          `,
+          subject,
+          text,
+          html,
+          // reply_to: "alex@kimoraco.com",
         });
 
         console.log("[portal] resend send: OK", result?.data || result);
@@ -407,8 +440,7 @@ export async function registerRoutes(
   async function handleCustomerPortal(req: any, res: any) {
     try {
       const token =
-        String(req.body?.token ?? "").trim() ||
-        String(req.query?.token ?? "").trim();
+        String(req.body?.token ?? "").trim() || String(req.query?.token ?? "").trim();
 
       if (!token) return res.status(400).json({ message: "Token is required." });
 
@@ -426,7 +458,7 @@ export async function registerRoutes(
       }
 
       const email = normalizeEmail(payload.email);
-      const siteUrl = getSiteUrl(req);
+      const siteUrl = getSiteUrl();
 
       const found = await db
         .select({ stripeCustomerId: orders.stripeCustomerId })
@@ -437,13 +469,13 @@ export async function registerRoutes(
 
       const stripeCustomerId = found?.[0]?.stripeCustomerId ?? null;
       if (!stripeCustomerId) {
-        return res
-          .status(404)
-          .json({ message: "No customer found for that link." });
+        return res.status(404).json({ message: "No customer found for that link." });
       }
 
       const portal = await stripe.billingPortal.sessions.create({
         customer: stripeCustomerId,
+        // Optional: return them to your manage page after portal actions
+        // return_url: `${siteUrl}/manage-subscription`,
         return_url: `${siteUrl}/account`,
       });
 
@@ -475,8 +507,7 @@ export async function registerRoutes(
       }
 
       for (const it of items) {
-        if (!it.flavor)
-          return res.status(400).json({ message: "Missing flavor." });
+        if (!it.flavor) return res.status(400).json({ message: "Missing flavor." });
         if (it.type !== "onetime" && it.type !== "subscribe") {
           return res.status(400).json({ message: "Invalid type." });
         }
@@ -500,7 +531,7 @@ export async function registerRoutes(
       }
 
       const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
-      const siteUrl = getSiteUrl(req);
+      const siteUrl = getSiteUrl();
 
       const session = await stripe.checkout.sessions.create({
         mode,

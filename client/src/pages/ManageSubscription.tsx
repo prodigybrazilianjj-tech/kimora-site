@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Navbar } from "@/components/sections/Navbar";
+import { Footer } from "@/components/sections/Footer";
 
 type Status = "redirecting" | "request" | "sent" | "error";
 
@@ -40,7 +43,8 @@ export default function ManageSubscription() {
         console.error(err);
         setStatus("request");
         setMessage(
-          err?.message || "Link invalid or expired. Request a new one below.",
+          err?.message ||
+            "That secure link is invalid or expired. Request a new one below.",
         );
       }
     })();
@@ -67,7 +71,7 @@ export default function ManageSubscription() {
 
       const data = await res.json();
 
-      // Always returns ok:true for anti-enumeration
+      // Always returns ok:true (anti-enumeration)
       setStatus("sent");
       setMessage(
         data?.message ||
@@ -76,80 +80,140 @@ export default function ManageSubscription() {
     } catch (err: any) {
       console.error(err);
       setStatus("error");
-      setMessage(err?.message || "Failed to request link. Please try again.");
+      setMessage("Failed to request link. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-card/50 border border-white/10 rounded-2xl p-6 text-center">
-        {status === "redirecting" ? (
-          <>
-            <h2 className="text-2xl font-display font-bold text-white">
-              Redirecting…
-            </h2>
-            <p className="text-sm text-muted-foreground mt-2">
-              Taking you to your subscription management page.
-            </p>
-            <p className="text-xs text-white/40 mt-4">
-              If this takes more than a few seconds, your link may be expired.
-            </p>
-          </>
-        ) : (
-          <>
-            <h2 className="text-2xl font-display font-bold text-white">
-              Manage Subscription
-            </h2>
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <Navbar />
 
-            {message ? (
-              <p
-                className={`text-sm mt-3 ${
-                  status === "error" ? "text-red-400" : "text-muted-foreground"
-                }`}
-              >
-                {message}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground mt-3">
-                Enter the email used at checkout and we’ll send a secure link.
-              </p>
-            )}
+      {/* Main content */}
+      <main className="flex-grow pt-28 md:pt-32 pb-24">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="max-w-md mx-auto">
+            <div className="bg-card/50 border border-white/10 rounded-2xl p-6 text-center">
+              {status === "redirecting" ? (
+                <>
+                  <h2 className="text-2xl font-display font-bold text-white">
+                    Redirecting…
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Taking you to your subscription portal.
+                  </p>
+                  <p className="text-xs text-white/40 mt-4">
+                    If this takes more than a few seconds, your link may be expired.
+                  </p>
 
-            <div className="mt-5 space-y-3">
-              <input
-                type="email"
-                placeholder="Email used at checkout"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") requestNewLink();
-                }}
-                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
-              />
+                  <div className="mt-6 flex items-center justify-center gap-4 text-xs">
+                    <Link
+                      href="/shop"
+                      className="text-muted-foreground hover:text-white transition-colors uppercase tracking-wide"
+                    >
+                      Shop
+                    </Link>
+                    <span className="text-white/20">•</span>
+                    <a
+                      href="mailto:alex@kimoraco.com"
+                      className="text-muted-foreground hover:text-white transition-colors uppercase tracking-wide"
+                    >
+                      Support
+                    </a>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-display font-bold text-white">
+                    Manage Subscription
+                  </h2>
 
-              <Button
-                onClick={requestNewLink}
-                disabled={loading}
-                className="w-full"
-              >
-                {loading ? "Sending…" : "Email me a secure link"}
-              </Button>
+                  {message ? (
+                    <p
+                      className={`text-sm mt-3 ${
+                        status === "error"
+                          ? "text-red-400"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {message}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground mt-3">
+                      Enter the email used at checkout and we’ll send a secure link.
+                    </p>
+                  )}
 
-              <p className="text-xs text-white/40">
-                Link expires in 15 minutes. If it expires, just request another.
-              </p>
+                  <div className="mt-5 space-y-3">
+                    <input
+                      type="email"
+                      placeholder="Email used at checkout"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") requestNewLink();
+                      }}
+                      className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                    />
 
-              {status === "sent" && (
-                <p className="text-xs text-white/40">
-                  Tip: check spam/promotions if you don’t see it.
-                </p>
+                    <Button
+                      onClick={requestNewLink}
+                      disabled={loading}
+                      className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider"
+                    >
+                      {loading ? "Sending…" : "Email me a secure link"}
+                    </Button>
+
+                    <p className="text-xs text-white/40">
+                      Secure links expire in 15 minutes. If it expires, just
+                      request another.
+                    </p>
+
+                    {status === "sent" && (
+                      <p className="text-xs text-white/40">
+                        Tip: check Spam or Promotions if you don’t see it right
+                        away.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Escape hatches */}
+                  <div className="mt-6 flex items-center justify-center gap-4 text-xs">
+                    <Link
+                      href="/shop"
+                      className="text-muted-foreground hover:text-white transition-colors uppercase tracking-wide"
+                    >
+                      Back to Shop
+                    </Link>
+                    <span className="text-white/20">•</span>
+                    <Link
+                      href="/"
+                      className="text-muted-foreground hover:text-white transition-colors uppercase tracking-wide"
+                    >
+                      Home
+                    </Link>
+                    <span className="text-white/20">•</span>
+                    <a
+                      href="mailto:alex@kimoraco.com"
+                      className="text-muted-foreground hover:text-white transition-colors uppercase tracking-wide"
+                    >
+                      Support
+                    </a>
+                  </div>
+                </>
               )}
             </div>
-          </>
-        )}
-      </div>
+
+            {/* Trust / reassurance */}
+            <div className="mt-6 text-center text-xs text-white/30">
+              This secure link is unique to your email and expires automatically.
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

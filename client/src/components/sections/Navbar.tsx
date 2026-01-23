@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ export function Navbar() {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     handleScroll();
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
@@ -35,12 +36,11 @@ export function Navbar() {
     const el = document.querySelector(hash);
     if (!el) return;
 
-    // IMPORTANT: Let CSS (scroll-mt-*) handle the offset.
+    // Let CSS scroll-mt-* handle the offset.
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function goToSection(hash: string) {
-    // e.g. "#flavors"
     if (!isHome) {
       // Navigate to home first
       setLocation("/");
@@ -49,7 +49,6 @@ export function Navbar() {
       window.setTimeout(() => {
         window.location.hash = hash;
         scrollToHash(hash);
-
         // one more attempt in case the section mounts slightly later
         window.setTimeout(() => scrollToHash(hash), 150);
       }, 50);
@@ -118,4 +117,61 @@ export function Navbar() {
           >
             <ShoppingBag className="w-5 h-5" />
             {cartCount > 0 && (
-              <span className="abso
+              <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                {cartCount}
+              </span>
+            )}
+          </Link>
+
+          <Button
+            onClick={() => setLocation("/shop")}
+            className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider"
+          >
+            Shop Now
+          </Button>
+        </div>
+
+        {/* Mobile Nav */}
+        <div className="md:hidden flex items-center gap-4">
+          <Link href="/cart" className="relative text-white">
+            <ShoppingBag className="w-6 h-6" />
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                {cartCount}
+              </span>
+            )}
+          </Link>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-white">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+
+            <SheetContent side="right" className="bg-background border-l border-border">
+              <div className="flex flex-col gap-6 mt-10">
+                {navLinks.map((link) => (
+                  <button
+                    key={link.name}
+                    onClick={link.action}
+                    className="text-lg font-display text-left text-muted-foreground hover:text-white transition-colors"
+                  >
+                    {link.name}
+                  </button>
+                ))}
+
+                <Button
+                  onClick={() => setLocation("/shop")}
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider mt-4"
+                >
+                  Shop Now
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+    </nav>
+  );
+}

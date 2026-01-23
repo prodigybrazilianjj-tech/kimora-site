@@ -38,7 +38,7 @@ export function Navbar() {
     el.scrollIntoView({ behavior: "smooth", block: "start" });
 
     // Offset for fixed navbar
-    const yOffset = window.innerWidth >= 768 ? 120 : 100;
+    const yOffset = window.innerWidth >= 768 ? 180 : 150;
     window.setTimeout(() => {
       window.scrollBy({ top: -yOffset, left: 0, behavior: "auto" });
     }, 50);

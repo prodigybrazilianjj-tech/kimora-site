@@ -11,10 +11,8 @@ export function Navbar() {
   const [location, setLocation] = useLocation();
   const { cartCount } = useCart();
 
-  // Only use scroll effect on home page
   const isHome = location === "/";
 
-  // Always solid background on other pages
   const navBackground =
     !isHome || isScrolled
       ? "bg-background/90 backdrop-blur-md border-border py-4"
@@ -26,10 +24,9 @@ export function Navbar() {
       return;
     }
 
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
+    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
@@ -37,48 +34,63 @@ export function Navbar() {
     const el = document.querySelector(selector);
     if (!el) return;
 
-    // Scroll to the section first
+    // Scroll first
     el.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    // Then offset for fixed navbar height
+    // Offset for fixed navbar
     const yOffset = window.innerWidth >= 768 ? 120 : 100;
-
     window.setTimeout(() => {
       window.scrollBy({ top: -yOffset, left: 0, behavior: "auto" });
     }, 50);
   }
 
-  const scrollToSection = (id: string) => {
-    // If we're not on home, navigate there with the hash.
-    // This fixes the "needs two clicks" problem.
+  function goToSection(id: string) {
+    // id like "#flavors"
     if (!isHome) {
-      setLocation(`/${id}`); // e.g. "/#flavors"
+      // 1) Navigate to home
+      setLocation("/");
+
+      // 2) After navigation/render, set hash + scroll
+      window.setTimeout(() => {
+        // Update hash so refresh/back button behaves
+        window.location.hash = id;
+
+        // Try immediately, and again shortly in case sections mount after initial render
+        scrollWithOffset(id);
+        window.setTimeout(() => scrollWithOffset(id), 150);
+      }, 50);
+
       return;
     }
 
+    // On home already: set hash + scroll
+    window.location.hash = id;
     scrollWithOffset(id);
-  };
+  }
 
-  // If we land on home with a hash, auto-scroll once the DOM is ready.
+  // If user loads "/" with a hash (or hash changes), auto-scroll once.
   useEffect(() => {
     if (!isHome) return;
 
-    const hash = window.location.hash; // e.g. "#flavors"
-    if (!hash) return;
-
-    const t = window.setTimeout(() => {
+    const run = () => {
+      const hash = window.location.hash;
+      if (!hash) return;
+      // two attempts covers content that mounts slightly later
       scrollWithOffset(hash);
-    }, 50);
+      window.setTimeout(() => scrollWithOffset(hash), 150);
+    };
 
-    return () => window.clearTimeout(t);
-  }, [isHome, location]);
+    run();
+    window.addEventListener("hashchange", run);
+    return () => window.removeEventListener("hashchange", run);
+  }, [isHome]);
 
   const navLinks = [
-    { name: "Flavors", href: "#flavors", action: () => scrollToSection("#flavors") },
-    { name: "Shop", href: "/shop", action: () => setLocation("/shop") },
-    { name: "Formula", href: "#formula", action: () => scrollToSection("#formula") },
-    { name: "Why Not a Tub?", href: "#comparison", action: () => scrollToSection("#comparison") },
-    { name: "About", href: "#about", action: () => scrollToSection("#about") },
+    { name: "Flavors", action: () => goToSection("#flavors") },
+    { name: "Shop", action: () => setLocation("/shop") },
+    { name: "Formula", action: () => goToSection("#formula") },
+    { name: "Why Not a Tub?", action: () => goToSection("#comparison") },
+    { name: "About", action: () => goToSection("#about") },
   ];
 
   return (
@@ -104,9 +116,7 @@ export function Navbar() {
               onClick={link.action}
               className={cn(
                 "text-sm font-medium transition-colors uppercase tracking-wide",
-                location === link.href
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-white",
+                "text-muted-foreground hover:text-white",
               )}
             >
               {link.name}

@@ -29,7 +29,7 @@ export function ProductLineup() {
   return (
     <section
       id="flavors"
-      className="scroll-mt-64 md:scroll-mt-72 py-12 md:py-16 bg-background relative overflow-hidden"
+      className="scroll-mt-[140px] md:scroll-mt-[170px] py-12 md:py-16 bg-background relative overflow-hidden"
     >
       <div className="container px-4 mx-auto">
         <div className="text-center mb-8 md:mb-10">

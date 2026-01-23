@@ -28,14 +28,14 @@ const products = [
 export function ProductLineup() {
   return (
     <>
-      {/* Anchor offset for fixed navbar */}
+      {/* Anchor for navbar-safe scrolling (small offset only) */}
       <div
         id="flavors"
-        className="relative -top-[120px] md:-top-[140px] h-0"
+        className="relative -top-[72px] md:-top-[88px] h-0"
         aria-hidden
       />
 
-      <section className="py-12 md:py-16 bg-background relative overflow-hidden">
+      <section className="bg-background relative overflow-hidden pt-8 md:pt-10 pb-12 md:pb-16">
         <div className="container px-4 mx-auto">
           <div className="text-center mb-8 md:mb-10">
             <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
@@ -56,7 +56,6 @@ export function ProductLineup() {
                 transition={{ delay: index * 0.2 }}
                 viewport={{ once: true }}
               >
-                {/* Use a plain anchor tag so navigation works regardless of router setup */}
                 <a
                   href={`/product?flavor=${product.slug}`}
                   className="block rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/60"

@@ -102,7 +102,7 @@ export function Navbar() {
   }, [isHome]);
 
   const navLinks = [
-    { name: "Flavors", action: () => goToSection("#flavors") },
+    { name: "Flavors", action: () => (window.location.href = "/#flavors") },
     { name: "Shop", action: () => setLocation("/shop") },
     { name: "Formula", action: () => goToSection("#formula") },
     { name: "Why Not a Tub?", action: () => goToSection("#comparison") },

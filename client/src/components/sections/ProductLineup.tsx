@@ -27,10 +27,10 @@ const products = [
 
 export function ProductLineup() {
   return (
-    <section className="py-12 md:py-16 bg-background relative overflow-hidden">
+    <section id="flavors" className="py-12 md:py-16 bg-background relative overflow-hidden">
       <div className="container px-4 mx-auto">
-        {/* ✅ The anchor is INSIDE the padded area, right before the headline */}
-        <div id="flavors" />
+        {/* ✅ Navbar scroll target */}
+        <div id="flavors-anchor" />
 
         <div className="text-center mb-8 md:mb-10">
           <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">

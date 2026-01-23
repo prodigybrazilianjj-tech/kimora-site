@@ -6,25 +6,35 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
 
-function getFixedNavOffset() {
+function getNavHeight() {
   const nav = document.querySelector("nav");
-  const navHeight = nav instanceof HTMLElement ? nav.offsetHeight : 0;
-
-  // ✅ Minimal breathing room. If it still feels low, set this to 0.
-  const gap = 6;
-
-  return navHeight + gap;
+  return nav instanceof HTMLElement ? nav.offsetHeight : 0;
 }
 
-function scrollToHash(hash: string, behavior: ScrollBehavior = "smooth") {
-  if (!hash) return;
-  const el = document.querySelector(hash);
+function scrollToEl(selector: string, behavior: ScrollBehavior) {
+  const el = document.querySelector(selector);
   if (!(el instanceof HTMLElement)) return;
 
-  const offset = getFixedNavOffset();
-  const y = window.scrollY + el.getBoundingClientRect().top - offset;
+  // ✅ Because you keep landing TOO LOW, we bias HIGHER with a negative gap.
+  // Tune this number only if needed.
+  const gap = -18;
+
+  const navHeight = getNavHeight();
+  const y = window.scrollY + el.getBoundingClientRect().top - (navHeight + gap);
 
   window.scrollTo({ top: Math.max(0, y), behavior });
+}
+
+function forceScrollTo(selector: string) {
+  // 1) immediate (no animation)
+  scrollToEl(selector, "auto");
+
+  // 2) next paint
+  requestAnimationFrame(() => scrollToEl(selector, "auto"));
+
+  // 3) after typical layout shifts (fonts/images/motion)
+  window.setTimeout(() => scrollToEl(selector, "auto"), 250);
+  window.setTimeout(() => scrollToEl(selector, "auto"), 800);
 }
 
 export function Navbar() {
@@ -44,46 +54,43 @@ export function Navbar() {
       setIsScrolled(true);
       return;
     }
-
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     handleScroll();
-
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
-  function goToSection(hash: string) {
-    if (!hash.startsWith("#")) hash = `#${hash}`;
+  const goToSection = (id: string) => {
+    const hash = id.startsWith("#") ? id : `#${id}`;
+    const selector = `${hash}-anchor`; // ✅ we scroll to "#flavors-anchor", etc.
 
     if (!isHome) {
       setLocation("/");
 
+      // Wait for route change to mount the home sections
       window.setTimeout(() => {
+        // keep URL nice
         window.location.hash = hash;
 
-        // multi-pass to account for mount + layout
-        scrollToHash(hash, "auto");
-        window.setTimeout(() => scrollToHash(hash, "smooth"), 60);
-        window.setTimeout(() => scrollToHash(hash, "smooth"), 180);
+        forceScrollTo(selector);
       }, 0);
 
       return;
     }
 
     window.location.hash = hash;
-    scrollToHash(hash, "smooth");
-  }
+    forceScrollTo(selector);
+  };
 
+  // If you land on /#flavors directly, force-scroll after mount too.
   useEffect(() => {
     if (!isHome) return;
 
     const run = () => {
       const hash = window.location.hash;
       if (!hash) return;
-
-      scrollToHash(hash, "auto");
-      window.setTimeout(() => scrollToHash(hash, "smooth"), 60);
-      window.setTimeout(() => scrollToHash(hash, "smooth"), 180);
+      const selector = `${hash}-anchor`;
+      forceScrollTo(selector);
     };
 
     run();

@@ -30,12 +30,14 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
-  function scrollWithOffset(selector: string) {
-    const el = document.querySelector(selector);
-    if (!el) return;
+ function scrollWithOffset(selector: string) {
+  const el = document.querySelector(selector);
+  if (!el) return;
 
-    // Scroll first
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  // CSS scroll-mt-* will handle the offset.
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 
     // Offset for fixed navbar
     const yOffset = window.innerWidth >= 768 ? 180 : 150;

@@ -11,30 +11,30 @@ function getNavHeight() {
   return nav instanceof HTMLElement ? nav.offsetHeight : 0;
 }
 
-function scrollToEl(selector: string, behavior: ScrollBehavior) {
+function scrollToSelectorWithNudge(selector: string) {
   const el = document.querySelector(selector);
   if (!(el instanceof HTMLElement)) return;
 
-  // ✅ Because you keep landing TOO LOW, we bias HIGHER with a negative gap.
-  // Tune this number only if needed.
-  const gap = -18;
+  // ✅ If you're STILL landing too low, increase this number.
+  // More nudge = scroll further DOWN = content appears higher on screen.
+  const NUDGE_PX = 160;
 
   const navHeight = getNavHeight();
-  const y = window.scrollY + el.getBoundingClientRect().top - (navHeight + gap);
+  const targetTop = window.scrollY + el.getBoundingClientRect().top - navHeight;
 
-  window.scrollTo({ top: Math.max(0, y), behavior });
+  // Set base scroll position
+  window.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
+
+  // Then nudge down to raise the content visually
+  window.scrollBy({ top: NUDGE_PX, behavior: "auto" });
 }
 
 function forceScrollTo(selector: string) {
-  // 1) immediate (no animation)
-  scrollToEl(selector, "auto");
-
-  // 2) next paint
-  requestAnimationFrame(() => scrollToEl(selector, "auto"));
-
-  // 3) after typical layout shifts (fonts/images/motion)
-  window.setTimeout(() => scrollToEl(selector, "auto"), 250);
-  window.setTimeout(() => scrollToEl(selector, "auto"), 800);
+  // Multi-pass to beat layout shifts (fonts/images/motion)
+  scrollToSelectorWithNudge(selector);
+  requestAnimationFrame(() => scrollToSelectorWithNudge(selector));
+  window.setTimeout(() => scrollToSelectorWithNudge(selector), 250);
+  window.setTimeout(() => scrollToSelectorWithNudge(selector), 800);
 }
 
 export function Navbar() {
@@ -54,41 +54,44 @@ export function Navbar() {
       setIsScrolled(true);
       return;
     }
+
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     handleScroll();
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
-  const goToSection = (id: string) => {
-    const hash = id.startsWith("#") ? id : `#${id}`;
-    const selector = `${hash}-anchor`; // ✅ we scroll to "#flavors-anchor", etc.
+  function goToSection(hash: string) {
+    const normalizedHash = hash.startsWith("#") ? hash : `#${hash}`;
+    const selector = `${normalizedHash}-anchor`; // e.g. "#flavors-anchor"
 
     if (!isHome) {
+      // Navigate home first
       setLocation("/");
 
-      // Wait for route change to mount the home sections
+      // Then force-scroll once the home sections mount
       window.setTimeout(() => {
-        // keep URL nice
-        window.location.hash = hash;
-
+        window.location.hash = normalizedHash;
         forceScrollTo(selector);
       }, 0);
 
       return;
     }
 
-    window.location.hash = hash;
+    // Already on home: just update hash and scroll
+    window.location.hash = normalizedHash;
     forceScrollTo(selector);
-  };
+  }
 
-  // If you land on /#flavors directly, force-scroll after mount too.
+  // If user hits a direct hash URL like /#flavors, force scroll after mount
   useEffect(() => {
     if (!isHome) return;
 
     const run = () => {
       const hash = window.location.hash;
       if (!hash) return;
+
       const selector = `${hash}-anchor`;
       forceScrollTo(selector);
     };
@@ -171,7 +174,10 @@ export function Navbar() {
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="right" className="bg-background border-l border-border">
+            <SheetContent
+              side="right"
+              className="bg-background border-l border-border"
+            >
               <div className="flex flex-col gap-6 mt-10">
                 {navLinks.map((link) => (
                   <button

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
@@ -90,7 +89,6 @@ export default function ManageSubscription() {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Navbar />
 
-      {/* Main content */}
       <main className="flex-grow pt-28 md:pt-32 pb-24">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-md mx-auto">
@@ -106,22 +104,6 @@ export default function ManageSubscription() {
                   <p className="text-xs text-white/40 mt-4">
                     If this takes more than a few seconds, your link may be expired.
                   </p>
-
-                  <div className="mt-6 flex items-center justify-center gap-4 text-xs">
-                    <Link
-                      href="/shop"
-                      className="text-muted-foreground hover:text-white transition-colors uppercase tracking-wide"
-                    >
-                      Shop
-                    </Link>
-                    <span className="text-white/20">•</span>
-                    <a
-                      href="mailto:alex@kimoraco.com"
-                      className="text-muted-foreground hover:text-white transition-colors uppercase tracking-wide"
-                    >
-                      Support
-                    </a>
-                  </div>
                 </>
               ) : (
                 <>
@@ -166,48 +148,22 @@ export default function ManageSubscription() {
                     </Button>
 
                     <p className="text-xs text-white/40">
-                      Secure links expire in 15 minutes. If it expires, just
-                      request another.
+                      Secure links expire in 15 minutes. If it expires, just request another.
                     </p>
 
                     {status === "sent" && (
-                      <p className="text-xs text-white/40">
-                        Tip: check Spam or Promotions if you don’t see it right
-                        away.
-                      </p>
+                      <>
+                        <p className="text-xs text-white/40">
+                          Tip: check Spam or Promotions if you don’t see it right away.
+                        </p>
+                        <p className="text-xs text-white/30">
+                          This secure link is unique to your email and expires automatically.
+                        </p>
+                      </>
                     )}
-                  </div>
-
-                  {/* Escape hatches */}
-                  <div className="mt-6 flex items-center justify-center gap-4 text-xs">
-                    <Link
-                      href="/shop"
-                      className="text-muted-foreground hover:text-white transition-colors uppercase tracking-wide"
-                    >
-                      Back to Shop
-                    </Link>
-                    <span className="text-white/20">•</span>
-                    <Link
-                      href="/"
-                      className="text-muted-foreground hover:text-white transition-colors uppercase tracking-wide"
-                    >
-                      Home
-                    </Link>
-                    <span className="text-white/20">•</span>
-                    <a
-                      href="mailto:alex@kimoraco.com"
-                      className="text-muted-foreground hover:text-white transition-colors uppercase tracking-wide"
-                    >
-                      Support
-                    </a>
                   </div>
                 </>
               )}
-            </div>
-
-            {/* Trust / reassurance */}
-            <div className="mt-6 text-center text-xs text-white/30">
-              This secure link is unique to your email and expires automatically.
             </div>
           </div>
         </div>

@@ -26,7 +26,8 @@ const productData: Record<string, any> = {
   "strawberry-guava": {
     name: "Strawberry Guava",
     desc: "Tart, tropical, and refreshingly smooth. A perfect balance of island sweetness and punchy tartness.",
-    color: "text-pink-500",
+    // ✅ matches the pouch (warm orange / terracotta)
+    color: "text-orange-400",
     gradient: "from-orange-500/20",
     pouch: "/assets/products/strawberry-guava/pouch.webp",
     stick: "/assets/products/strawberry-guava/stick.png",
@@ -34,6 +35,7 @@ const productData: Record<string, any> = {
   "lemon-yuzu": {
     name: "Lemon Yuzu",
     desc: "Bright citrus with a crisp, clean finish. Zesty, aromatic, and incredibly refreshing over ice.",
+    // ✅ already correct
     color: "text-yellow-400",
     gradient: "from-yellow-500/20",
     pouch: "/assets/products/lemon-yuzu/pouch.webp",
@@ -42,7 +44,8 @@ const productData: Record<string, any> = {
   "raspberry-dragonfruit": {
     name: "Raspberry Dragonfruit",
     desc: "Bold, juicy, and perfectly balanced. Deep berry notes with a smooth, exotic finish.",
-    color: "text-purple-500",
+    // ✅ matches the pouch (raspberry/red)
+    color: "text-rose-400",
     gradient: "from-pink-500/20",
     pouch: "/assets/products/raspberry-dragonfruit/pouch.webp",
     stick: "/assets/products/raspberry-dragonfruit/stick.png",

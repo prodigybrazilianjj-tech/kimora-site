@@ -30,8 +30,8 @@ export function ProductLineup() {
     <section className="py-12 md:py-16 bg-background relative overflow-hidden">
       <div className="container px-4 mx-auto">
 
-        {/* ✅ THIS is the scroll target */}
-        <div id="flavors" />
+        {/* Scroll anchor */}
+        <div id="flavors" className="h-0" />
 
         {/* Heading */}
         <div className="text-center mb-8 md:mb-10">
@@ -44,7 +44,7 @@ export function ProductLineup() {
           </p>
         </div>
 
-        {/* ✅ PRODUCT GRID (this was missing before — now restored) */}
+        {/* PRODUCT GRID */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {products.map((product, index) => (
             <motion.div
@@ -57,9 +57,8 @@ export function ProductLineup() {
               <a
                 href={`/product?flavor=${product.slug}`}
                 className="block rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/60"
-                aria-label={`View ${product.name}`}
               >
-                <Card className="bg-card/50 border-white/5 hover:border-white/10 transition-colors duration-300 overflow-hidden group cursor-pointer">
+                <Card className="bg-card/50 border-white/5 hover:border-white/10 transition-colors duration-300 overflow-hidden group">
                   <CardContent className="p-0 relative">
                     <div
                       className={`pointer-events-none absolute inset-0 bg-gradient-to-t ${product.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
@@ -77,7 +76,7 @@ export function ProductLineup() {
                       <h3 className="text-2xl font-display font-bold text-white mb-2">
                         {product.name}
                       </h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
+                      <p className="text-sm text-muted-foreground">
                         {product.desc}
                       </p>
                     </div>

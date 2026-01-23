@@ -30,56 +30,46 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
- function scrollWithOffset(selector: string) {
-  const el = document.querySelector(selector);
-  if (!el) return;
+  function scrollToHash(hash: string) {
+    if (!hash) return;
+    const el = document.querySelector(hash);
+    if (!el) return;
 
-  // CSS scroll-mt-* will handle the offset.
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-
-    // Offset for fixed navbar
-    const yOffset = window.innerWidth >= 768 ? 180 : 150;
-    window.setTimeout(() => {
-      window.scrollBy({ top: -yOffset, left: 0, behavior: "auto" });
-    }, 50);
+    // IMPORTANT: Let CSS (scroll-mt-*) handle the offset.
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function goToSection(id: string) {
-    // id like "#flavors"
+  function goToSection(hash: string) {
+    // e.g. "#flavors"
     if (!isHome) {
-      // 1) Navigate to home
+      // Navigate to home first
       setLocation("/");
 
-      // 2) After navigation/render, set hash + scroll
+      // After home renders, set hash + scroll.
       window.setTimeout(() => {
-        // Update hash so refresh/back button behaves
-        window.location.hash = id;
+        window.location.hash = hash;
+        scrollToHash(hash);
 
-        // Try immediately, and again shortly in case sections mount after initial render
-        scrollWithOffset(id);
-        window.setTimeout(() => scrollWithOffset(id), 150);
+        // one more attempt in case the section mounts slightly later
+        window.setTimeout(() => scrollToHash(hash), 150);
       }, 50);
 
       return;
     }
 
-    // On home already: set hash + scroll
-    window.location.hash = id;
-    scrollWithOffset(id);
+    window.location.hash = hash;
+    scrollToHash(hash);
   }
 
-  // If user loads "/" with a hash (or hash changes), auto-scroll once.
+  // If user loads "/" with a hash, scroll once sections mount.
   useEffect(() => {
     if (!isHome) return;
 
     const run = () => {
       const hash = window.location.hash;
       if (!hash) return;
-      // two attempts covers content that mounts slightly later
-      scrollWithOffset(hash);
-      window.setTimeout(() => scrollWithOffset(hash), 150);
+      scrollToHash(hash);
+      window.setTimeout(() => scrollToHash(hash), 150);
     };
 
     run();
@@ -99,7 +89,7 @@ export function Navbar() {
     <nav
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-transparent",
-        navBackground,
+        navBackground
       )}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
@@ -116,10 +106,7 @@ export function Navbar() {
             <button
               key={link.name}
               onClick={link.action}
-              className={cn(
-                "text-sm font-medium transition-colors uppercase tracking-wide",
-                "text-muted-foreground hover:text-white",
-              )}
+              className="text-sm font-medium transition-colors uppercase tracking-wide text-muted-foreground hover:text-white"
             >
               {link.name}
             </button>
@@ -131,59 +118,4 @@ export function Navbar() {
           >
             <ShoppingBag className="w-5 h-5" />
             {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                {cartCount}
-              </span>
-            )}
-          </Link>
-
-          <Button
-            onClick={() => setLocation("/shop")}
-            className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider"
-          >
-            Shop Now
-          </Button>
-        </div>
-
-        {/* Mobile Nav */}
-        <div className="md:hidden flex items-center gap-4">
-          <Link href="/cart" className="relative text-white">
-            <ShoppingBag className="w-6 h-6" />
-            {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                {cartCount}
-              </span>
-            )}
-          </Link>
-
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-white">
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="bg-background border-l border-border">
-              <div className="flex flex-col gap-6 mt-10">
-                {navLinks.map((link) => (
-                  <button
-                    key={link.name}
-                    onClick={link.action}
-                    className="text-lg font-display text-left text-muted-foreground hover:text-white transition-colors"
-                  >
-                    {link.name}
-                  </button>
-                ))}
-                <Button
-                  onClick={() => setLocation("/shop")}
-                  className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider mt-4"
-                >
-                  Shop Now
-                </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
-    </nav>
-  );
-}
+              <span className="abso

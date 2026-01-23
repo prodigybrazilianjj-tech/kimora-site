@@ -7,12 +7,11 @@ import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
 
 function getFixedNavOffset() {
-  // Find the fixed <nav> and use its actual rendered height.
   const nav = document.querySelector("nav");
   const navHeight = nav instanceof HTMLElement ? nav.offsetHeight : 0;
 
-  // Extra breathing room below navbar (tune this if you want)
-  const gap = 18;
+  // ✅ Minimal breathing room. If it still feels low, set this to 0.
+  const gap = 6;
 
   return navHeight + gap;
 }
@@ -57,14 +56,12 @@ export function Navbar() {
     if (!hash.startsWith("#")) hash = `#${hash}`;
 
     if (!isHome) {
-      // Navigate home first, then scroll to the section once it mounts.
       setLocation("/");
 
       window.setTimeout(() => {
-        // Update hash for URL consistency, then scroll with measured offset.
         window.location.hash = hash;
 
-        // Do a couple passes to handle mount + fonts/layout settling.
+        // multi-pass to account for mount + layout
         scrollToHash(hash, "auto");
         window.setTimeout(() => scrollToHash(hash, "smooth"), 60);
         window.setTimeout(() => scrollToHash(hash, "smooth"), 180);
@@ -77,7 +74,6 @@ export function Navbar() {
     scrollToHash(hash, "smooth");
   }
 
-  // If user lands on "/" with a hash, perform the same measured scroll.
   useEffect(() => {
     if (!isHome) return;
 
@@ -85,7 +81,6 @@ export function Navbar() {
       const hash = window.location.hash;
       if (!hash) return;
 
-      // Same multi-pass approach to ensure consistent landing
       scrollToHash(hash, "auto");
       window.setTimeout(() => scrollToHash(hash, "smooth"), 60);
       window.setTimeout(() => scrollToHash(hash, "smooth"), 180);

@@ -31,7 +31,7 @@ export function ProductLineup() {
       {/* Anchor offset for fixed navbar */}
       <div
         id="flavors"
-        className="relative -top-[220px] md:-top-[260px] h-0"
+        className="relative -top-[180px] md:-top-[210px] h-0"
         aria-hidden
       />
 

@@ -6,6 +6,28 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
 
+function getFixedNavOffset() {
+  // Find the fixed <nav> and use its actual rendered height.
+  const nav = document.querySelector("nav");
+  const navHeight = nav instanceof HTMLElement ? nav.offsetHeight : 0;
+
+  // Extra breathing room below navbar (tune this if you want)
+  const gap = 18;
+
+  return navHeight + gap;
+}
+
+function scrollToHash(hash: string, behavior: ScrollBehavior = "smooth") {
+  if (!hash) return;
+  const el = document.querySelector(hash);
+  if (!(el instanceof HTMLElement)) return;
+
+  const offset = getFixedNavOffset();
+  const y = window.scrollY + el.getBoundingClientRect().top - offset;
+
+  window.scrollTo({ top: Math.max(0, y), behavior });
+}
+
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [location, setLocation] = useLocation();
@@ -31,44 +53,42 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
-  function scrollToHash(hash: string) {
-    if (!hash) return;
-    const el = document.querySelector(hash);
-    if (!el) return;
-
-    // Let CSS scroll-mt-* handle the offset.
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   function goToSection(hash: string) {
+    if (!hash.startsWith("#")) hash = `#${hash}`;
+
     if (!isHome) {
-      // Navigate to home first
+      // Navigate home first, then scroll to the section once it mounts.
       setLocation("/");
 
-      // After home renders, set hash + scroll.
       window.setTimeout(() => {
+        // Update hash for URL consistency, then scroll with measured offset.
         window.location.hash = hash;
-        scrollToHash(hash);
-        // one more attempt in case the section mounts slightly later
-        window.setTimeout(() => scrollToHash(hash), 150);
-      }, 50);
+
+        // Do a couple passes to handle mount + fonts/layout settling.
+        scrollToHash(hash, "auto");
+        window.setTimeout(() => scrollToHash(hash, "smooth"), 60);
+        window.setTimeout(() => scrollToHash(hash, "smooth"), 180);
+      }, 0);
 
       return;
     }
 
     window.location.hash = hash;
-    scrollToHash(hash);
+    scrollToHash(hash, "smooth");
   }
 
-  // If user loads "/" with a hash, scroll once sections mount.
+  // If user lands on "/" with a hash, perform the same measured scroll.
   useEffect(() => {
     if (!isHome) return;
 
     const run = () => {
       const hash = window.location.hash;
       if (!hash) return;
-      scrollToHash(hash);
-      window.setTimeout(() => scrollToHash(hash), 150);
+
+      // Same multi-pass approach to ensure consistent landing
+      scrollToHash(hash, "auto");
+      window.setTimeout(() => scrollToHash(hash, "smooth"), 60);
+      window.setTimeout(() => scrollToHash(hash, "smooth"), 180);
     };
 
     run();

@@ -59,8 +59,10 @@ export default function OrderSuccess() {
             Order Confirmed 🎉
           </h1>
 
+          {/* Updated to Option B */}
           <p className="text-muted-foreground mb-8">
-            Thanks — your payment went through. You’ll receive an email receipt shortly.
+            Welcome to Kimora. Progress is built one decision at a time. This is
+            one of them.
           </p>
 
           {/* Manage subscription block */}
@@ -70,10 +72,13 @@ export default function OrderSuccess() {
             </h3>
 
             <p className="text-xs text-white/50 mb-4 text-center">
-              Enter the email you used at checkout and we’ll send a secure link. You can also manage your
-              subscription anytime at{" "}
-              <Link href="/manage-subscription" className="underline underline-offset-4 hover:text-white">
-              kimoraco.com/manage-subscription
+              Enter the email you used at checkout and we’ll send a secure link.
+              You can also manage your subscription anytime at{" "}
+              <Link
+                href="/manage-subscription"
+                className="underline underline-offset-4 hover:text-white"
+              >
+                kimoraco.com/manage-subscription
               </Link>{" "}
               (also linked in the footer).
             </p>
@@ -103,7 +108,8 @@ export default function OrderSuccess() {
                 </Button>
 
                 <p className="text-[11px] text-white/40 mt-3 text-center">
-                  Links expire after ~15 minutes for security. If it expires, just request a new one.
+                  Links expire after ~15 minutes for security. If it expires,
+                  just request a new one.
                 </p>
               </>
             ) : (
@@ -126,7 +132,8 @@ export default function OrderSuccess() {
           </div>
 
           <p className="text-xs text-white/50 mt-6">
-            If you don’t see the email within a few minutes, check spam/promotions.
+            If you don’t see the email within a few minutes, check
+            spam/promotions.
           </p>
         </div>
       </main>

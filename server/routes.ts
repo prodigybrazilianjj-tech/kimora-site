@@ -491,10 +491,24 @@ Need help? Reply to this email or contact alex@kimoraco.com
   app.post("/api/customer-portal", handleCustomerPortal);
   app.get("/api/customer-portal", handleCustomerPortal);
 
-  // Create Stripe Checkout Session (unchanged)
+    // Create Stripe Checkout Session (UPDATED to pass email to Stripe)
   app.post("/api/checkout", async (req, res) => {
     try {
       const body = req.body ?? {};
+
+      // ---- NEW: optional email (recommended) ----
+      const emailRaw = String(body.email ?? "").trim();
+      const email = emailRaw ? normalizeEmail(emailRaw) : "";
+
+      // If you want to REQUIRE email, uncomment this:
+      // if (!email || !isValidEmail(email)) {
+      //   return res.status(400).json({ message: "A valid email is required." });
+      // }
+
+      // If provided, validate it
+      if (email && !isValidEmail(email)) {
+        return res.status(400).json({ message: "Invalid email." });
+      }
 
       const items: CheckoutItem[] = Array.isArray(body.items)
         ? body.items
@@ -535,11 +549,24 @@ Need help? Reply to this email or contact alex@kimoraco.com
 
       const session = await stripe.checkout.sessions.create({
         mode,
-        ...(mode === "payment" ? { customer_creation: "always" } : {}),
+
+        // ---- NEW: pass email into Stripe Checkout to prefill ----
+        ...(email ? { customer_email: email } : {}),
+
+        // For one-time payments, also set receipt_email on the PaymentIntent.
+        // This helps ensure Stripe has the email for receipts even if UI settings vary.
+        ...(mode === "payment"
+          ? {
+              customer_creation: "always",
+              ...(email ? { payment_intent_data: { receipt_email: email } } : {}),
+            }
+          : {}),
+
         line_items: items.map((it) => ({
           price: getPriceId(it),
           quantity: it.quantity,
         })),
+
         billing_address_collection: "required",
         shipping_address_collection: { allowed_countries: ["US"] },
         success_url: `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -559,6 +586,7 @@ Need help? Reply to this email or contact alex@kimoraco.com
       return res.status(500).json({ message: err?.message || "Checkout failed." });
     }
   });
+
 
   return httpServer;
 }

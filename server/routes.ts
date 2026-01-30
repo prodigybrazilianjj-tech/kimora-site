@@ -362,6 +362,7 @@ export async function registerRoutes(
       console.log("[portal] request email:", email);
       console.log("[portal] found stripeCustomerId:", stripeCustomerId);
 
+      // Always respond 200, only send if we have a customer id.
       if (!stripeCustomerId) return genericOk();
 
       const siteUrl = getSiteUrl();
@@ -453,6 +454,7 @@ Need help? Reply to this email or contact alex@kimoraco.com
       return genericOk();
     } catch (err: any) {
       console.error("POST /api/customer-portal/request error:", err);
+      // Still return generic ok to avoid leaking information
       return genericOk();
     }
   });
@@ -518,7 +520,10 @@ Need help? Reply to this email or contact alex@kimoraco.com
   app.post("/api/customer-portal", handleCustomerPortal);
   app.get("/api/customer-portal", handleCustomerPortal);
 
-  // Create Stripe Checkout Session (UPDATED to pass email to Stripe)
+  /**
+   * Create Stripe Checkout Session (UPDATED to pass email to Stripe)
+   * Body: { items: CheckoutItem[], email?: string }
+   */
   app.post("/api/checkout", async (req, res) => {
     try {
       const body = req.body ?? {};
@@ -543,17 +548,13 @@ Need help? Reply to this email or contact alex@kimoraco.com
       }
 
       for (const it of items) {
-        if (!it.flavor)
-          return res.status(400).json({ message: "Missing flavor." });
-
+        if (!it.flavor) return res.status(400).json({ message: "Missing flavor." });
         if (it.type !== "onetime" && it.type !== "subscribe") {
           return res.status(400).json({ message: "Invalid type." });
         }
-
         if (!Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > 20) {
           return res.status(400).json({ message: "Invalid quantity." });
         }
-
         if (it.type === "subscribe") {
           if (it.frequency !== "2" && it.frequency !== "4" && it.frequency !== "6") {
             return res.status(400).json({ message: "Invalid frequency." });
@@ -576,7 +577,7 @@ Need help? Reply to this email or contact alex@kimoraco.com
       const session = await stripe.checkout.sessions.create({
         mode,
 
-        // Pass email into Stripe Checkout to prefill
+        // Prefill email in Stripe Checkout (so customer doesn't type twice)
         ...(email ? { customer_email: email } : {}),
 
         ...(mode === "payment"

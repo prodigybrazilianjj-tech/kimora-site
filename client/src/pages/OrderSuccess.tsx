@@ -5,14 +5,6 @@ import { Footer } from "@/components/sections/Footer";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
 
-type CheckoutSessionInfo = {
-  id: string;
-  mode: "payment" | "subscription" | "setup" | string;
-  customer_email: string | null;
-  payment_status: string | null;
-  subscription: string | null;
-};
-
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
@@ -21,69 +13,66 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+type CheckoutSessionMode = "payment" | "subscription" | "unknown";
+
 export default function OrderSuccess() {
   const { clearCart } = useCart();
 
-  const [sessionInfo, setSessionInfo] = useState<CheckoutSessionInfo | null>(null);
-  const [sessionLoading, setSessionLoading] = useState(true);
+  const params = useMemo(() => new URLSearchParams(window.location.search), []);
+  const sessionId = params.get("session_id") || "";
+
+  const [mode, setMode] = useState<CheckoutSessionMode>("unknown");
+  const isSubscription = mode === "subscription";
 
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loadingLink, setLoadingLink] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Read Stripe Checkout Session ID from URL: /order-success?session_id=cs_...
-  const sessionId = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("session_id") || "";
-  }, []);
-
-  const isSubscription = sessionInfo?.mode === "subscription";
-
+  // Clear cart on mount
   useEffect(() => {
-    // Clear cart on success page load
     clearCart();
     localStorage.removeItem("kimora-cart");
   }, [clearCart]);
 
-  // Fetch session info so we can conditionally show subscription controls
+  // Option 2: ask backend what kind of checkout this was
   useEffect(() => {
     let cancelled = false;
 
-    async function loadSession() {
+    async function fetchMode() {
+      if (!sessionId) {
+        setMode("unknown");
+        return;
+      }
+
       try {
-        setSessionLoading(true);
+        const res = await fetch(
+          `/api/checkout-session?session_id=${encodeURIComponent(sessionId)}`,
+          { method: "GET" },
+        );
 
-        if (!sessionId) {
-          // If someone navigates here directly, we can’t know what they bought.
-          // Default to non-subscription UI.
-          if (!cancelled) setSessionInfo(null);
-          return;
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) throw new Error(data?.message || "Unable to load session.");
+
+        const m = String(data?.mode || "").toLowerCase();
+        if (m === "subscription" || m === "payment") {
+          if (!cancelled) setMode(m);
+        } else {
+          if (!cancelled) setMode("unknown");
         }
 
-        const res = await fetch(`/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`);
-        const data = (await res.json().catch(() => ({}))) as Partial<CheckoutSessionInfo>;
+        // Optional: if your endpoint returns email, you can prefill:
+        // const returnedEmail = String(data?.email || "");
+        // if (returnedEmail && !cancelled) setEmail(returnedEmail);
 
-        if (!res.ok) {
-          throw new Error((data as any)?.message || "Failed to load checkout session.");
-        }
-
-        if (!cancelled) {
-          const normalizedPrefill = data.customer_email ? normalizeEmail(data.customer_email) : "";
-          setSessionInfo(data as CheckoutSessionInfo);
-
-          // Helpful: prefill the email input (subscription only) if we have it
-          if (normalizedPrefill) setEmail(normalizedPrefill);
-        }
-      } catch (e) {
-        // Don’t block the page if this fails — just hide the subscription UI
-        if (!cancelled) setSessionInfo(null);
-      } finally {
-        if (!cancelled) setSessionLoading(false);
+      } catch {
+        // Don’t hard-fail the page; just hide subscription-only UI.
+        if (!cancelled) setMode("unknown");
       }
     }
 
-    loadSession();
+    fetchMode();
 
     return () => {
       cancelled = true;
@@ -93,14 +82,13 @@ export default function OrderSuccess() {
   async function requestPortalLink() {
     const normalized = normalizeEmail(email);
 
-    setError(null);
-
     if (!normalized || !isValidEmail(normalized)) {
-      setError("Please enter the email used at checkout.");
+      setError("Enter the email you used at checkout.");
       return;
     }
 
-    setLoading(true);
+    setLoadingLink(true);
+    setError(null);
 
     try {
       const res = await fetch("/api/customer-portal/request", {
@@ -110,16 +98,13 @@ export default function OrderSuccess() {
       });
 
       const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data?.message || "Unable to send link.");
-      }
+      if (!res.ok) throw new Error(data?.message || "Unable to send link.");
 
       setSent(true);
     } catch (err: any) {
       setError(err?.message || "Something went wrong.");
     } finally {
-      setLoading(false);
+      setLoadingLink(false);
     }
   }
 
@@ -133,23 +118,65 @@ export default function OrderSuccess() {
             Order Confirmed 🎉
           </h1>
 
-          {/* Option B (brand copy) */}
+          {/* On-brand (Option B refined) */}
           <p className="text-muted-foreground mb-6">
-            Welcome to Kimora. Progress is built one decision at a time. This is one of them.
+            Welcome to Kimora. Progress is built one decision at a time. You just
+            made a good one.
           </p>
 
-          {/* One-time vs subscription helper line */}
-          <p className="text-xs text-white/50 mb-8">
-            {sessionLoading ? (
-              "Finalizing your order details…"
-            ) : isSubscription ? (
-              "You’re set up on a subscription. You’ll receive email confirmations and renewal updates."
-            ) : (
-              "You’ll receive an email receipt from Stripe shortly."
-            )}
+          <p className="text-xs text-white/50 mb-10">
+            You’ll receive an email receipt from Stripe shortly.
           </p>
 
-          {/* Subscription-only: Manage subscription block */}
+          {/* Works for both one-time + subscription */}
+          <div className="bg-card/50 border border-white/10 rounded-xl p-5 mb-8 text-left">
+            <h3 className="text-white font-semibold mb-3 text-center">
+              Next steps
+            </h3>
+
+            <div className="space-y-4 text-sm text-white/80">
+              <div>
+                <div className="text-white font-semibold mb-1">
+                  How to take Kimora
+                </div>
+                <ul className="list-disc pl-5 space-y-1 text-white/70">
+                  <li>
+                    Mix <span className="text-white font-medium">1 stick</span>{" "}
+                    in 12–16 oz of cold water.
+                  </li>
+                  <li>
+                    Best timing:{" "}
+                    <span className="text-white font-medium">
+                      pre-training, post-training, or first thing
+                    </span>{" "}
+                    — consistency wins.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="border-t border-white/10 pt-4">
+                <div className="text-white font-semibold mb-1">What’s next</div>
+                <ul className="list-disc pl-5 space-y-1 text-white/70">
+                  <li>
+                    You’ll get an order email from Stripe (check spam/promotions
+                    if you don’t see it).
+                  </li>
+                  <li>
+                    Shipping + taxes are finalized in Stripe Checkout (your
+                    receipt reflects the final total).
+                  </li>
+                </ul>
+              </div>
+
+              <div className="border-t border-white/10 pt-4 text-white/70">
+                <span className="text-white font-semibold">Commitment tip:</span>{" "}
+                pick a routine — same time every day for 14 days. Progress stacks
+                fast when you don’t negotiate with yourself.
+              </div>
+            </div>
+          </div>
+
+          {/* Subscription-only block (now accurate) */}
           {isSubscription ? (
             <div className="bg-card/50 border border-white/10 rounded-xl p-5 mb-8 text-left">
               <h3 className="text-white font-semibold mb-2 text-center">
@@ -157,8 +184,8 @@ export default function OrderSuccess() {
               </h3>
 
               <p className="text-xs text-white/50 mb-4 text-center">
-                Enter the email you used at checkout and we’ll send a secure link.
-                You can also manage your subscription anytime at{" "}
+                Enter the email you used at checkout and we’ll send a secure
+                link. You can also manage your subscription anytime at{" "}
                 <Link
                   href="/manage-subscription"
                   className="underline underline-offset-4 hover:text-white"
@@ -182,20 +209,19 @@ export default function OrderSuccess() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full mb-3 px-4 py-3 rounded-md bg-black/40 border border-white/10 text-white"
-                    autoComplete="email"
-                    inputMode="email"
                   />
 
                   <Button
                     onClick={requestPortalLink}
-                    disabled={loading}
+                    disabled={loadingLink}
                     className="w-full bg-primary hover:bg-primary/90"
                   >
-                    {loading ? "Sending…" : "Email me a secure link"}
+                    {loadingLink ? "Sending…" : "Email me a secure link"}
                   </Button>
 
                   <p className="text-[11px] text-white/40 mt-3 text-center">
-                    Links expire after ~15 minutes for security. If it expires, just request a new one.
+                    Links expire after ~15 minutes for security. If it expires,
+                    just request a new one.
                   </p>
                 </>
               ) : (
@@ -204,7 +230,19 @@ export default function OrderSuccess() {
                 </p>
               )}
             </div>
-          ) : null}
+          ) : (
+            // Subtle fallback link for anyone who subscribed but mode couldn't be detected
+            <p className="text-xs text-white/40 mb-8">
+              Subscribed? Manage anytime at{" "}
+              <Link
+                href="/manage-subscription"
+                className="underline underline-offset-4 hover:text-white"
+              >
+                Manage Subscription
+              </Link>
+              .
+            </p>
+          )}
 
           <div className="flex justify-center gap-4">
             <Link href="/shop">
@@ -219,8 +257,16 @@ export default function OrderSuccess() {
           </div>
 
           <p className="text-xs text-white/50 mt-6">
-            If you don’t see the email within a few minutes, check spam/promotions.
+            If you don’t see the email within a few minutes, check
+            spam/promotions.
           </p>
+
+          {/* Optional tiny dev debug */}
+          {process.env.NODE_ENV !== "production" && sessionId ? (
+            <p className="text-[10px] text-white/30 mt-4">
+              session_id: {sessionId} • mode: {mode}
+            </p>
+          ) : null}
         </div>
       </main>
 

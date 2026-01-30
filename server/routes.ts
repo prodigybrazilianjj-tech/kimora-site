@@ -158,7 +158,6 @@ function verifyToken<T extends { exp?: number }>(
     .update(body)
     .digest("base64url");
 
-  // timingSafeEqual throws if lengths differ — guard it.
   if (sig.length !== expected.length) return null;
 
   const ok = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
@@ -188,6 +187,36 @@ export async function registerRoutes(
 ): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
+  /**
+   * Success page helper:
+   * GET /api/checkout/session?session_id=cs_...
+   * Returns minimal session info so the UI can show subscription controls only when needed.
+   */
+  app.get("/api/checkout/session", async (req, res) => {
+    try {
+      const sessionId = String(req.query?.session_id ?? "").trim();
+      if (!sessionId) {
+        return res.status(400).json({ message: "session_id is required" });
+      }
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      return res.json({
+        id: session.id,
+        mode: session.mode, // "payment" | "subscription" | "setup"
+        customer_email:
+          session.customer_details?.email ?? session.customer_email ?? null,
+        payment_status: session.payment_status ?? null,
+        subscription: session.subscription ?? null,
+      });
+    } catch (err: any) {
+      console.error("GET /api/checkout/session error:", err?.message || err);
+      return res
+        .status(500)
+        .json({ message: err?.message || "Failed to load session" });
+    }
+  });
+
   // Stripe Webhook (Order persistence)
   app.post("/api/stripe/webhook", async (req, res) => {
     try {
@@ -215,9 +244,7 @@ export async function registerRoutes(
 
         const lineItems = await stripe.checkout.sessions.listLineItems(
           session.id,
-          {
-            limit: 100,
-          },
+          { limit: 100 },
         );
 
         const inserted = await db
@@ -335,7 +362,6 @@ export async function registerRoutes(
       console.log("[portal] request email:", email);
       console.log("[portal] found stripeCustomerId:", stripeCustomerId);
 
-      // Always respond 200, only send if we have a customer id.
       if (!stripeCustomerId) return genericOk();
 
       const siteUrl = getSiteUrl();
@@ -355,8 +381,8 @@ export async function registerRoutes(
       const fallbackLink = `${siteUrl}/manage-subscription`;
 
       const resendKey = process.env.RESEND_API_KEY;
-      // Support either name; prefer RESEND_FROM_EMAIL
-      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail =
+        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
 
       console.log("[portal] resend api key present:", Boolean(resendKey));
       console.log("[portal] from env value:", fromEmail);
@@ -407,7 +433,9 @@ Need help? Reply to this email or contact alex@kimoraco.com
 </div>`;
 
       try {
-        const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
+        const from = fromEmail.includes("<")
+          ? fromEmail
+          : `Kimora Co <${fromEmail}>`;
 
         const result = await resend.emails.send({
           from,
@@ -415,7 +443,6 @@ Need help? Reply to this email or contact alex@kimoraco.com
           subject,
           text,
           html,
-          // reply_to: "alex@kimoraco.com",
         });
 
         console.log("[portal] resend send: OK", result?.data || result);
@@ -426,7 +453,6 @@ Need help? Reply to this email or contact alex@kimoraco.com
       return genericOk();
     } catch (err: any) {
       console.error("POST /api/customer-portal/request error:", err);
-      // Still return generic ok to avoid leaking information
       return genericOk();
     }
   });
@@ -440,7 +466,8 @@ Need help? Reply to this email or contact alex@kimoraco.com
   async function handleCustomerPortal(req: any, res: any) {
     try {
       const token =
-        String(req.body?.token ?? "").trim() || String(req.query?.token ?? "").trim();
+        String(req.body?.token ?? "").trim() ||
+        String(req.query?.token ?? "").trim();
 
       if (!token) return res.status(400).json({ message: "Token is required." });
 
@@ -469,13 +496,13 @@ Need help? Reply to this email or contact alex@kimoraco.com
 
       const stripeCustomerId = found?.[0]?.stripeCustomerId ?? null;
       if (!stripeCustomerId) {
-        return res.status(404).json({ message: "No customer found for that link." });
+        return res
+          .status(404)
+          .json({ message: "No customer found for that link." });
       }
 
       const portal = await stripe.billingPortal.sessions.create({
         customer: stripeCustomerId,
-        // Optional: return them to your manage page after portal actions
-        // return_url: `${siteUrl}/manage-subscription`,
         return_url: `${siteUrl}/manage-subscription`,
       });
 
@@ -491,19 +518,14 @@ Need help? Reply to this email or contact alex@kimoraco.com
   app.post("/api/customer-portal", handleCustomerPortal);
   app.get("/api/customer-portal", handleCustomerPortal);
 
-    // Create Stripe Checkout Session (UPDATED to pass email to Stripe)
+  // Create Stripe Checkout Session (UPDATED to pass email to Stripe)
   app.post("/api/checkout", async (req, res) => {
     try {
       const body = req.body ?? {};
 
-      // ---- NEW: optional email (recommended) ----
+      // Optional email (recommended)
       const emailRaw = String(body.email ?? "").trim();
       const email = emailRaw ? normalizeEmail(emailRaw) : "";
-
-      // If you want to REQUIRE email, uncomment this:
-      // if (!email || !isValidEmail(email)) {
-      //   return res.status(400).json({ message: "A valid email is required." });
-      // }
 
       // If provided, validate it
       if (email && !isValidEmail(email)) {
@@ -521,13 +543,17 @@ Need help? Reply to this email or contact alex@kimoraco.com
       }
 
       for (const it of items) {
-        if (!it.flavor) return res.status(400).json({ message: "Missing flavor." });
+        if (!it.flavor)
+          return res.status(400).json({ message: "Missing flavor." });
+
         if (it.type !== "onetime" && it.type !== "subscribe") {
           return res.status(400).json({ message: "Invalid type." });
         }
+
         if (!Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > 20) {
           return res.status(400).json({ message: "Invalid quantity." });
         }
+
         if (it.type === "subscribe") {
           if (it.frequency !== "2" && it.frequency !== "4" && it.frequency !== "6") {
             return res.status(400).json({ message: "Invalid frequency." });
@@ -550,14 +576,13 @@ Need help? Reply to this email or contact alex@kimoraco.com
       const session = await stripe.checkout.sessions.create({
         mode,
 
-        // ---- NEW: pass email into Stripe Checkout to prefill ----
+        // Pass email into Stripe Checkout to prefill
         ...(email ? { customer_email: email } : {}),
 
-        // For one-time payments, also set receipt_email on the PaymentIntent.
-        // This helps ensure Stripe has the email for receipts even if UI settings vary.
         ...(mode === "payment"
           ? {
               customer_creation: "always",
+              // Helps ensure Stripe has the email for receipts on one-time payments
               ...(email ? { payment_intent_data: { receipt_email: email } } : {}),
             }
           : {}),
@@ -586,7 +611,6 @@ Need help? Reply to this email or contact alex@kimoraco.com
       return res.status(500).json({ message: err?.message || "Checkout failed." });
     }
   });
-
 
   return httpServer;
 }

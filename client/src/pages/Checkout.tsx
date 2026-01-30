@@ -4,8 +4,6 @@ import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 type CheckoutItem = {
   flavor: string; // e.g. "lemon-yuzu"
@@ -21,19 +19,10 @@ function prettyFlavor(slug: string) {
     .join(" ");
 }
 
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
-}
-
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { items, subtotal } = useCart() as any;
 
-  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,25 +48,16 @@ export default function Checkout() {
     if (isEmpty || loading) return;
 
     setError(null);
-
-    const normalized = normalizeEmail(email);
-    if (!normalized || !isValidEmail(normalized)) {
-      setError("Please enter a valid email for your receipt and order updates.");
-      return;
-    }
-
     setLoading(true);
 
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: normalized,
-          items: payloadItems,
-        }),
+        body: JSON.stringify({ items: payloadItems }),
       });
 
+      // Don’t assume JSON on errors
       const contentType = res.headers.get("content-type") || "";
       const isJson = contentType.includes("application/json");
 
@@ -95,6 +75,7 @@ export default function Checkout() {
       const url = data?.url;
       if (!url) throw new Error("Stripe session created, but no URL returned.");
 
+      // Redirect to Stripe Checkout (hosted)
       window.location.href = url;
     } catch (e: any) {
       setError(e?.message || "Checkout failed.");
@@ -116,26 +97,9 @@ export default function Checkout() {
               </h1>
 
               <p className="text-muted-foreground mb-8">
-                You’ll enter shipping and payment details on Stripe (secure). We
-                use your email for your receipt and order updates.
+                You’ll enter your email, shipping, and payment details securely on
+                Stripe. Stripe will email your receipt automatically.
               </p>
-
-              <div className="mb-6">
-                <Label className="text-sm text-white mb-2 block">
-                  Email for receipt
-                </Label>
-                <Input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  inputMode="email"
-                  autoComplete="email"
-                  className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
-                />
-                <p className="text-xs text-white/50 mt-2">
-                  This is where Stripe will send your receipt.
-                </p>
-              </div>
 
               {error ? (
                 <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">

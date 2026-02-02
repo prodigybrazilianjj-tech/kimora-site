@@ -7,12 +7,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/lib/cart";
 
-type CheckoutItem = {
-  flavor: string; // e.g. "lemon-yuzu"
-  type: "onetime" | "subscribe";
-  frequency?: "2" | "4" | "6";
-  quantity: number;
-};
+/**
+ * Keep these literal unions tight so TS doesn't widen to "string".
+ */
+type FrequencyWeeks = "2" | "4" | "6";
+
+type CheckoutItem =
+  | {
+      flavor: string; // e.g. "lemon-yuzu"
+      type: "onetime";
+      quantity: number;
+    }
+  | {
+      flavor: string; // e.g. "lemon-yuzu"
+      type: "subscribe";
+      frequency: FrequencyWeeks;
+      quantity: number;
+    };
 
 function prettyFlavor(slug: string) {
   return slug
@@ -29,6 +40,17 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function clampQty(q: unknown) {
+  const n = Number(q);
+  if (!Number.isFinite(n)) return 1;
+  if (!Number.isInteger(n)) return Math.round(n);
+  return Math.max(1, Math.min(20, n));
+}
+
+function isFrequencyWeeks(v: unknown): v is FrequencyWeeks {
+  return v === "2" || v === "4" || v === "6";
+}
+
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { items, subtotal } = useCart() as any;
@@ -41,21 +63,45 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Build a STRICT payload that matches your backend:
+   * - type: "onetime" | "subscribe"
+   * - frequency required only for subscribe
+   */
   const payloadItems: CheckoutItem[] = useMemo(() => {
     const safeItems = Array.isArray(items) ? items : [];
-    return safeItems
-      .map((it: any) => ({
-        flavor: String(it?.flavor ?? ""),
-        type: it?.type === "subscribe" ? "subscribe" : "onetime",
-        frequency: it?.type === "subscribe" ? it?.frequency : undefined,
-        quantity: Number.isFinite(it?.quantity) ? Math.max(1, it.quantity) : 1,
-      }))
-      .filter((it) => {
-        if (!it.flavor) return false;
-        if (it.type === "subscribe" && !it.frequency) return false;
-        if (!Number.isInteger(it.quantity) || it.quantity < 1) return false;
-        return true;
-      });
+
+    const normalized: CheckoutItem[] = [];
+
+    for (const raw of safeItems) {
+      const flavor = String(raw?.flavor ?? "").trim();
+      if (!flavor) continue;
+
+      const quantity = clampQty(raw?.quantity);
+
+      // IMPORTANT: keep this literal union (not string)
+      const rawType: unknown = raw?.type;
+
+      if (rawType === "subscribe") {
+        const freq = raw?.frequency;
+        if (!isFrequencyWeeks(freq)) continue;
+
+        normalized.push({
+          flavor,
+          type: "subscribe",
+          frequency: freq,
+          quantity,
+        });
+      } else {
+        normalized.push({
+          flavor,
+          type: "onetime",
+          quantity,
+        });
+      }
+    }
+
+    return normalized;
   }, [items]);
 
   const isEmpty = payloadItems.length === 0;
@@ -66,7 +112,21 @@ export default function Checkout() {
     [normalizedEmail],
   );
 
-  // Clear server error once user starts fixing email
+  /**
+   * Prevent mixed checkout modes in one session.
+   * This mirrors your backend rule and gives the user an immediate, clean error.
+   */
+  const hasSub = useMemo(
+    () => payloadItems.some((i) => i.type === "subscribe"),
+    [payloadItems],
+  );
+  const hasOne = useMemo(
+    () => payloadItems.some((i) => i.type === "onetime"),
+    [payloadItems],
+  );
+  const mixedModes = hasSub && hasOne;
+
+  // Clear server error once user starts fixing input
   useEffect(() => {
     if (error && emailTouched) setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,6 +140,13 @@ export default function Checkout() {
 
     if (!emailOk) {
       setError("Please enter a valid email for your receipt and order updates.");
+      return;
+    }
+
+    if (mixedModes) {
+      setError(
+        "Subscriptions and one-time purchases can’t be checked out together. Please remove one type and checkout separately.",
+      );
       return;
     }
 
@@ -111,7 +178,6 @@ export default function Checkout() {
       const url = data?.url;
       if (!url) throw new Error("Stripe session created, but no URL returned.");
 
-      // Redirect to Stripe Checkout (hosted)
       window.location.href = url;
     } catch (e: any) {
       setError(e?.message || "Checkout failed.");
@@ -120,6 +186,13 @@ export default function Checkout() {
   }
 
   const showEmailInlineError = emailTouched && !emailOk && !!email;
+
+  const modeLabel = useMemo(() => {
+    if (mixedModes) return "Mixed items";
+    if (hasSub) return "Subscription";
+    if (hasOne) return "One-time purchase";
+    return "";
+  }, [mixedModes, hasSub, hasOne]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -160,10 +233,19 @@ export default function Checkout() {
                   </p>
                 ) : (
                   <p className="text-xs text-white/50 mt-2">
-                    Stripe will pre-fill this on the next screen and send your receipt automatically.
+                    Stripe will pre-fill this on the next screen and email your
+                    receipt automatically.
                   </p>
                 )}
               </div>
+
+              {mixedModes ? (
+                <div className="mb-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-yellow-100">
+                  Your cart includes both subscription and one-time items. Stripe
+                  Checkout can only handle one mode at a time — please checkout
+                  separately.
+                </div>
+              ) : null}
 
               {error ? (
                 <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
@@ -175,7 +257,7 @@ export default function Checkout() {
                 <Button
                   type="button"
                   onClick={handleStripeCheckout}
-                  disabled={loading || isEmpty || !emailOk}
+                  disabled={loading || isEmpty || !emailOk || mixedModes}
                   className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg"
                 >
                   {loading ? "Redirecting to Stripe..." : "Continue to Payment"}
@@ -199,15 +281,20 @@ export default function Checkout() {
             {/* Right: Order Summary */}
             <div className="lg:pl-12 lg:border-l border-white/10">
               <div className="bg-card/50 p-6 rounded-xl border border-white/5 sticky top-32">
-                <h3 className="text-lg font-bold text-white mb-6">
-                  Order Summary
-                </h3>
+                <div className="flex items-center justify-between gap-4 mb-6">
+                  <h3 className="text-lg font-bold text-white">Order Summary</h3>
+                  {modeLabel ? (
+                    <span className="text-xs text-white/60 border border-white/10 rounded-full px-3 py-1">
+                      {modeLabel}
+                    </span>
+                  ) : null}
+                </div>
 
                 {payloadItems.length ? (
                   <div className="space-y-3 mb-6">
                     {payloadItems.map((it, idx) => (
                       <div
-                        key={`${it.flavor}-${it.type}-${it.frequency ?? "n"}-${idx}`}
+                        key={`${it.flavor}-${it.type}-${"frequency" in it ? it.frequency : "n"}-${idx}`}
                         className="flex justify-between gap-4"
                       >
                         <div className="min-w-0">
@@ -243,7 +330,9 @@ export default function Checkout() {
 
                 <div className="flex justify-between mb-4">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span className="text-white font-medium">Calculated on Stripe</span>
+                  <span className="text-white font-medium">
+                    Calculated on Stripe
+                  </span>
                 </div>
 
                 <div className="border-t border-white/10 pt-4 flex justify-between">

@@ -7,23 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/lib/cart";
 
-/**
- * Keep these literal unions tight so TS doesn't widen to "string".
- */
-type FrequencyWeeks = "2" | "4" | "6";
-
-type CheckoutItem =
-  | {
-      flavor: string; // e.g. "lemon-yuzu"
-      type: "onetime";
-      quantity: number;
-    }
-  | {
-      flavor: string; // e.g. "lemon-yuzu"
-      type: "subscribe";
-      frequency: FrequencyWeeks;
-      quantity: number;
-    };
+type CheckoutItem = {
+  flavor: string; // e.g. "lemon-yuzu"
+  type: "onetime" | "subscribe";
+  frequency?: "2" | "4" | "6";
+  quantity: number;
+};
 
 function prettyFlavor(slug: string) {
   return slug
@@ -40,15 +29,17 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function clampQty(q: unknown) {
-  const n = Number(q);
-  if (!Number.isFinite(n)) return 1;
-  if (!Number.isInteger(n)) return Math.round(n);
-  return Math.max(1, Math.min(20, n));
+function itemKey(it: CheckoutItem) {
+  // Used for matching when we store “last checkout items”
+  return `${it.flavor}|${it.type}|${it.frequency ?? ""}|${it.quantity}`;
 }
 
-function isFrequencyWeeks(v: unknown): v is FrequencyWeeks {
+function isFrequency(v: unknown): v is CheckoutItem["frequency"] {
   return v === "2" || v === "4" || v === "6";
+}
+
+function isCheckoutType(v: unknown): v is CheckoutItem["type"] {
+  return v === "onetime" || v === "subscribe";
 }
 
 export default function Checkout() {
@@ -60,51 +51,53 @@ export default function Checkout() {
   const [emailTouched, setEmailTouched] = useState(false);
 
   // Request UX
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<null | "subscription" | "onetime">(null);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Build a STRICT payload that matches your backend:
-   * - type: "onetime" | "subscribe"
-   * - frequency required only for subscribe
-   */
   const payloadItems: CheckoutItem[] = useMemo(() => {
     const safeItems = Array.isArray(items) ? items : [];
 
-    const normalized: CheckoutItem[] = [];
+    return safeItems
+      .map((it: any) => {
+        const flavor = String(it?.flavor ?? "").trim();
 
-    for (const raw of safeItems) {
-      const flavor = String(raw?.flavor ?? "").trim();
-      if (!flavor) continue;
+        // IMPORTANT: force literal union types so TS doesn’t widen to `string`
+        const type: CheckoutItem["type"] =
+          it?.type === "subscribe" ? "subscribe" : "onetime";
 
-      const quantity = clampQty(raw?.quantity);
+        const frequency: CheckoutItem["frequency"] | undefined =
+          type === "subscribe" && isFrequency(it?.frequency)
+            ? it.frequency
+            : undefined;
 
-      // IMPORTANT: keep this literal union (not string)
-      const rawType: unknown = raw?.type;
+        const qRaw = Number(it?.quantity);
+        const quantity = Number.isFinite(qRaw) ? Math.max(1, Math.floor(qRaw)) : 1;
 
-      if (rawType === "subscribe") {
-        const freq = raw?.frequency;
-        if (!isFrequencyWeeks(freq)) continue;
-
-        normalized.push({
-          flavor,
-          type: "subscribe",
-          frequency: freq,
-          quantity,
-        });
-      } else {
-        normalized.push({
-          flavor,
-          type: "onetime",
-          quantity,
-        });
-      }
-    }
-
-    return normalized;
+        return { flavor, type, frequency, quantity } satisfies CheckoutItem;
+      })
+      .filter((it) => {
+        if (!it.flavor) return false;
+        if (!isCheckoutType(it.type)) return false;
+        if (it.type === "subscribe" && !it.frequency) return false;
+        if (!Number.isInteger(it.quantity) || it.quantity < 1) return false;
+        return true;
+      });
   }, [items]);
 
   const isEmpty = payloadItems.length === 0;
+
+  const subscriptionItems = useMemo(
+    () => payloadItems.filter((it) => it.type === "subscribe"),
+    [payloadItems],
+  );
+  const onetimeItems = useMemo(
+    () => payloadItems.filter((it) => it.type === "onetime"),
+    [payloadItems],
+  );
+
+  const hasSub = subscriptionItems.length > 0;
+  const hasOne = onetimeItems.length > 0;
+  const isMixed = hasSub && hasOne;
 
   const normalizedEmail = useMemo(() => normalizeEmail(email), [email]);
   const emailOk = useMemo(
@@ -112,27 +105,13 @@ export default function Checkout() {
     [normalizedEmail],
   );
 
-  /**
-   * Prevent mixed checkout modes in one session.
-   * This mirrors your backend rule and gives the user an immediate, clean error.
-   */
-  const hasSub = useMemo(
-    () => payloadItems.some((i) => i.type === "subscribe"),
-    [payloadItems],
-  );
-  const hasOne = useMemo(
-    () => payloadItems.some((i) => i.type === "onetime"),
-    [payloadItems],
-  );
-  const mixedModes = hasSub && hasOne;
-
-  // Clear server error once user starts fixing input
+  // Clear server error once user starts fixing email
   useEffect(() => {
     if (error && emailTouched) setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email]);
 
-  async function handleStripeCheckout() {
+  async function startCheckout(mode: "subscription" | "onetime") {
     if (isEmpty || loading) return;
 
     setError(null);
@@ -143,22 +122,39 @@ export default function Checkout() {
       return;
     }
 
-    if (mixedModes) {
-      setError(
-        "Subscriptions and one-time purchases can’t be checked out together. Please remove one type and checkout separately.",
-      );
+    const itemsToCheckout = mode === "subscription" ? subscriptionItems : onetimeItems;
+
+    if (!itemsToCheckout.length) {
+      setError("Nothing to checkout for that selection.");
       return;
     }
 
-    setLoading(true);
+    setLoading(mode);
 
     try {
+      // Store which items we are checking out (optional but helpful)
+      localStorage.setItem(
+        "kimora-last-checkout",
+        JSON.stringify({
+          mode,
+          email: normalizedEmail,
+          items: itemsToCheckout.map((it) => ({
+            flavor: it.flavor,
+            type: it.type,
+            frequency: it.frequency,
+            quantity: it.quantity,
+            _k: itemKey(it),
+          })),
+          ts: Date.now(),
+        }),
+      );
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: normalizedEmail,
-          items: payloadItems,
+          items: itemsToCheckout,
         }),
       });
 
@@ -181,18 +177,11 @@ export default function Checkout() {
       window.location.href = url;
     } catch (e: any) {
       setError(e?.message || "Checkout failed.");
-      setLoading(false);
+      setLoading(null);
     }
   }
 
   const showEmailInlineError = emailTouched && !emailOk && !!email;
-
-  const modeLabel = useMemo(() => {
-    if (mixedModes) return "Mixed items";
-    if (hasSub) return "Subscription";
-    if (hasOne) return "One-time purchase";
-    return "";
-  }, [mixedModes, hasSub, hasOne]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -208,14 +197,15 @@ export default function Checkout() {
               </h1>
 
               <p className="text-muted-foreground mb-8">
-                You’ll enter shipping and payment details on Stripe (secure).
-                We use your email for your receipt and order updates.
+                You’ll enter shipping and payment details on Stripe (secure). We use
+                your email for your receipt and order updates.
               </p>
 
               <div className="mb-6">
                 <Label className="text-sm text-white mb-2 block" htmlFor="email">
                   Email for receipt
                 </Label>
+
                 <Input
                   id="email"
                   value={email}
@@ -233,17 +223,21 @@ export default function Checkout() {
                   </p>
                 ) : (
                   <p className="text-xs text-white/50 mt-2">
-                    Stripe will pre-fill this on the next screen and email your
-                    receipt automatically.
+                    Stripe will pre-fill this on the next screen and send your receipt
+                    automatically.
                   </p>
                 )}
               </div>
 
-              {mixedModes ? (
-                <div className="mb-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-yellow-100">
-                  Your cart includes both subscription and one-time items. Stripe
-                  Checkout can only handle one mode at a time — please checkout
-                  separately.
+              {isMixed ? (
+                <div className="mb-6 rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-white font-semibold mb-1">
+                    Two-part checkout
+                  </div>
+                  <p className="text-sm text-white/70">
+                    Subscriptions and one-time orders must be checked out separately.
+                    Choose what you want to checkout first — we’ll keep it simple.
+                  </p>
                 </div>
               ) : null}
 
@@ -253,21 +247,54 @@ export default function Checkout() {
                 </div>
               ) : null}
 
+              {/* Buttons */}
               <div className="flex flex-col gap-3">
-                <Button
-                  type="button"
-                  onClick={handleStripeCheckout}
-                  disabled={loading || isEmpty || !emailOk || mixedModes}
-                  className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg"
-                >
-                  {loading ? "Redirecting to Stripe..." : "Continue to Payment"}
-                </Button>
+                {!isMixed ? (
+                  <Button
+                    type="button"
+                    onClick={() => startCheckout(hasSub ? "subscription" : "onetime")}
+                    disabled={isEmpty || !emailOk || !!loading}
+                    className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg"
+                  >
+                    {loading ? "Redirecting to Stripe..." : "Continue to Payment"}
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      onClick={() => startCheckout("subscription")}
+                      disabled={!hasSub || !emailOk || !!loading}
+                      className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg"
+                    >
+                      {loading === "subscription"
+                        ? "Redirecting to Stripe..."
+                        : "Checkout Subscription"}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      onClick={() => startCheckout("onetime")}
+                      disabled={!hasOne || !emailOk || !!loading}
+                      className="w-full h-14 bg-white/10 hover:bg-white/20 text-white font-bold uppercase tracking-wider text-lg"
+                    >
+                      {loading === "onetime"
+                        ? "Redirecting to Stripe..."
+                        : "Checkout One-Time Items"}
+                    </Button>
+
+                    <p className="text-xs text-white/50">
+                      After the first checkout, you can come back and complete the
+                      other one.
+                    </p>
+                  </>
+                )}
 
                 <Button
                   type="button"
                   variant="secondary"
                   className="w-full h-12 bg-white/10 hover:bg-white/20 text-white"
                   onClick={() => setLocation("/cart")}
+                  disabled={!!loading}
                 >
                   Back to Cart
                 </Button>
@@ -281,35 +308,80 @@ export default function Checkout() {
             {/* Right: Order Summary */}
             <div className="lg:pl-12 lg:border-l border-white/10">
               <div className="bg-card/50 p-6 rounded-xl border border-white/5 sticky top-32">
-                <div className="flex items-center justify-between gap-4 mb-6">
-                  <h3 className="text-lg font-bold text-white">Order Summary</h3>
-                  {modeLabel ? (
-                    <span className="text-xs text-white/60 border border-white/10 rounded-full px-3 py-1">
-                      {modeLabel}
-                    </span>
-                  ) : null}
-                </div>
+                <h3 className="text-lg font-bold text-white mb-6">Order Summary</h3>
 
                 {payloadItems.length ? (
-                  <div className="space-y-3 mb-6">
-                    {payloadItems.map((it, idx) => (
-                      <div
-                        key={`${it.flavor}-${it.type}-${"frequency" in it ? it.frequency : "n"}-${idx}`}
-                        className="flex justify-between gap-4"
-                      >
-                        <div className="min-w-0">
-                          <div className="text-white font-medium truncate">
-                            {prettyFlavor(it.flavor)}
+                  <div className="space-y-6 mb-6">
+                    {isMixed ? (
+                      <>
+                        <div>
+                          <div className="text-sm font-semibold text-white mb-2">
+                            Subscription
                           </div>
-                          <div className="text-xs text-white/60">
-                            {it.type === "subscribe"
-                              ? `Subscription • every ${it.frequency} weeks`
-                              : "One-time purchase"}
-                            {` • qty ${it.quantity}`}
+                          <div className="space-y-3">
+                            {subscriptionItems.map((it, idx) => (
+                              <div
+                                key={`sub-${it.flavor}-${it.frequency}-${idx}`}
+                                className="flex justify-between gap-4"
+                              >
+                                <div className="min-w-0">
+                                  <div className="text-white font-medium truncate">
+                                    {prettyFlavor(it.flavor)}
+                                  </div>
+                                  <div className="text-xs text-white/60">
+                                    {`Subscription • every ${it.frequency} weeks • qty ${it.quantity}`}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
+
+                        <div className="border-t border-white/10 pt-5">
+                          <div className="text-sm font-semibold text-white mb-2">
+                            One-time items
+                          </div>
+                          <div className="space-y-3">
+                            {onetimeItems.map((it, idx) => (
+                              <div
+                                key={`one-${it.flavor}-${idx}`}
+                                className="flex justify-between gap-4"
+                              >
+                                <div className="min-w-0">
+                                  <div className="text-white font-medium truncate">
+                                    {prettyFlavor(it.flavor)}
+                                  </div>
+                                  <div className="text-xs text-white/60">
+                                    {`One-time purchase • qty ${it.quantity}`}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-3">
+                        {payloadItems.map((it, idx) => (
+                          <div
+                            key={`${it.flavor}-${it.type}-${it.frequency ?? "n"}-${idx}`}
+                            className="flex justify-between gap-4"
+                          >
+                            <div className="min-w-0">
+                              <div className="text-white font-medium truncate">
+                                {prettyFlavor(it.flavor)}
+                              </div>
+                              <div className="text-xs text-white/60">
+                                {it.type === "subscribe"
+                                  ? `Subscription • every ${it.frequency} weeks`
+                                  : "One-time purchase"}
+                                {` • qty ${it.quantity}`}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 ) : (
                   <div className="text-white/60 mb-6">
@@ -322,7 +394,7 @@ export default function Checkout() {
                 )}
 
                 <div className="flex justify-between mb-4">
-                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-muted-foreground">Cart subtotal</span>
                   <span className="text-white font-medium">
                     ${Number(subtotal || 0).toFixed(2)}
                   </span>
@@ -330,15 +402,13 @@ export default function Checkout() {
 
                 <div className="flex justify-between mb-4">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span className="text-white font-medium">
-                    Calculated on Stripe
-                  </span>
+                  <span className="text-white font-medium">Calculated on Stripe</span>
                 </div>
 
                 <div className="border-t border-white/10 pt-4 flex justify-between">
                   <span className="text-xl font-bold text-white">Total</span>
                   <span className="text-xl font-bold text-primary">
-                    ${Number(subtotal || 0).toFixed(2)}
+                    Finalized in Stripe
                   </span>
                 </div>
 

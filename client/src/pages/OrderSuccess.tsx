@@ -13,6 +13,28 @@ type CheckoutSessionResponse = {
   subscription: string | null;
 };
 
+type CartItem = {
+  flavor: string; // e.g. "lemon-yuzu"
+  type: "onetime" | "subscribe";
+  frequency?: "2" | "4" | "6";
+  quantity: number;
+};
+
+// Must match Checkout.tsx itemKey() exactly
+function itemKey(it: CartItem) {
+  return `${it.flavor}|${it.type}|${it.frequency ?? ""}|${it.quantity}`;
+}
+
+function safeReadJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
@@ -48,12 +70,56 @@ export default function OrderSuccess() {
     }
   }, [location]);
 
-  const isSubscription = session?.mode === "subscription" || Boolean(session?.subscription);
+  const isSubscription =
+    session?.mode === "subscription" || Boolean(session?.subscription);
 
+  /**
+   * Cart clearing behavior:
+   * - If this was a mixed-cart flow, keep remaining items in cart.
+   * - Remove only the items that were checked out (based on kimora-last-checkout).
+   * - If we can't confidently determine, fallback to clearing everything (safe).
+   */
   useEffect(() => {
-    // Clear cart on success (only once per mount)
-    clearCart();
-    localStorage.removeItem("kimora-cart");
+    const last = safeReadJson<{
+      mode: "subscription" | "onetime";
+      email?: string;
+      items: Array<CartItem & { _k?: string }>;
+      ts: number;
+    }>("kimora-last-checkout");
+
+    const now = Date.now();
+    const isRecent = !!last?.ts && now - last.ts < 30 * 60 * 1000; // 30 min
+
+    const cart = safeReadJson<CartItem[]>("kimora-cart") ?? [];
+
+    // If we can't safely compute what to remove, do the old behavior (clear all)
+    if (!last || !isRecent || !Array.isArray(last.items) || cart.length === 0) {
+      clearCart();
+      localStorage.removeItem("kimora-cart");
+      localStorage.removeItem("kimora-last-checkout");
+      return;
+    }
+
+    // Build set of purchased item keys
+    const purchasedKeys = new Set(
+      last.items.map((it) => it._k || itemKey(it))
+    );
+
+    // Remove purchased items, keep remaining
+    const remaining = cart.filter((it) => !purchasedKeys.has(itemKey(it)));
+
+    if (remaining.length === 0) {
+      // Fully clear
+      clearCart();
+      localStorage.removeItem("kimora-cart");
+    } else {
+      // Keep remaining in localStorage for the second checkout
+      localStorage.setItem("kimora-cart", JSON.stringify(remaining));
+      // IMPORTANT: do NOT call clearCart() here, because that would wipe remaining items
+    }
+
+    // One-time use
+    localStorage.removeItem("kimora-last-checkout");
   }, [clearCart]);
 
   useEffect(() => {
@@ -63,7 +129,7 @@ export default function OrderSuccess() {
       setSessionLoading(true);
       setSessionError(null);
 
-      // If there's no session_id, we can still show a friendly page (but we can't infer subscription)
+      // If there's no session_id, we can still show a friendly page
       if (!sessionId) {
         if (!cancelled) {
           setSession(null);
@@ -74,19 +140,24 @@ export default function OrderSuccess() {
 
       try {
         const res = await fetch(
-          `/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`,
+          `/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`
         );
 
-        const data = (await res.json().catch(() => ({}))) as Partial<CheckoutSessionResponse>;
+        const data = (await res
+          .json()
+          .catch(() => ({}))) as Partial<CheckoutSessionResponse>;
 
         if (!res.ok) {
-          throw new Error((data as any)?.message || "Failed to load checkout session.");
+          throw new Error(
+            (data as any)?.message || "Failed to load checkout session."
+          );
         }
 
         if (!cancelled) {
-          const normalizedEmail = data?.customer_email ? normalizeEmail(data.customer_email) : "";
+          const normalizedEmail = data?.customer_email
+            ? normalizeEmail(data.customer_email)
+            : "";
           setSession(data as CheckoutSessionResponse);
-          // Prefill email if we have it (only if user hasn't typed something already)
           setEmail((prev) => (prev ? prev : normalizedEmail));
           setSessionLoading(false);
         }
@@ -107,8 +178,6 @@ export default function OrderSuccess() {
   async function requestPortalLink() {
     const normalized = normalizeEmail(email);
 
-    // NOTE: We always want to keep the response generic for privacy,
-    // but we can validate input locally for UX.
     if (!normalized) {
       setSendError("Enter the email you used at checkout.");
       return;
@@ -153,22 +222,21 @@ export default function OrderSuccess() {
           </h1>
 
           <p className="text-muted-foreground mb-2">
-            Welcome to Kimora. Progress is built one decision at a time. You just made a
-            good one.
+            Welcome to Kimora. Progress is built one decision at a time. You just
+            made a good one.
           </p>
 
           <p className="text-xs text-white/50 mb-8">
             You’ll receive an email receipt from Stripe shortly.
           </p>
 
-          {/* Session troubleshooting (optional, subtle) */}
           {sessionError && (
             <div className="mx-auto mb-6 max-w-xl rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
               {sessionError}
             </div>
           )}
 
-          {/* 2) CONTROL (subscription only) */}
+          {/* SUBSCRIPTION CONTROL */}
           {!sessionLoading && isSubscription && (
             <div className="bg-card/50 border border-white/10 rounded-xl p-6 mb-6 text-left">
               <h3 className="text-white font-semibold text-center mb-1">
@@ -205,7 +273,8 @@ export default function OrderSuccess() {
                   </Button>
 
                   <div className="mt-3 text-[11px] text-white/45 text-center">
-                    Links expire after ~15 minutes. If it expires, request a new one.
+                    Links expire after ~15 minutes. If it expires, request a new
+                    one.
                   </div>
 
                   <div className="mt-2 text-[11px] text-white/35 text-center">
@@ -227,7 +296,7 @@ export default function OrderSuccess() {
             </div>
           )}
 
-          {/* 3) GUIDANCE */}
+          {/* GUIDANCE */}
           <div className="bg-card/50 border border-white/10 rounded-xl p-6 mb-6 text-left">
             <h3 className="text-white font-semibold text-center mb-4">
               Your routine starts now
@@ -252,22 +321,24 @@ export default function OrderSuccess() {
               <div className="h-px w-full bg-white/10" />
 
               <div>
-                <div className="text-sm font-semibold text-white mb-2">What’s next</div>
+                <div className="text-sm font-semibold text-white mb-2">
+                  What’s next
+                </div>
                 <ul className="text-sm text-white/75 space-y-2 list-disc pl-5">
                   <li>
-                    You’ll get an order email from Stripe (check spam/promotions if you
-                    don’t see it).
+                    You’ll get an order email from Stripe (check spam/promotions
+                    if you don’t see it).
                   </li>
                   <li>
-                    Shipping + taxes are finalized in Stripe Checkout (your receipt reflects
-                    the final total).
+                    Shipping + taxes are finalized in Stripe Checkout (your
+                    receipt reflects the final total).
                   </li>
                 </ul>
               </div>
             </div>
           </div>
 
-          {/* 4) COMMITMENT MANTRA */}
+          {/* COMMITMENT */}
           <div className="mx-auto max-w-2xl mb-8 rounded-xl border border-white/10 bg-black/30 px-6 py-4">
             <div className="text-xs uppercase tracking-wider text-white/45 mb-1">
               Commitment tip
@@ -278,7 +349,7 @@ export default function OrderSuccess() {
             </div>
           </div>
 
-          {/* 5) CTAs */}
+          {/* CTAs */}
           <div className="flex justify-center gap-4">
             <Link href="/shop">
               <Button className="bg-primary hover:bg-primary/90">
@@ -292,7 +363,8 @@ export default function OrderSuccess() {
           </div>
 
           <p className="text-xs text-white/50 mt-6">
-            If you don’t see the email within a few minutes, check spam/promotions.
+            If you don’t see the email within a few minutes, check
+            spam/promotions.
           </p>
         </div>
       </main>

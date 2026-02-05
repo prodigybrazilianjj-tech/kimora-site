@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
@@ -12,6 +12,12 @@ type CheckoutItem = {
   type: "onetime" | "subscribe";
   frequency?: "2" | "4" | "6";
   quantity: number;
+};
+
+type NextCheckoutHint = {
+  mode: "subscription" | "onetime";
+  email?: string;
+  ts: number;
 };
 
 function prettyFlavor(slug: string) {
@@ -42,8 +48,18 @@ function isCheckoutType(v: unknown): v is CheckoutItem["type"] {
   return v === "onetime" || v === "subscribe";
 }
 
+function safeReadJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
 export default function Checkout() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { items, subtotal } = useCart() as any;
 
   // Email UX
@@ -122,7 +138,8 @@ export default function Checkout() {
       return;
     }
 
-    const itemsToCheckout = mode === "subscription" ? subscriptionItems : onetimeItems;
+    const itemsToCheckout =
+      mode === "subscription" ? subscriptionItems : onetimeItems;
 
     if (!itemsToCheckout.length) {
       setError("Nothing to checkout for that selection.");
@@ -132,7 +149,7 @@ export default function Checkout() {
     setLoading(mode);
 
     try {
-      // Store which items we are checking out (optional but helpful)
+      // Store which items we are checking out (used by OrderSuccess to remove only purchased items)
       localStorage.setItem(
         "kimora-last-checkout",
         JSON.stringify({
@@ -183,6 +200,82 @@ export default function Checkout() {
 
   const showEmailInlineError = emailTouched && !emailOk && !!email;
 
+  // ---- AUTOSTART SUPPORT (from OrderSuccess “Checkout remaining items”) ----
+  const didAutostartRef = useRef(false);
+
+  const autostartRequested = useMemo(() => {
+    try {
+      const url = new URL(window.location.href);
+      return url.searchParams.get("autostart") === "1";
+    } catch {
+      return /[?&]autostart=1/.test(location);
+    }
+  }, [location]);
+
+  useEffect(() => {
+    // Only attempt once per mount
+    if (!autostartRequested || didAutostartRef.current) return;
+
+    // Wait until we actually have items loaded
+    if (payloadItems.length === 0) return;
+
+    const hint = safeReadJson<NextCheckoutHint>("kimora-next-checkout");
+    const now = Date.now();
+    const hintIsRecent = !!hint?.ts && now - hint.ts < 30 * 60 * 1000; // 30 minutes
+
+    // If hint is missing/old, don't autostart (just show the page normally)
+    if (!hint || !hintIsRecent) return;
+
+    // Prefill email if empty
+    if (!email && hint.email) setEmail(hint.email);
+
+    const candidateEmail = normalizeEmail(email || hint.email || "");
+    const candidateEmailOk = !!candidateEmail && isValidEmail(candidateEmail);
+
+    // Need a valid email to proceed
+    if (!candidateEmailOk) return;
+
+    // Determine which mode to run
+    const desiredMode = hint.mode;
+
+    // If cart is mixed, we need the hint mode to choose a side (we have it)
+    // If cart is not mixed, we can just do the only available mode
+    const effectiveMode: "subscription" | "onetime" = isMixed
+      ? desiredMode
+      : hasSub
+        ? "subscription"
+        : "onetime";
+
+    // Check that we actually have items for that mode
+    const hasItemsForMode =
+      effectiveMode === "subscription" ? subscriptionItems.length > 0 : onetimeItems.length > 0;
+
+    if (!hasItemsForMode) {
+      // Nothing to run — maybe cart already completed
+      localStorage.removeItem("kimora-next-checkout");
+      return;
+    }
+
+    // Prevent multiple kicks + clear hint so refresh doesn’t loop
+    didAutostartRef.current = true;
+    localStorage.removeItem("kimora-next-checkout");
+
+    // If the email in state is still blank but hint had it, set it (for UI)
+    if (!email) setEmail(candidateEmail);
+
+    // Start checkout
+    startCheckout(effectiveMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    autostartRequested,
+    payloadItems.length,
+    subscriptionItems.length,
+    onetimeItems.length,
+    isMixed,
+    hasSub,
+    email,
+  ]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
@@ -231,9 +324,7 @@ export default function Checkout() {
 
               {isMixed ? (
                 <div className="mb-6 rounded-xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-white font-semibold mb-1">
-                    Two-part checkout
-                  </div>
+                  <div className="text-white font-semibold mb-1">Two-part checkout</div>
                   <p className="text-sm text-white/70">
                     Subscriptions and one-time orders must be checked out separately.
                     Choose what you want to checkout first — we’ll keep it simple.
@@ -283,8 +374,7 @@ export default function Checkout() {
                     </Button>
 
                     <p className="text-xs text-white/50">
-                      After the first checkout, you can come back and complete the
-                      other one.
+                      After the first checkout, you can come back and complete the other one.
                     </p>
                   </>
                 )}
@@ -407,9 +497,7 @@ export default function Checkout() {
 
                 <div className="border-t border-white/10 pt-4 flex justify-between">
                   <span className="text-xl font-bold text-white">Total</span>
-                  <span className="text-xl font-bold text-primary">
-                    Finalized in Stripe
-                  </span>
+                  <span className="text-xl font-bold text-primary">Finalized in Stripe</span>
                 </div>
 
                 <p className="text-xs text-white/50 mt-4">

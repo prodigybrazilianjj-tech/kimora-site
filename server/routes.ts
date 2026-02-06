@@ -181,6 +181,49 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/**
+ * Find an existing Stripe Customer for this email so Stripe Checkout can
+ * autofill address/shipping/payment info on subsequent checkouts.
+ *
+ * Priority:
+ *  1) Your DB (orders.stripeCustomerId for latest order with that email)
+ *  2) Stripe customers.list({ email }) as fallback
+ */
+async function findStripeCustomerIdByEmail(
+  email: string,
+): Promise<string | null> {
+  const normalized = normalizeEmail(email);
+  if (!normalized || !isValidEmail(normalized)) return null;
+
+  // 1) DB lookup (fast + consistent)
+  try {
+    const found = await db
+      .select({ stripeCustomerId: orders.stripeCustomerId })
+      .from(orders)
+      .where(eq(orders.customerEmail, normalized))
+      .orderBy(desc(orders.createdAt))
+      .limit(1);
+
+    const dbCustomerId = found?.[0]?.stripeCustomerId ?? null;
+    if (dbCustomerId) return dbCustomerId;
+  } catch (e) {
+    console.warn("[checkout] DB customer lookup failed:", e);
+  }
+
+  // 2) Stripe fallback
+  try {
+    const list = await stripe.customers.list({
+      email: normalized,
+      limit: 1,
+    });
+    const stripeCustomerId = list.data?.[0]?.id ?? null;
+    return stripeCustomerId;
+  } catch (e) {
+    console.warn("[checkout] Stripe customer lookup failed:", e);
+    return null;
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
@@ -521,7 +564,7 @@ Need help? Reply to this email or contact alex@kimoraco.com
   app.get("/api/customer-portal", handleCustomerPortal);
 
   /**
-   * Create Stripe Checkout Session (UPDATED to pass email to Stripe)
+   * Create Stripe Checkout Session (UPDATED to tie to existing customer when possible)
    * Body: { items: CheckoutItem[], email?: string }
    */
   app.post("/api/checkout", async (req, res) => {
@@ -548,11 +591,16 @@ Need help? Reply to this email or contact alex@kimoraco.com
       }
 
       for (const it of items) {
-        if (!it.flavor) return res.status(400).json({ message: "Missing flavor." });
+        if (!it.flavor)
+          return res.status(400).json({ message: "Missing flavor." });
         if (it.type !== "onetime" && it.type !== "subscribe") {
           return res.status(400).json({ message: "Invalid type." });
         }
-        if (!Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > 20) {
+        if (
+          !Number.isInteger(it.quantity) ||
+          it.quantity < 1 ||
+          it.quantity > 20
+        ) {
           return res.status(400).json({ message: "Invalid quantity." });
         }
         if (it.type === "subscribe") {
@@ -574,15 +622,31 @@ Need help? Reply to this email or contact alex@kimoraco.com
       const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
       const siteUrl = getSiteUrl();
 
+      // ✅ Key change: tie the Checkout Session to an existing Stripe customer (if we can find one)
+      const stripeCustomerId = email ? await findStripeCustomerIdByEmail(email) : null;
+
       const session = await stripe.checkout.sessions.create({
         mode,
 
-        // Prefill email in Stripe Checkout (so customer doesn't type twice)
-        ...(email ? { customer_email: email } : {}),
+        ...(stripeCustomerId
+          ? {
+              customer: stripeCustomerId,
+              // Allow Stripe Checkout to update saved customer details for better autofill next time
+              customer_update: {
+                address: "auto",
+                shipping: "auto",
+                name: "auto",
+              },
+            }
+          : {
+              // If we don't have a customer id yet, at least prefill the email
+              ...(email ? { customer_email: email } : {}),
+            }),
 
         ...(mode === "payment"
           ? {
-              customer_creation: "always",
+              // If no customer id exists, this ensures a customer is created so future checkouts can reuse it
+              ...(stripeCustomerId ? {} : { customer_creation: "always" }),
               // Helps ensure Stripe has the email for receipts on one-time payments
               ...(email ? { payment_intent_data: { receipt_email: email } } : {}),
             }
@@ -597,7 +661,12 @@ Need help? Reply to this email or contact alex@kimoraco.com
         shipping_address_collection: { allowed_countries: ["US"] },
         success_url: `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${siteUrl}/cart`,
-        metadata: { source: "kimora-site", mode },
+        metadata: {
+          source: "kimora-site",
+          mode,
+          // helpful for debugging / future analytics:
+          ...(stripeCustomerId ? { stripeCustomerId } : {}),
+        },
       });
 
       if (!session.url) {

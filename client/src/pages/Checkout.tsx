@@ -14,8 +14,6 @@ type CheckoutItem = {
   quantity: number;
 };
 
-type ResumeMode = "subscription" | "onetime";
-
 function prettyFlavor(slug: string) {
   return slug
     .split("-")
@@ -39,10 +37,6 @@ function isFrequency(v: unknown): v is CheckoutItem["frequency"] {
   return v === "2" || v === "4" || v === "6";
 }
 
-function isCheckoutType(v: unknown): v is CheckoutItem["type"] {
-  return v === "onetime" || v === "subscribe";
-}
-
 function safeReadJson<T>(key: string): T | null {
   try {
     const raw = localStorage.getItem(key);
@@ -53,17 +47,34 @@ function safeReadJson<T>(key: string): T | null {
   }
 }
 
-function parseResumeMode(raw: string | null): ResumeMode | null {
-  if (raw === "subscription" || raw === "onetime") return raw;
-  // (optional) allow old naming if you ever used it
-  if (raw === "sub") return "subscription";
-  if (raw === "one") return "onetime";
-  return null;
+function safeWriteJson(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
 }
 
+type ResumeMode = "subscription" | "onetime";
+
 export default function Checkout() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { items, subtotal } = useCart() as any;
+
+  // ---- query params (resume flow) ----
+  const resumeInfo = useMemo(() => {
+    try {
+      const url = new URL(window.location.href);
+      const resume = url.searchParams.get("resume") === "1";
+      const modeRaw = url.searchParams.get("mode");
+      const mode: ResumeMode | null =
+        modeRaw === "subscription" || modeRaw === "onetime" ? modeRaw : null;
+      return { resume, mode };
+    } catch {
+      // fallback if URL isn't available
+      return { resume: false, mode: null as ResumeMode | null };
+    }
+  }, []);
 
   // Email UX
   const [email, setEmail] = useState("");
@@ -73,39 +84,8 @@ export default function Checkout() {
   const [loading, setLoading] = useState<null | "subscription" | "onetime">(null);
   const [error, setError] = useState<string | null>(null);
 
-  // -----------------------
-  // RESUME FLOW (from OrderSuccess)
-  // -----------------------
-  const resumeInfo = useMemo(() => {
-    // example: /checkout?resume=1&mode=onetime
-    let resume = false;
-    let mode: ResumeMode | null = null;
-
-    try {
-      const url = new URL(window.location.href);
-      resume = url.searchParams.get("resume") === "1";
-      mode = parseResumeMode(url.searchParams.get("mode"));
-    } catch {
-      // fallback using location string
-      resume = location.includes("resume=1");
-      const m = location.match(/mode=([^&]+)/);
-      mode = parseResumeMode(m ? decodeURIComponent(m[1]) : null);
-    }
-
-    return { resume, mode };
-  }, [location]);
-
-  // Read last checkout email (so we can prefill without retyping)
-  useEffect(() => {
-    const last = safeReadJson<{ email?: string }>("kimora-last-checkout");
-    const storedEmail = last?.email ? normalizeEmail(last.email) : "";
-    if (storedEmail && !email) {
-      setEmail(storedEmail);
-      // if we're resuming we can consider email already "touched" so we don't show inline warnings
-      if (resumeInfo.resume) setEmailTouched(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeInfo.resume]);
+  // Guard: only auto-run once
+  const didAutoResume = useRef(false);
 
   const payloadItems: CheckoutItem[] = useMemo(() => {
     const safeItems = Array.isArray(items) ? items : [];
@@ -113,12 +93,13 @@ export default function Checkout() {
     return safeItems
       .map((it: any) => {
         const flavor = String(it?.flavor ?? "").trim();
-
         const type: CheckoutItem["type"] =
           it?.type === "subscribe" ? "subscribe" : "onetime";
 
         const frequency: CheckoutItem["frequency"] | undefined =
-          type === "subscribe" && isFrequency(it?.frequency) ? it.frequency : undefined;
+          type === "subscribe" && isFrequency(it?.frequency)
+            ? it.frequency
+            : undefined;
 
         const qRaw = Number(it?.quantity);
         const quantity = Number.isFinite(qRaw) ? Math.max(1, Math.floor(qRaw)) : 1;
@@ -127,7 +108,6 @@ export default function Checkout() {
       })
       .filter((it) => {
         if (!it.flavor) return false;
-        if (!isCheckoutType(it.type)) return false;
         if (it.type === "subscribe" && !it.frequency) return false;
         if (!Number.isInteger(it.quantity) || it.quantity < 1) return false;
         return true;
@@ -155,13 +135,36 @@ export default function Checkout() {
     [normalizedEmail],
   );
 
+  // ---- Prefill email (normal + resume) ----
+  useEffect(() => {
+    // Try best sources in order:
+    // 1) A saved email from any previous checkout attempt
+    // 2) The most recent "kimora-last-checkout" email (if still around)
+    // 3) Any stored "kimora-checkout-email" (legacy / fallback)
+    const storedDirect = safeReadJson<{ email?: string }>("kimora-checkout-email")?.email;
+    const last = safeReadJson<{ email?: string }>("kimora-last-checkout")?.email;
+
+    const candidate = String(storedDirect || last || "").trim();
+    if (!candidate) return;
+
+    // Only prefill if user hasn't typed
+    setEmail((prev) => (prev ? prev : candidate));
+  }, []);
+
+  // Persist email whenever it becomes valid (so resume always has it)
+  useEffect(() => {
+    if (emailOk) {
+      safeWriteJson("kimora-checkout-email", { email: normalizedEmail, ts: Date.now() });
+    }
+  }, [emailOk, normalizedEmail]);
+
   // Clear server error once user starts fixing email
   useEffect(() => {
     if (error && emailTouched) setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email]);
 
-  async function startCheckout(mode: ResumeMode) {
+  async function startCheckout(mode: "subscription" | "onetime") {
     if (isEmpty || loading) return;
 
     setError(null);
@@ -182,7 +185,10 @@ export default function Checkout() {
     setLoading(mode);
 
     try {
-      // Store which items we are checking out (OrderSuccess uses this)
+      // Persist email for resume flow
+      safeWriteJson("kimora-checkout-email", { email: normalizedEmail, ts: Date.now() });
+
+      // Store which items we are checking out (OrderSuccess uses this to remove only purchased items)
       localStorage.setItem(
         "kimora-last-checkout",
         JSON.stringify({
@@ -231,34 +237,29 @@ export default function Checkout() {
     }
   }
 
-  // -----------------------
-  // AUTO-START checkout when resuming
-  // -----------------------
-  const autoStartedRef = useRef(false);
-
+  // ---- Auto resume: if /checkout?resume=1&mode=... ----
   useEffect(() => {
     if (!resumeInfo.resume) return;
-    if (autoStartedRef.current) return;
     if (!resumeInfo.mode) return;
+    if (didAutoResume.current) return;
 
-    // if email isn't valid yet, don't auto-start; user can type/fix it
+    // Wait until:
+    // - we have a valid email (prefilled or user typed)
+    // - and we have items for the desired mode
     if (!emailOk) return;
 
-    // if the cart isn't loaded yet, don't auto-start
-    if (isEmpty) return;
-
     const mode = resumeInfo.mode;
+    const hasModeItems = mode === "subscription" ? hasSub : hasOne;
+    if (!hasModeItems) {
+      // If resume says "onetime" but cart doesn't have onetime items, stop.
+      return;
+    }
 
-    // Only auto-start if there are items for that mode
-    const hasItemsForMode =
-      mode === "subscription" ? subscriptionItems.length > 0 : onetimeItems.length > 0;
-
-    if (!hasItemsForMode) return;
-
-    autoStartedRef.current = true;
+    didAutoResume.current = true;
+    setEmailTouched(true);
     startCheckout(mode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeInfo.resume, resumeInfo.mode, emailOk, isEmpty, subscriptionItems.length, onetimeItems.length]);
+  }, [resumeInfo, emailOk, hasSub, hasOne]);
 
   const showEmailInlineError = emailTouched && !emailOk && !!email;
 

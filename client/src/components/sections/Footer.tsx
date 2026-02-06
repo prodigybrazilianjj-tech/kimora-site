@@ -18,7 +18,7 @@ export function Footer() {
             alex@kimoraco.com
           </a>
 
-          {/* Stripe-required legal links */}
+          {/* Legal + Utility Links */}
           <div className="flex flex-wrap justify-center gap-6 text-xs">
             <Link href="/terms" className="hover:text-white transition-colors">
               Terms of Service
@@ -28,20 +28,31 @@ export function Footer() {
               Privacy Policy
             </Link>
 
-            <Link href="/manage-subscription" className="hover:text-white transition-colors">
+            <Link
+              href="/manage-subscription"
+              className="hover:text-white transition-colors"
+            >
               Manage Subscription
             </Link>
 
             <Link href="/refunds" className="hover:text-white transition-colors">
               Refund Policy
             </Link>
+
+            <Link
+              href="/wholesale"
+              className="hover:text-white transition-colors"
+            >
+              Wholesale
+            </Link>
           </div>
         </div>
 
         <p className="text-xs text-white/20 max-w-2xl mx-auto leading-relaxed">
-          These statements have not been evaluated by the Food and Drug Administration.
-          This product is not intended to diagnose, treat, cure, or prevent any disease.
-          Always consult your healthcare provider before starting any new supplement.
+          These statements have not been evaluated by the Food and Drug
+          Administration. This product is not intended to diagnose, treat, cure,
+          or prevent any disease. Always consult your healthcare provider before
+          starting any new supplement.
         </p>
       </div>
     </footer>

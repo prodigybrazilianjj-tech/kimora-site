@@ -14,6 +14,34 @@ type CheckoutItem = {
   quantity: number;
 };
 
+type ResumeMode = "subscription" | "onetime";
+
+function safeGetString(key: string): string {
+  try {
+    return String(localStorage.getItem(key) || "");
+  } catch {
+    return "";
+  }
+}
+
+function safeSetString(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore
+  }
+}
+
+function safeReadJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
 function prettyFlavor(slug: string) {
   return slug
     .split("-")
@@ -41,49 +69,61 @@ function isCheckoutType(v: unknown): v is CheckoutItem["type"] {
   return v === "onetime" || v === "subscribe";
 }
 
-function safeReadJson<T>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
+function isResumeMode(v: unknown): v is ResumeMode {
+  return v === "subscription" || v === "onetime";
 }
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { items, subtotal } = useCart() as any;
 
-  // Email UX
-  const [email, setEmail] = useState("");
+  // ---- resume params ----
+  const [resumeMode, setResumeMode] = useState<ResumeMode | null>(null);
+  const didAutoStart = useRef(false);
+
+  // Email UX (hydrate synchronously so emailOk is true immediately on resume)
+  const [email, setEmail] = useState(() => {
+    const stored = normalizeEmail(safeGetString("kimora-checkout-email"));
+    if (stored && isValidEmail(stored)) return stored;
+
+    // Optional fallback (in case you store it elsewhere)
+    const last = safeReadJson<{ email?: string }>("kimora-last-checkout");
+    const lastEmail = normalizeEmail(String(last?.email || ""));
+    if (lastEmail && isValidEmail(lastEmail)) return lastEmail;
+
+    return "";
+  });
   const [emailTouched, setEmailTouched] = useState(false);
 
   // Request UX
   const [loading, setLoading] = useState<null | "subscription" | "onetime">(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Prevent double-autostart (React StrictMode/dev can run effects twice)
-  const didAutoStart = useRef(false);
-
-  // --- Parse resume mode from query string ---
-  const resumeInfo = useMemo(() => {
+  // Parse resume query params
+  useEffect(() => {
     try {
       const url = new URL(window.location.href);
       const resume = url.searchParams.get("resume");
       const mode = url.searchParams.get("mode");
 
-      const resumeOn = resume === "1" || resume === "true";
-
-      const parsedMode: "subscription" | "onetime" | null =
-        mode === "subscription" ? "subscription" : mode === "onetime" ? "onetime" : null;
-
-      return { resumeOn, parsedMode };
+      if (resume && resume !== "0") {
+        const m = isResumeMode(mode) ? mode : null;
+        setResumeMode(m);
+      } else {
+        setResumeMode(null);
+      }
     } catch {
-      // fallback for odd environments
-      return { resumeOn: false, parsedMode: null as "subscription" | "onetime" | null };
+      setResumeMode(null);
     }
   }, []);
+
+  // Persist email (so it survives back/forward and success->resume flow)
+  useEffect(() => {
+    const normalized = normalizeEmail(email);
+    if (normalized && isValidEmail(normalized)) {
+      safeSetString("kimora-checkout-email", normalized);
+    }
+  }, [email]);
 
   const payloadItems: CheckoutItem[] = useMemo(() => {
     const safeItems = Array.isArray(items) ? items : [];
@@ -96,7 +136,9 @@ export default function Checkout() {
           it?.type === "subscribe" ? "subscribe" : "onetime";
 
         const frequency: CheckoutItem["frequency"] | undefined =
-          type === "subscribe" && isFrequency(it?.frequency) ? it.frequency : undefined;
+          type === "subscribe" && isFrequency(it?.frequency)
+            ? it.frequency
+            : undefined;
 
         const qRaw = Number(it?.quantity);
         const quantity = Number.isFinite(qRaw) ? Math.max(1, Math.floor(qRaw)) : 1;
@@ -133,44 +175,36 @@ export default function Checkout() {
     [normalizedEmail],
   );
 
-  // Load a remembered email (so the “resume checkout” can be 1-click)
+  // Clear error once the email is valid
   useEffect(() => {
-    if (email) return;
-    const remembered = localStorage.getItem("kimora-checkout-email") || "";
-    if (remembered) setEmail(remembered);
-  }, [email]);
-
-  // Clear server error once user starts fixing email
-  useEffect(() => {
-    if (error && emailTouched) setError(null);
+    if (error && emailOk) setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email]);
+  }, [emailOk]);
 
-  async function startCheckout(mode: "subscription" | "onetime") {
-    if (isEmpty || loading) return;
+  async function startCheckout(mode: ResumeMode) {
+    if (loading) return;
 
     setError(null);
     setEmailTouched(true);
 
     if (!emailOk) {
       setError("Please enter a valid email for your receipt and order updates.");
+      setLoading(null);
       return;
     }
-
-    // Persist email so the next leg (resume) can auto-run
-    localStorage.setItem("kimora-checkout-email", normalizedEmail);
 
     const itemsToCheckout = mode === "subscription" ? subscriptionItems : onetimeItems;
 
     if (!itemsToCheckout.length) {
       setError("Nothing to checkout for that selection.");
+      setLoading(null);
       return;
     }
 
     setLoading(mode);
 
     try {
-      // Store which items we are checking out (helps OrderSuccess remove only purchased ones)
+      // Store which items we are checking out (helps OrderSuccess remove only purchased items)
       localStorage.setItem(
         "kimora-last-checkout",
         JSON.stringify({
@@ -219,36 +253,23 @@ export default function Checkout() {
     }
   }
 
-  // ✅ AUTO-START when coming from OrderSuccess “Finish checkout”
+  // ✅ AUTO-START RESUME FLOW
   useEffect(() => {
-    if (!resumeInfo.resumeOn) return;
-    if (!resumeInfo.parsedMode) return;
+    if (!resumeMode) return;
     if (didAutoStart.current) return;
-    if (loading) return;
+    if (isEmpty) return;
 
-    const mode = resumeInfo.parsedMode;
+    // Must be ready to proceed
+    if (!emailOk) return;
 
-    // Only auto-start if the cart actually has items of that mode
-    const hasModeItems = mode === "subscription" ? hasSub : hasOne;
-    if (!hasModeItems) return;
-
-    // We need a valid email to auto-run
-    const remembered = localStorage.getItem("kimora-checkout-email") || "";
-    const effectiveEmail = normalizeEmail(email || remembered);
-
-    if (!effectiveEmail || !isValidEmail(effectiveEmail)) {
-      // Let the page render and ask for email; don't auto-run
-      return;
-    }
-
-    // Ensure state has the email (so UI matches reality)
-    if (!email) setEmail(effectiveEmail);
+    // If resumeMode says "onetime" but there are no one-time items, don't auto-start
+    if (resumeMode === "onetime" && !hasOne) return;
+    if (resumeMode === "subscription" && !hasSub) return;
 
     didAutoStart.current = true;
-    // slight delay so UI can paint "Redirecting..." and avoid React timing weirdness
-    setTimeout(() => startCheckout(mode), 50);
+    startCheckout(resumeMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeInfo, email, hasSub, hasOne, loading]);
+  }, [resumeMode, isEmpty, emailOk, hasOne, hasSub]);
 
   const showEmailInlineError = emailTouched && !emailOk && !!email;
 
@@ -259,7 +280,7 @@ export default function Checkout() {
       <main className="pt-32 pb-24">
         <div className="container px-4 mx-auto max-w-5xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Left: CTA */}
+            {/* Left */}
             <div>
               <h1 className="text-3xl font-display font-bold text-white mb-6">
                 Checkout
@@ -269,6 +290,20 @@ export default function Checkout() {
                 You’ll enter shipping and payment details on Stripe (secure). We use
                 your email for your receipt and order updates.
               </p>
+
+              {/* If resuming, show a small banner */}
+              {resumeMode ? (
+                <div className="mb-6 rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-white font-semibold mb-1">
+                    Resuming checkout
+                  </div>
+                  <p className="text-sm text-white/70">
+                    We’re sending you to Stripe for your{" "}
+                    <b>{resumeMode === "onetime" ? "one-time items" : "subscription"}</b>.
+                    {loading ? " Redirecting now…" : ""}
+                  </p>
+                </div>
+              ) : null}
 
               <div className="mb-6">
                 <Label className="text-sm text-white mb-2 block" htmlFor="email">
@@ -284,6 +319,7 @@ export default function Checkout() {
                   inputMode="email"
                   autoComplete="email"
                   className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                  disabled={!!loading} // prevents weird mid-redirect edits
                 />
 
                 {showEmailInlineError ? (
@@ -305,7 +341,6 @@ export default function Checkout() {
                   </div>
                   <p className="text-sm text-white/70">
                     Subscriptions and one-time orders must be checked out separately.
-                    Choose what you want to checkout first — we’ll keep it simple.
                   </p>
                 </div>
               ) : null}

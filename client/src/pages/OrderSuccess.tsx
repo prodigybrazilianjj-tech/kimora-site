@@ -284,6 +284,10 @@ export default function OrderSuccess() {
         ? "Finish subscription checkout"
         : "Back to checkout";
 
+  // ✅ THIS is the key fix: send resume=1 + mode so Checkout auto-starts and uses stored email
+  const finishHref =
+    remainingInfo?.nextMode ? `/checkout?resume=1&mode=${remainingInfo.nextMode}` : "/checkout";
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
@@ -337,7 +341,7 @@ export default function OrderSuccess() {
               </div>
 
               <div className="flex flex-col gap-3">
-                <Link href="/checkout">
+                <Link href={finishHref}>
                   <Button className="w-full bg-primary hover:bg-primary/90">
                     {finishLabel}
                   </Button>

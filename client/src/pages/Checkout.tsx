@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
@@ -15,13 +15,6 @@ type CheckoutItem = {
 };
 
 type ResumeMode = "subscription" | "onetime";
-
-type LastCheckout = {
-  mode: ResumeMode;
-  email?: string;
-  items: Array<CheckoutItem & { _k?: string }>;
-  ts: number;
-};
 
 function prettyFlavor(slug: string) {
   return slug
@@ -50,10 +43,6 @@ function isCheckoutType(v: unknown): v is CheckoutItem["type"] {
   return v === "onetime" || v === "subscribe";
 }
 
-function isResumeMode(v: unknown): v is ResumeMode {
-  return v === "subscription" || v === "onetime";
-}
-
 function safeReadJson<T>(key: string): T | null {
   try {
     const raw = localStorage.getItem(key);
@@ -64,8 +53,16 @@ function safeReadJson<T>(key: string): T | null {
   }
 }
 
+function parseResumeMode(raw: string | null): ResumeMode | null {
+  if (raw === "subscription" || raw === "onetime") return raw;
+  // (optional) allow old naming if you ever used it
+  if (raw === "sub") return "subscription";
+  if (raw === "one") return "onetime";
+  return null;
+}
+
 export default function Checkout() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { items, subtotal } = useCart() as any;
 
   // Email UX
@@ -76,26 +73,40 @@ export default function Checkout() {
   const [loading, setLoading] = useState<null | "subscription" | "onetime">(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Used to ensure we only auto-start once
-  const autoStartedRef = useRef(false);
+  // -----------------------
+  // RESUME FLOW (from OrderSuccess)
+  // -----------------------
+  const resumeInfo = useMemo(() => {
+    // example: /checkout?resume=1&mode=onetime
+    let resume = false;
+    let mode: ResumeMode | null = null;
 
-  // Parse resume flags from URL (for the "finish checkout" flow)
-  const resume = useMemo(() => {
     try {
       const url = new URL(window.location.href);
-      const resumeFlag = url.searchParams.get("resume") === "1";
-      const rawMode = url.searchParams.get("mode"); // string | null
-
-      return {
-        resume: resumeFlag,
-        mode: isResumeMode(rawMode) ? rawMode : null,
-      };
+      resume = url.searchParams.get("resume") === "1";
+      mode = parseResumeMode(url.searchParams.get("mode"));
     } catch {
-      return { resume: false, mode: null as ResumeMode | null };
+      // fallback using location string
+      resume = location.includes("resume=1");
+      const m = location.match(/mode=([^&]+)/);
+      mode = parseResumeMode(m ? decodeURIComponent(m[1]) : null);
     }
-  }, []);
 
-  // Cart -> payload items (strict typing so TS doesn’t widen unions)
+    return { resume, mode };
+  }, [location]);
+
+  // Read last checkout email (so we can prefill without retyping)
+  useEffect(() => {
+    const last = safeReadJson<{ email?: string }>("kimora-last-checkout");
+    const storedEmail = last?.email ? normalizeEmail(last.email) : "";
+    if (storedEmail && !email) {
+      setEmail(storedEmail);
+      // if we're resuming we can consider email already "touched" so we don't show inline warnings
+      if (resumeInfo.resume) setEmailTouched(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeInfo.resume]);
+
   const payloadItems: CheckoutItem[] = useMemo(() => {
     const safeItems = Array.isArray(items) ? items : [];
 
@@ -103,7 +114,6 @@ export default function Checkout() {
       .map((it: any) => {
         const flavor = String(it?.flavor ?? "").trim();
 
-        // Force literal union types so TS doesn’t widen to `string`
         const type: CheckoutItem["type"] =
           it?.type === "subscribe" ? "subscribe" : "onetime";
 
@@ -130,7 +140,6 @@ export default function Checkout() {
     () => payloadItems.filter((it) => it.type === "subscribe"),
     [payloadItems],
   );
-
   const onetimeItems = useMemo(
     () => payloadItems.filter((it) => it.type === "onetime"),
     [payloadItems],
@@ -141,7 +150,6 @@ export default function Checkout() {
   const isMixed = hasSub && hasOne;
 
   const normalizedEmail = useMemo(() => normalizeEmail(email), [email]);
-
   const emailOk = useMemo(
     () => Boolean(normalizedEmail) && isValidEmail(normalizedEmail),
     [normalizedEmail],
@@ -152,21 +160,6 @@ export default function Checkout() {
     if (error && emailTouched) setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email]);
-
-  // Prefill email during resume flow from kimora-last-checkout (so they don’t type again)
-  useEffect(() => {
-    if (!resume.resume) return;
-    if (email) return;
-
-    const last = safeReadJson<LastCheckout>("kimora-last-checkout");
-    const now = Date.now();
-    const isRecent = !!last?.ts && now - last.ts < 30 * 60 * 1000; // 30 min
-
-    if (isRecent && last?.email) {
-      setEmail(last.email);
-      setEmailTouched(false);
-    }
-  }, [resume.resume, email]);
 
   async function startCheckout(mode: ResumeMode) {
     if (isEmpty || loading) return;
@@ -189,7 +182,7 @@ export default function Checkout() {
     setLoading(mode);
 
     try {
-      // Store which items we are checking out so OrderSuccess can keep remaining items in cart
+      // Store which items we are checking out (OrderSuccess uses this)
       localStorage.setItem(
         "kimora-last-checkout",
         JSON.stringify({
@@ -238,28 +231,34 @@ export default function Checkout() {
     }
   }
 
-  // Auto-start checkout when returning from first success page (resume flow)
+  // -----------------------
+  // AUTO-START checkout when resuming
+  // -----------------------
+  const autoStartedRef = useRef(false);
+
   useEffect(() => {
-    if (!resume.resume) return;
+    if (!resumeInfo.resume) return;
     if (autoStartedRef.current) return;
+    if (!resumeInfo.mode) return;
+
+    // if email isn't valid yet, don't auto-start; user can type/fix it
     if (!emailOk) return;
 
-    const mode = resume.mode;
-    if (!mode) return;
+    // if the cart isn't loaded yet, don't auto-start
+    if (isEmpty) return;
 
-    // Only start if there are items for that mode
-    const modeHasItems = mode === "subscription" ? hasSub : hasOne;
-    if (!modeHasItems) return;
+    const mode = resumeInfo.mode;
+
+    // Only auto-start if there are items for that mode
+    const hasItemsForMode =
+      mode === "subscription" ? subscriptionItems.length > 0 : onetimeItems.length > 0;
+
+    if (!hasItemsForMode) return;
 
     autoStartedRef.current = true;
-
-    // Small delay to allow UI render + state settle
-    const t = window.setTimeout(() => {
-      startCheckout(mode);
-    }, 250);
-
-    return () => window.clearTimeout(t);
-  }, [resume.resume, resume.mode, emailOk, hasSub, hasOne]);
+    startCheckout(mode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeInfo.resume, resumeInfo.mode, emailOk, isEmpty, subscriptionItems.length, onetimeItems.length]);
 
   const showEmailInlineError = emailTouched && !emailOk && !!email;
 
@@ -311,7 +310,9 @@ export default function Checkout() {
 
               {isMixed ? (
                 <div className="mb-6 rounded-xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-white font-semibold mb-1">Two-part checkout</div>
+                  <div className="text-white font-semibold mb-1">
+                    Two-part checkout
+                  </div>
                   <p className="text-sm text-white/70">
                     Subscriptions and one-time orders must be checked out separately.
                     Choose what you want to checkout first — we’ll keep it simple.
@@ -485,7 +486,9 @@ export default function Checkout() {
 
                 <div className="border-t border-white/10 pt-4 flex justify-between">
                   <span className="text-xl font-bold text-white">Total</span>
-                  <span className="text-xl font-bold text-primary">Finalized in Stripe</span>
+                  <span className="text-xl font-bold text-primary">
+                    Finalized in Stripe
+                  </span>
                 </div>
 
                 <p className="text-xs text-white/50 mt-4">

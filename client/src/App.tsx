@@ -8,6 +8,7 @@ import Home from "@/pages/Home";
 import FAQ from "@/pages/FAQ";
 import Shop from "@/pages/Shop";
 import Product from "@/pages/Product";
+import Wholesale from "@/pages/Wholesale";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import OrderSuccess from "@/pages/OrderSuccess";
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/faq" component={FAQ} />
       <Route path="/shop" component={Shop} />
       <Route path="/product" component={Product} />
+      <Route path="/wholesale" component={Wholesale} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/order-success" component={OrderSuccess} />

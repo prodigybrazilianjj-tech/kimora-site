@@ -104,6 +104,7 @@ export function Navbar() {
   const navLinks = [
     { name: "Flavors", action: () => (window.location.href = "/#flavors") },
     { name: "Shop", action: () => setLocation("/shop") },
+    { name: "Wholesale", action: () => setLocation("/wholesale") },
     { name: "Formula", action: () => goToSection("#formula") },
     { name: "Why Not a Tub?", action: () => goToSection("#comparison") },
     { name: "About", action: () => goToSection("#about") },

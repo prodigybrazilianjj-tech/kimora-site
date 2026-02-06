@@ -20,14 +20,18 @@ type CartItem = {
   quantity: number;
 };
 
-// Must match Checkout.tsx itemKey() exactly (kept for compatibility)
+// Must match Checkout.tsx itemKey() exactly
 function itemKey(it: CartItem) {
   return `${it.flavor}|${it.type}|${it.frequency ?? ""}|${it.quantity}`;
 }
 
-// More forgiving matcher (prevents mismatches if quantity differs)
-function itemKeyLoose(it: Pick<CartItem, "flavor" | "type" | "frequency">) {
-  return `${it.flavor}|${it.type}|${it.frequency ?? ""}`;
+function prettyFlavor(slug: string) {
+  return String(slug || "")
+    .trim()
+    .split("-")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 function safeReadJson<T>(key: string): T | null {
@@ -48,11 +52,28 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function prettyFlavor(slug: string) {
-  return slug
-    .split("-")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
+type LastCheckout = {
+  mode: "subscription" | "onetime";
+  email?: string;
+  items: Array<CartItem & { _k?: string }>;
+  ts: number;
+};
+
+type RemainingMode = "subscription" | "onetime" | "mixed";
+
+type RemainingInfo =
+  | null
+  | {
+      items: CartItem[];
+      mode: RemainingMode;
+    };
+
+function inferRemainingMode(items: CartItem[]): RemainingMode {
+  const hasSub = items.some((i) => i.type === "subscribe");
+  const hasOne = items.some((i) => i.type === "onetime");
+  if (hasSub && hasOne) return "mixed";
+  if (hasSub) return "subscription";
+  return "onetime";
 }
 
 export default function OrderSuccess() {
@@ -70,11 +91,10 @@ export default function OrderSuccess() {
   const [sent, setSent] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
-  // ---- mixed-cart continuation UI ----
-  const [remaining, setRemaining] = useState<CartItem[]>([]);
-  const [firstCheckoutMode, setFirstCheckoutMode] = useState<
-    null | "subscription" | "onetime"
-  >(null);
+  // ---- remaining items (mixed cart continuation) ----
+  const [remaining, setRemaining] = useState<RemainingInfo>(null);
+  const [continueLoading, setContinueLoading] = useState(false);
+  const [continueError, setContinueError] = useState<string | null>(null);
 
   // Get session_id from query string
   const sessionId = useMemo(() => {
@@ -91,71 +111,61 @@ export default function OrderSuccess() {
     session?.mode === "subscription" || Boolean(session?.subscription);
 
   /**
-   * Cart behavior after success:
-   * - If user checked out only part of cart (mixed flow), KEEP the rest.
-   * - Remove only purchased items based on kimora-last-checkout.
-   * - If we can't determine what happened, clear everything (safe fallback).
+   * Cart success behavior:
+   * - If this was a mixed-cart flow, keep remaining items in localStorage cart.
+   * - Remove ONLY the items that were checked out (based on kimora-last-checkout).
+   * - If we can't confidently determine, fallback to clearing everything (safe).
    *
-   * IMPORTANT: if remaining items exist, we DO NOT call clearCart()
-   * and we use hard redirects later to ensure cart state re-hydrates.
+   * Also: populate `remaining` state so the success page can offer “Checkout remaining items”.
    */
   useEffect(() => {
-    const last = safeReadJson<{
-      mode: "subscription" | "onetime";
-      email?: string;
-      items: Array<CartItem & { _k?: string }>;
-      ts: number;
-    }>("kimora-last-checkout");
-
+    const last = safeReadJson<LastCheckout>("kimora-last-checkout");
     const now = Date.now();
     const isRecent = !!last?.ts && now - last.ts < 30 * 60 * 1000; // 30 min
 
     const cart = safeReadJson<CartItem[]>("kimora-cart") ?? [];
 
-    // If there's no cart in storage at all, just clear in-memory and exit
-    if (!Array.isArray(cart) || cart.length === 0) {
-      clearCart();
-      localStorage.removeItem("kimora-cart");
+    // If we can't safely compute what to remove, do the old behavior (clear all)
+    if (!last || !isRecent || !Array.isArray(last.items)) {
+      // If there IS a cart, leave it alone (better UX than nuking it)
+      // But we still clear cart state to avoid UI mismatch with localStorage if useCart reads from memory.
+      // Your cart store likely rehydrates from localStorage; keeping localStorage intact is the key.
       localStorage.removeItem("kimora-last-checkout");
-      setRemaining([]);
-      setFirstCheckoutMode(last?.mode ?? null);
+      setRemaining(
+        cart.length
+          ? { items: cart, mode: inferRemainingMode(cart) }
+          : null
+      );
+      setContinueError(null);
       return;
     }
 
-    // If we don't have reliable "last checkout", safest is to clear everything
-    if (!last || !isRecent || !Array.isArray(last.items) || last.items.length === 0) {
-      clearCart();
-      localStorage.removeItem("kimora-cart");
+    if (cart.length === 0) {
+      // Nothing to subtract from — just clear last checkout marker
       localStorage.removeItem("kimora-last-checkout");
-      setRemaining([]);
-      setFirstCheckoutMode(null);
+      setRemaining(null);
       return;
     }
 
-    setFirstCheckoutMode(last.mode);
-
-    // Build forgiving purchased set (prefer _k, fallback to loose match)
-    const purchasedExact = new Set(last.items.map((it) => it._k || itemKey(it)));
-    const purchasedLoose = new Set(
-      last.items.map((it) => itemKeyLoose({ flavor: it.flavor, type: it.type, frequency: it.frequency }))
-    );
+    // Build set of purchased item keys
+    const purchasedKeys = new Set(last.items.map((it) => it._k || itemKey(it)));
 
     // Remove purchased items, keep remaining
-    const remainingCart = cart.filter((it) => {
-      const exact = itemKey(it);
-      const loose = itemKeyLoose({ flavor: it.flavor, type: it.type, frequency: it.frequency });
-      return !purchasedExact.has(exact) && !purchasedLoose.has(loose);
-    });
+    const remainingItems = cart.filter((it) => !purchasedKeys.has(itemKey(it)));
 
-    setRemaining(remainingCart);
-
-    if (remainingCart.length === 0) {
+    if (remainingItems.length === 0) {
+      // Fully clear
       clearCart();
       localStorage.removeItem("kimora-cart");
+      setRemaining(null);
     } else {
-      // Keep remaining in storage for second checkout
-      localStorage.setItem("kimora-cart", JSON.stringify(remainingCart));
-      // DO NOT call clearCart(); that would wipe the remainder in memory.
+      // Keep remaining in localStorage for the second checkout
+      localStorage.setItem("kimora-cart", JSON.stringify(remainingItems));
+      setRemaining({
+        items: remainingItems,
+        mode: inferRemainingMode(remainingItems),
+      });
+      // IMPORTANT: do NOT call clearCart() here, because that would wipe remaining items
     }
 
     // One-time use
@@ -169,6 +179,7 @@ export default function OrderSuccess() {
       setSessionLoading(true);
       setSessionError(null);
 
+      // If there's no session_id, we can still show a friendly page
       if (!sessionId) {
         if (!cancelled) {
           setSession(null);
@@ -182,16 +193,22 @@ export default function OrderSuccess() {
           `/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`
         );
 
-        const data = (await res.json().catch(() => ({}))) as Partial<CheckoutSessionResponse>;
+        const data = (await res
+          .json()
+          .catch(() => ({}))) as Partial<CheckoutSessionResponse>;
 
         if (!res.ok) {
-          throw new Error((data as any)?.message || "Failed to load checkout session.");
+          throw new Error(
+            (data as any)?.message || "Failed to load checkout session."
+          );
         }
 
         if (!cancelled) {
-          const normalized = data?.customer_email ? normalizeEmail(data.customer_email) : "";
+          const normalizedEmail = data?.customer_email
+            ? normalizeEmail(data.customer_email)
+            : "";
           setSession(data as CheckoutSessionResponse);
-          setEmail((prev) => (prev ? prev : normalized));
+          setEmail((prev) => (prev ? prev : normalizedEmail));
           setSessionLoading(false);
         }
       } catch (err: any) {
@@ -231,7 +248,10 @@ export default function OrderSuccess() {
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((data as any)?.message || "Unable to send link.");
+
+      if (!res.ok) {
+        throw new Error((data as any)?.message || "Unable to send link.");
+      }
 
       setSent(true);
     } catch (err: any) {
@@ -241,35 +261,72 @@ export default function OrderSuccess() {
     }
   }
 
-  function continueSecondCheckout() {
-    // If first was subscription, remaining should be onetime (and vice versa),
-    // but we’ll infer from remaining contents just in case.
-    const hasSubRemaining = remaining.some((it) => it.type === "subscribe");
-    const hasOneRemaining = remaining.some((it) => it.type === "onetime");
+  async function checkoutRemainingNow() {
+    setContinueError(null);
 
-    // Mixed remainder is possible if something odd happened — send them to checkout normally.
-    if (hasSubRemaining && hasOneRemaining) {
+    if (!remaining || remaining.items.length === 0) return;
+
+    // If remaining is mixed, send them to checkout to choose (since /api/checkout can't mix modes)
+    if (remaining.mode === "mixed") {
       window.location.href = "/checkout";
       return;
     }
 
-    // Tell Checkout to auto-start the correct flow (optional, but helpful)
-    const nextMode: "subscription" | "onetime" =
-      hasSubRemaining ? "subscription" : "onetime";
+    const normalized = normalizeEmail(email);
+    if (!normalized || !isValidEmail(normalized)) {
+      setContinueError("Enter a valid email so Stripe can send your receipt.");
+      return;
+    }
 
-    localStorage.setItem(
-      "kimora-next-checkout",
-      JSON.stringify({
-        mode: nextMode,
-        ts: Date.now(),
-      })
-    );
+    setContinueLoading(true);
 
-    // HARD redirect so cart state re-hydrates from localStorage reliably
-    window.location.href = "/checkout?autostart=1";
+    try {
+      // Store which items we're about to checkout (so OrderSuccess can subtract next time)
+      localStorage.setItem(
+        "kimora-last-checkout",
+        JSON.stringify({
+          mode: remaining.mode === "subscription" ? "subscription" : "onetime",
+          email: normalized,
+          items: remaining.items.map((it) => ({ ...it, _k: itemKey(it) })),
+          ts: Date.now(),
+        } satisfies LastCheckout)
+      );
+
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: normalized,
+          items: remaining.items,
+        }),
+      });
+
+      const contentType = res.headers.get("content-type") || "";
+      const isJson = contentType.includes("application/json");
+      const data: any = isJson ? await res.json().catch(() => ({})) : null;
+      const text: string = !isJson ? await res.text().catch(() => "") : "";
+
+      if (!res.ok) {
+        const msg =
+          (data && (data.message || data.error)) ||
+          text ||
+          `Checkout failed (${res.status}).`;
+        throw new Error(msg);
+      }
+
+      const url = data?.url;
+      if (!url) throw new Error("Stripe session created, but no URL returned.");
+
+      window.location.href = url;
+    } catch (e: any) {
+      setContinueError(
+        e?.message || "Could not start checkout for remaining items."
+      );
+      setContinueLoading(false);
+    }
   }
 
-  const showContinueCard = remaining.length > 0;
+  const remainingCount = remaining?.items?.length ?? 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -282,7 +339,8 @@ export default function OrderSuccess() {
           </h1>
 
           <p className="text-muted-foreground mb-2">
-            Welcome to Kimora. Progress is built one decision at a time. You just made a good one.
+            Welcome to Kimora. Progress is built one decision at a time. You just
+            made a good one.
           </p>
 
           <p className="text-xs text-white/50 mb-8">
@@ -295,64 +353,105 @@ export default function OrderSuccess() {
             </div>
           )}
 
-          {/* MIXED CART CONTINUATION */}
-          {showContinueCard && (
+          {/* MIXED CART CONTINUATION (top priority) */}
+          {remaining && remainingCount > 0 && (
             <div className="bg-card/50 border border-white/10 rounded-xl p-6 mb-6 text-left">
               <h3 className="text-white font-semibold text-center mb-1">
-                You’ve got more items waiting
+                You still have items in your cart
               </h3>
               <p className="text-xs text-white/55 text-center mb-5">
-                You completed{" "}
-                <span className="text-white/80 font-semibold">
-                  {firstCheckoutMode === "subscription" ? "your subscription" : firstCheckoutMode === "onetime" ? "your one-time order" : "one checkout"}
-                </span>
-                . Finish the rest now.
+                You checked out one part of a mixed cart. Finish the rest whenever
+                you’re ready.
               </p>
 
-              <div className="rounded-lg border border-white/10 bg-black/30 p-4 mb-4">
-                <div className="text-xs uppercase tracking-wider text-white/45 mb-2">
-                  Remaining in cart
+              {continueError && (
+                <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200 text-center">
+                  {continueError}
                 </div>
+              )}
+
+              <div className="mb-4 rounded-lg border border-white/10 bg-black/30 p-4">
+                <div className="text-xs uppercase tracking-wider text-white/45 mb-2">
+                  Remaining ({remaining.items.length}) •{" "}
+                  {remaining.mode === "subscription"
+                    ? "Subscription"
+                    : remaining.mode === "onetime"
+                      ? "One-time"
+                      : "Mixed"}
+                </div>
+
                 <div className="space-y-2">
-                  {remaining.slice(0, 6).map((it, idx) => (
-                    <div key={`${it.flavor}-${it.type}-${it.frequency ?? "n"}-${idx}`} className="text-sm text-white/80">
-                      <span className="font-semibold text-white">
-                        {prettyFlavor(it.flavor)}
-                      </span>{" "}
-                      <span className="text-white/60">
-                        • {it.type === "subscribe" ? `Subscription every ${it.frequency} weeks` : "One-time"}
-                        {" • "}
-                        qty {it.quantity}
-                      </span>
+                  {remaining.items.slice(0, 6).map((it, idx) => (
+                    <div
+                      key={`${it.flavor}-${it.type}-${it.frequency ?? "n"}-${idx}`}
+                      className="flex justify-between gap-4"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-white/90 font-medium truncate">
+                          {prettyFlavor(it.flavor)}
+                        </div>
+                        <div className="text-xs text-white/55">
+                          {it.type === "subscribe"
+                            ? `Subscription • every ${it.frequency} weeks`
+                            : "One-time purchase"}
+                          {` • qty ${it.quantity}`}
+                        </div>
+                      </div>
                     </div>
                   ))}
-                  {remaining.length > 6 && (
-                    <div className="text-xs text-white/50">
-                      + {remaining.length - 6} more…
+
+                  {remaining.items.length > 6 && (
+                    <div className="text-xs text-white/45">
+                      + {remaining.items.length - 6} more item(s)
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <Button
-                  onClick={continueSecondCheckout}
-                  className="w-full bg-primary hover:bg-primary/90"
-                >
-                  Checkout remaining items
-                </Button>
+              <div className="mt-4">
+                <div className="text-xs text-white/45 mb-2 text-center">
+                  We’ll use your email for the receipt on Stripe:
+                </div>
 
-                <Button
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() => (window.location.href = "/cart")}
-                >
-                  View cart
-                </Button>
+                <input
+                  type="email"
+                  placeholder="Email used at checkout"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full mb-3 px-4 py-3 rounded-md bg-black/40 border border-white/10 text-white"
+                  autoComplete="email"
+                  inputMode="email"
+                />
 
-                <p className="text-[11px] text-white/45 text-center">
-                  Note: subscriptions and one-time items are processed in separate Stripe checkouts.
-                </p>
+                <div className="flex flex-col gap-3">
+                  <Button
+                    onClick={checkoutRemainingNow}
+                    disabled={continueLoading}
+                    className="w-full bg-primary hover:bg-primary/90"
+                  >
+                    {continueLoading
+                      ? "Redirecting to Stripe…"
+                      : remaining.mode === "mixed"
+                        ? "Review remaining in Checkout"
+                        : "Checkout remaining items"}
+                  </Button>
+
+                  <Link href="/checkout">
+                    <Button
+                      variant="secondary"
+                      className="w-full bg-white/10 hover:bg-white/20 text-white"
+                    >
+                      Review in Checkout
+                    </Button>
+                  </Link>
+
+                  <Link
+                    href="/cart"
+                    className="text-center text-xs text-white/50 underline underline-offset-4 hover:text-white"
+                  >
+                    Or view cart
+                  </Link>
+                </div>
               </div>
             </div>
           )}
@@ -446,10 +545,12 @@ export default function OrderSuccess() {
                 </div>
                 <ul className="text-sm text-white/75 space-y-2 list-disc pl-5">
                   <li>
-                    You’ll get an order email from Stripe (check spam/promotions if you don’t see it).
+                    You’ll get an order email from Stripe (check spam/promotions if
+                    you don’t see it).
                   </li>
                   <li>
-                    Shipping + taxes are finalized in Stripe Checkout (your receipt reflects the final total).
+                    Shipping + taxes are finalized in Stripe Checkout (your receipt
+                    reflects the final total).
                   </li>
                 </ul>
               </div>

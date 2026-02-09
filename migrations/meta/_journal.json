@@ -15,6 +15,13 @@
       "when": 1768950071547,
       "tag": "0001_outstanding_kronos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770673153653,
+      "tag": "0002_typical_ultragirl",
+      "breakpoints": true
     }
   ]
 }

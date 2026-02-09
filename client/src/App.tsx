@@ -9,6 +9,7 @@ import FAQ from "@/pages/FAQ";
 import Shop from "@/pages/Shop";
 import Product from "@/pages/Product";
 import Wholesale from "@/pages/Wholesale";
+import WholesaleApply from "@/pages/Wholesaleapply"; // ✅ add this import (match your filename)
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import OrderSuccess from "@/pages/OrderSuccess";
@@ -27,7 +28,11 @@ function Router() {
       <Route path="/faq" component={FAQ} />
       <Route path="/shop" component={Shop} />
       <Route path="/product" component={Product} />
+
+      {/* ✅ Put the more specific route BEFORE /wholesale */}
+      <Route path="/wholesale/apply" component={WholesaleApply} />
       <Route path="/wholesale" component={Wholesale} />
+
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/order-success" component={OrderSuccess} />

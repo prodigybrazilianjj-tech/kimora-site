@@ -224,11 +224,177 @@ async function findStripeCustomerIdByEmail(
   }
 }
 
+function safeString(v: any, maxLen = 5000) {
+  const s = String(v ?? "").trim();
+  if (!s) return "";
+  return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
+}
+
+function pickFirstString(obj: any, keys: string[]) {
+  for (const k of keys) {
+    const v = obj?.[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return "";
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+  /**
+   * ✅ Wholesale Apply
+   * POST /api/wholesale/apply
+   * Body: whatever your WholesaleApply.tsx sends; we store nothing (yet) and email you + the applicant.
+   */
+  app.post("/api/wholesale/apply", async (req, res) => {
+    try {
+      const body = req.body ?? {};
+
+      // Try a few common field names so you don't have to keep backend in lockstep
+      const emailRaw = pickFirstString(body, ["email", "contactEmail", "ownerEmail"]);
+      const email = normalizeEmail(emailRaw);
+
+      if (!email || !isValidEmail(email)) {
+        return res.status(400).json({ ok: false, message: "Valid email is required." });
+      }
+
+      const contactName = pickFirstString(body, [
+        "contactName",
+        "name",
+        "fullName",
+        "ownerName",
+        "firstName",
+      ]);
+      const businessName = pickFirstString(body, [
+        "businessName",
+        "company",
+        "companyName",
+        "storeName",
+        "business",
+      ]);
+      const phone = pickFirstString(body, ["phone", "phoneNumber", "mobile"]);
+      const website = pickFirstString(body, ["website", "site", "url"]);
+
+      // Optional "honey pot" if you added one client-side later
+      const honey = pickFirstString(body, ["website2", "companyWebsite2", "fax"]);
+      if (honey) {
+        // silently accept to avoid bot tuning
+        return res.json({ ok: true });
+      }
+
+      // Resend config
+      const resendKey = process.env.RESEND_API_KEY;
+      const fromEmail =
+        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const notifyTo =
+        process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
+
+      const siteUrl = getSiteUrl();
+
+      // Always return success even if email sending isn't configured,
+      // because the form submission should still "work" in dev.
+      const canSend = Boolean(resendKey && fromEmail);
+
+      if (canSend) {
+        const resend = new Resend(resendKey!);
+        const from = fromEmail.includes("<")
+          ? fromEmail
+          : `Kimora Co <${fromEmail}>`;
+
+        // Internal notification (to you)
+        const internalSubject = `New wholesale application${businessName ? ` — ${businessName}` : ""}`;
+        const internalText =
+          `New wholesale application received\n\n` +
+          `Business: ${businessName || "(not provided)"}\n` +
+          `Contact: ${contactName || "(not provided)"}\n` +
+          `Email: ${email}\n` +
+          `Phone: ${phone || "(not provided)"}\n` +
+          `Website: ${website || "(not provided)"}\n\n` +
+          `Raw submission:\n${JSON.stringify(body, null, 2)}\n\n` +
+          `Wholesale page: ${siteUrl}/wholesale\n`;
+
+        const internalHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
+  <h2 style="margin:0 0 12px;">New wholesale application</h2>
+  <div style="margin:0 0 10px;"><b>Business:</b> ${safeString(businessName || "(not provided)")}</div>
+  <div style="margin:0 0 10px;"><b>Contact:</b> ${safeString(contactName || "(not provided)")}</div>
+  <div style="margin:0 0 10px;"><b>Email:</b> ${safeString(email)}</div>
+  <div style="margin:0 0 10px;"><b>Phone:</b> ${safeString(phone || "(not provided)")}</div>
+  <div style="margin:0 0 10px;"><b>Website:</b> ${safeString(website || "(not provided)")}</div>
+  <hr style="border:none;border-top:1px solid #eee;margin:16px 0;" />
+  <div style="font-size:12px;color:#555;margin:0 0 6px;"><b>Raw submission</b></div>
+  <pre style="background:#f7f7f7;padding:12px;border-radius:10px;overflow:auto;font-size:12px;">${safeString(
+    JSON.stringify(body, null, 2),
+    20000,
+  )
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")}</pre>
+</div>`;
+
+        // Applicant confirmation
+        const applicantSubject = "Kimora Co — wholesale application received";
+        const applicantText =
+          `Thanks for applying to Kimora Co wholesale.\n\n` +
+          `We received your application${businessName ? ` for ${businessName}` : ""} and will review it shortly.\n\n` +
+          `If you need to add anything, reply to this email or contact alex@kimoraco.com.\n`;
+
+        const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
+  <h2 style="margin:0 0 10px;">Wholesale application received</h2>
+  <p style="margin:0 0 12px;">
+    Thanks${contactName ? `, ${safeString(contactName)}` : ""}! We received your wholesale application${
+          businessName ? ` for <b>${safeString(businessName)}</b>` : ""
+        }.
+  </p>
+  <p style="margin:0 0 12px;">
+    We’ll review it and get back to you shortly.
+  </p>
+  <p style="margin:16px 0 0;font-size:12px;color:#666;">
+    Need to add something? Reply to this email or contact
+    <a href="mailto:alex@kimoraco.com">alex@kimoraco.com</a>.
+  </p>
+</div>`;
+
+        // Fire both (don’t block success if one fails)
+        try {
+          await resend.emails.send({
+            from,
+            to: notifyTo,
+            subject: internalSubject,
+            text: internalText,
+            html: internalHtml,
+            replyTo: email, // so you can reply directly to the applicant
+          });
+        } catch (e: any) {
+          console.error("[wholesale] internal email send failed:", e?.message || e, e);
+        }
+
+        try {
+          await resend.emails.send({
+            from,
+            to: email,
+            subject: applicantSubject,
+            text: applicantText,
+            html: applicantHtml,
+          });
+        } catch (e: any) {
+          console.error("[wholesale] applicant email send failed:", e?.message || e, e);
+        }
+      } else {
+        console.warn(
+          "[wholesale] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM). Submission accepted without email.",
+        );
+      }
+
+      return res.json({ ok: true });
+    } catch (err: any) {
+      console.error("POST /api/wholesale/apply error:", err?.message || err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to submit wholesale application." });
+    }
+  });
 
   /**
    * Success page helper:

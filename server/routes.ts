@@ -3,8 +3,7 @@ import type { Server } from "http";
 import { eq, desc } from "drizzle-orm";
 import { stripe } from "./stripe";
 import { db } from "./db";
-import { orders, orderItems } from "../shared/schema";
-import { wholesaleApplications } from "../shared/wholesaleApplications";
+import { orders, orderItems, wholesaleApplications } from "../shared/schema";
 import crypto from "crypto";
 import { Resend } from "resend";
 
@@ -186,14 +185,6 @@ function onlyDigits(s: string) {
   return s.replace(/[^\d]/g, "");
 }
 
-/**
- * Find an existing Stripe Customer for this email so Stripe Checkout can
- * autofill address/shipping/payment info on subsequent checkouts.
- *
- * Priority:
- *  1) Your DB (orders.stripeCustomerId for latest order with that email)
- *  2) Stripe customers.list({ email }) as fallback
- */
 async function findStripeCustomerIdByEmail(
   email: string,
 ): Promise<string | null> {
@@ -279,29 +270,41 @@ export async function registerRoutes(
 
       // Validation (match your frontend required fields)
       if (!businessName) {
-        return res.status(400).json({ ok: false, message: "Business name is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Business name is required." });
       }
       if (!contactName) {
-        return res.status(400).json({ ok: false, message: "Contact name is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Contact name is required." });
       }
       if (!email || !isValidEmail(email)) {
-        return res.status(400).json({ ok: false, message: "Valid email is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Valid email is required." });
       }
       if (!city) {
         return res.status(400).json({ ok: false, message: "City is required." });
       }
       if (!state) {
-        return res.status(400).json({ ok: false, message: "State is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "State is required." });
       }
       if (businessType === "other" && !businessTypeOther) {
-        return res.status(400).json({ ok: false, message: "Please specify business type." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Please specify business type." });
       }
 
       // Normalize phone digits (your UI does this too, but keep backend consistent)
       const phoneDigits = phone ? onlyDigits(phone) : "";
 
       const ip =
-        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+        (req.headers["x-forwarded-for"] as string | undefined)
+          ?.split(",")[0]
+          ?.trim() ||
         req.socket?.remoteAddress ||
         null;
 
@@ -341,8 +344,7 @@ export async function registerRoutes(
 
       // Email notifications (optional in dev)
       const resendKey = process.env.RESEND_API_KEY;
-      const fromEmail =
-        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       const notifyTo = process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
       const siteUrl = getSiteUrl();
 
@@ -821,7 +823,11 @@ Need help? Reply to this email or contact alex@kimoraco.com
           return res.status(400).json({ message: "Invalid quantity." });
         }
         if (it.type === "subscribe") {
-          if (it.frequency !== "2" && it.frequency !== "4" && it.frequency !== "6") {
+          if (
+            it.frequency !== "2" &&
+            it.frequency !== "4" &&
+            it.frequency !== "6"
+          ) {
             return res.status(400).json({ message: "Invalid frequency." });
           }
         }
@@ -839,7 +845,9 @@ Need help? Reply to this email or contact alex@kimoraco.com
       const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
       const siteUrl = getSiteUrl();
 
-      const stripeCustomerId = email ? await findStripeCustomerIdByEmail(email) : null;
+      const stripeCustomerId = email
+        ? await findStripeCustomerIdByEmail(email)
+        : null;
 
       const session = await stripe.checkout.sessions.create({
         mode,

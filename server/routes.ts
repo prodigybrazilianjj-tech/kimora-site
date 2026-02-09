@@ -4,6 +4,7 @@ import { eq, desc } from "drizzle-orm";
 import { stripe } from "./stripe";
 import { db } from "./db";
 import { orders, orderItems } from "../shared/schema";
+import { wholesaleApplications } from "../shared/wholesaleApplications";
 import crypto from "crypto";
 import { Resend } from "resend";
 
@@ -181,6 +182,10 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function onlyDigits(s: string) {
+  return s.replace(/[^\d]/g, "");
+}
+
 /**
  * Find an existing Stripe Customer for this email so Stripe Checkout can
  * autofill address/shipping/payment info on subsequent checkouts.
@@ -224,18 +229,10 @@ async function findStripeCustomerIdByEmail(
   }
 }
 
-function safeString(v: any, maxLen = 5000) {
+function safeString(v: any, maxLen = 20000) {
   const s = String(v ?? "").trim();
   if (!s) return "";
   return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
-}
-
-function pickFirstString(obj: any, keys: string[]) {
-  for (const k of keys) {
-    const v = obj?.[k];
-    if (typeof v === "string" && v.trim()) return v.trim();
-  }
-  return "";
 }
 
 export async function registerRoutes(
@@ -245,107 +242,183 @@ export async function registerRoutes(
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
   /**
-   * ✅ Wholesale Apply
+   * ✅ Wholesale Apply (stores + emails)
    * POST /api/wholesale/apply
-   * Body: whatever your WholesaleApply.tsx sends; we store nothing (yet) and email you + the applicant.
    */
   app.post("/api/wholesale/apply", async (req, res) => {
     try {
       const body = req.body ?? {};
 
-      // Try a few common field names so you don't have to keep backend in lockstep
-      const emailRaw = pickFirstString(body, ["email", "contactEmail", "ownerEmail"]);
-      const email = normalizeEmail(emailRaw);
+      // Expecting the exact payload from WholesaleApply.tsx
+      const businessName = safeString(body.businessName, 300);
+      const contactName = safeString(body.contactName, 300);
+      const email = normalizeEmail(String(body.email ?? ""));
+      const phone = safeString(body.phone, 32);
+      const websiteOrInstagram = safeString(body.websiteOrInstagram, 500);
+      const city = safeString(body.city, 120);
+      const state = safeString(body.state, 16);
 
+      const businessType = safeString(body.businessType, 32);
+      const businessTypeOther = safeString(body.businessTypeOther, 300);
+
+      const memberCount =
+        body.memberCount === null || body.memberCount === undefined
+          ? null
+          : Number.isFinite(Number(body.memberCount))
+            ? Number(body.memberCount)
+            : null;
+
+      const retailSetup = safeString(body.retailSetup, 32);
+
+      const interestedIn = body.interestedIn ?? {};
+      const interestedOnShelf = Boolean(interestedIn.onShelf);
+      const interestedCoachAffiliate = Boolean(interestedIn.coachAffiliate);
+      const interestedEventSponsorship = Boolean(interestedIn.eventSponsorship);
+
+      const notes = safeString(body.notes, 5000);
+
+      // Validation (match your frontend required fields)
+      if (!businessName) {
+        return res.status(400).json({ ok: false, message: "Business name is required." });
+      }
+      if (!contactName) {
+        return res.status(400).json({ ok: false, message: "Contact name is required." });
+      }
       if (!email || !isValidEmail(email)) {
         return res.status(400).json({ ok: false, message: "Valid email is required." });
       }
-
-      const contactName = pickFirstString(body, [
-        "contactName",
-        "name",
-        "fullName",
-        "ownerName",
-        "firstName",
-      ]);
-      const businessName = pickFirstString(body, [
-        "businessName",
-        "company",
-        "companyName",
-        "storeName",
-        "business",
-      ]);
-      const phone = pickFirstString(body, ["phone", "phoneNumber", "mobile"]);
-      const website = pickFirstString(body, ["website", "site", "url"]);
-
-      // Optional "honey pot" if you added one client-side later
-      const honey = pickFirstString(body, ["website2", "companyWebsite2", "fax"]);
-      if (honey) {
-        // silently accept to avoid bot tuning
-        return res.json({ ok: true });
+      if (!city) {
+        return res.status(400).json({ ok: false, message: "City is required." });
+      }
+      if (!state) {
+        return res.status(400).json({ ok: false, message: "State is required." });
+      }
+      if (businessType === "other" && !businessTypeOther) {
+        return res.status(400).json({ ok: false, message: "Please specify business type." });
       }
 
-      // Resend config
+      // Normalize phone digits (your UI does this too, but keep backend consistent)
+      const phoneDigits = phone ? onlyDigits(phone) : "";
+
+      const ip =
+        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        null;
+
+      const userAgent = String(req.headers["user-agent"] ?? "") || null;
+      const referer = String(req.headers["referer"] ?? "") || null;
+
+      // Store in DB
+      const inserted = await db
+        .insert(wholesaleApplications)
+        .values({
+          businessName,
+          contactName,
+          email,
+          phone: phoneDigits || null,
+          websiteOrInstagram: websiteOrInstagram || null,
+          city,
+          state,
+          businessType: businessType || "gym",
+          businessTypeOther: businessTypeOther || null,
+          memberCount,
+          retailSetup: retailSetup || null,
+          interestedOnShelf,
+          interestedCoachAffiliate,
+          interestedEventSponsorship,
+          notes: notes || null,
+          status: "new",
+          source: "kimoraco.com",
+          metadata: {
+            ip,
+            userAgent,
+            referer,
+          },
+        })
+        .returning({ id: wholesaleApplications.id });
+
+      const applicationId = inserted?.[0]?.id ?? null;
+
+      // Email notifications (optional in dev)
       const resendKey = process.env.RESEND_API_KEY;
       const fromEmail =
         process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
-      const notifyTo =
-        process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
-
+      const notifyTo = process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
       const siteUrl = getSiteUrl();
 
-      // Always return success even if email sending isn't configured,
-      // because the form submission should still "work" in dev.
       const canSend = Boolean(resendKey && fromEmail);
-
       if (canSend) {
         const resend = new Resend(resendKey!);
         const from = fromEmail.includes("<")
           ? fromEmail
           : `Kimora Co <${fromEmail}>`;
 
-        // Internal notification (to you)
-        const internalSubject = `New wholesale application${businessName ? ` — ${businessName}` : ""}`;
+        const internalSubject = `New wholesale application — ${businessName}`;
         const internalText =
           `New wholesale application received\n\n` +
-          `Business: ${businessName || "(not provided)"}\n` +
-          `Contact: ${contactName || "(not provided)"}\n` +
+          `Application ID: ${applicationId ?? "(unknown)"}\n` +
+          `Business: ${businessName}\n` +
+          `Contact: ${contactName}\n` +
           `Email: ${email}\n` +
-          `Phone: ${phone || "(not provided)"}\n` +
-          `Website: ${website || "(not provided)"}\n\n` +
+          `Phone: ${phoneDigits || "(not provided)"}\n` +
+          `Website/IG: ${websiteOrInstagram || "(not provided)"}\n` +
+          `City/State: ${city}, ${state}\n` +
+          `Business type: ${businessType}${businessType === "other" ? ` (${businessTypeOther})` : ""}\n` +
+          `Member count: ${memberCount ?? "(not provided)"}\n` +
+          `Retail setup: ${retailSetup || "(not provided)"}\n` +
+          `Interested: onShelf=${interestedOnShelf}, coachAffiliate=${interestedCoachAffiliate}, eventSponsorship=${interestedEventSponsorship}\n\n` +
+          `Notes:\n${notes || "(none)"}\n\n` +
           `Raw submission:\n${JSON.stringify(body, null, 2)}\n\n` +
           `Wholesale page: ${siteUrl}/wholesale\n`;
 
         const internalHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
-  <h2 style="margin:0 0 12px;">New wholesale application</h2>
-  <div style="margin:0 0 10px;"><b>Business:</b> ${safeString(businessName || "(not provided)")}</div>
-  <div style="margin:0 0 10px;"><b>Contact:</b> ${safeString(contactName || "(not provided)")}</div>
-  <div style="margin:0 0 10px;"><b>Email:</b> ${safeString(email)}</div>
-  <div style="margin:0 0 10px;"><b>Phone:</b> ${safeString(phone || "(not provided)")}</div>
-  <div style="margin:0 0 10px;"><b>Website:</b> ${safeString(website || "(not provided)")}</div>
-  <hr style="border:none;border-top:1px solid #eee;margin:16px 0;" />
-  <div style="font-size:12px;color:#555;margin:0 0 6px;"><b>Raw submission</b></div>
+  <h2 style="margin:0 0 10px;">New wholesale application</h2>
+  <div style="margin:0 0 8px;"><b>Application ID:</b> ${safeString(applicationId ?? "(unknown)")}</div>
+  <div style="margin:0 0 8px;"><b>Business:</b> ${safeString(businessName)}</div>
+  <div style="margin:0 0 8px;"><b>Contact:</b> ${safeString(contactName)}</div>
+  <div style="margin:0 0 8px;"><b>Email:</b> ${safeString(email)}</div>
+  <div style="margin:0 0 8px;"><b>Phone:</b> ${safeString(phoneDigits || "(not provided)")}</div>
+  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${safeString(websiteOrInstagram || "(not provided)")}</div>
+  <div style="margin:0 0 8px;"><b>City/State:</b> ${safeString(city)}, ${safeString(state)}</div>
+  <div style="margin:0 0 8px;"><b>Business type:</b> ${safeString(businessType)}${
+          businessType === "other" && businessTypeOther
+            ? ` (${safeString(businessTypeOther)})`
+            : ""
+        }</div>
+  <div style="margin:0 0 8px;"><b>Member count:</b> ${safeString(memberCount ?? "(not provided)")}</div>
+  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${safeString(retailSetup || "(not provided)")}</div>
+  <div style="margin:0 0 8px;"><b>Interested:</b>
+    onShelf=${String(interestedOnShelf)},
+    coachAffiliate=${String(interestedCoachAffiliate)},
+    eventSponsorship=${String(interestedEventSponsorship)}
+  </div>
+  <hr style="border:none;border-top:1px solid #eee;margin:14px 0;" />
+  <div style="margin:0 0 6px;"><b>Notes</b></div>
+  <pre style="white-space:pre-wrap;background:#f7f7f7;padding:12px;border-radius:10px;font-size:12px;">${safeString(
+    notes || "(none)",
+  )
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")}</pre>
+  <div style="margin:12px 0 6px;"><b>Raw submission</b></div>
   <pre style="background:#f7f7f7;padding:12px;border-radius:10px;overflow:auto;font-size:12px;">${safeString(
     JSON.stringify(body, null, 2),
-    20000,
   )
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")}</pre>
 </div>`;
 
-        // Applicant confirmation
         const applicantSubject = "Kimora Co — wholesale application received";
         const applicantText =
           `Thanks for applying to Kimora Co wholesale.\n\n` +
-          `We received your application${businessName ? ` for ${businessName}` : ""} and will review it shortly.\n\n` +
+          `We received your application for ${businessName} and will review it shortly.\n\n` +
           `If you need to add anything, reply to this email or contact alex@kimoraco.com.\n`;
 
         const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Wholesale application received</h2>
   <p style="margin:0 0 12px;">
-    Thanks${contactName ? `, ${safeString(contactName)}` : ""}! We received your wholesale application${
-          businessName ? ` for <b>${safeString(businessName)}</b>` : ""
-        }.
+    Thanks${contactName ? `, ${safeString(contactName)}` : ""}! We received your wholesale application for <b>${safeString(
+          businessName,
+        )}</b>.
   </p>
   <p style="margin:0 0 12px;">
     We’ll review it and get back to you shortly.
@@ -356,7 +429,6 @@ export async function registerRoutes(
   </p>
 </div>`;
 
-        // Fire both (don’t block success if one fails)
         try {
           await resend.emails.send({
             from,
@@ -364,7 +436,7 @@ export async function registerRoutes(
             subject: internalSubject,
             text: internalText,
             html: internalHtml,
-            replyTo: email, // so you can reply directly to the applicant
+            replyTo: email,
           });
         } catch (e: any) {
           console.error("[wholesale] internal email send failed:", e?.message || e, e);
@@ -383,11 +455,11 @@ export async function registerRoutes(
         }
       } else {
         console.warn(
-          "[wholesale] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM). Submission accepted without email.",
+          "[wholesale] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM). Stored application without emailing.",
         );
       }
 
-      return res.json({ ok: true });
+      return res.json({ ok: true, id: applicationId });
     } catch (err: any) {
       console.error("POST /api/wholesale/apply error:", err?.message || err);
       return res
@@ -399,7 +471,6 @@ export async function registerRoutes(
   /**
    * Success page helper:
    * GET /api/checkout/session?session_id=cs_...
-   * Returns minimal session info so the UI can show subscription controls only when needed.
    */
   app.get("/api/checkout/session", async (req, res) => {
     try {
@@ -412,7 +483,7 @@ export async function registerRoutes(
 
       return res.json({
         id: session.id,
-        mode: session.mode, // "payment" | "subscription" | "setup"
+        mode: session.mode,
         customer_email:
           session.customer_details?.email ?? session.customer_email ?? null,
         payment_status: session.payment_status ?? null,
@@ -568,10 +639,6 @@ export async function registerRoutes(
 
       const stripeCustomerId = found?.[0]?.stripeCustomerId ?? null;
 
-      console.log("[portal] request email:", email);
-      console.log("[portal] found stripeCustomerId:", stripeCustomerId);
-
-      // Always respond 200, only send if we have a customer id.
       if (!stripeCustomerId) return genericOk();
 
       const siteUrl = getSiteUrl();
@@ -579,7 +646,7 @@ export async function registerRoutes(
       const token = signToken(
         {
           email,
-          exp: Math.floor(Date.now() / 1000) + 15 * 60, // 15 min
+          exp: Math.floor(Date.now() / 1000) + 15 * 60,
           v: 1,
         },
         sessionSecret,
@@ -594,15 +661,7 @@ export async function registerRoutes(
       const fromEmail =
         process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
 
-      console.log("[portal] resend api key present:", Boolean(resendKey));
-      console.log("[portal] from env value:", fromEmail);
-
-      if (!resendKey || !fromEmail) {
-        console.warn(
-          "[portal] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM)",
-        );
-        return genericOk();
-      }
+      if (!resendKey || !fromEmail) return genericOk();
 
       const resend = new Resend(resendKey);
 
@@ -647,15 +706,13 @@ Need help? Reply to this email or contact alex@kimoraco.com
           ? fromEmail
           : `Kimora Co <${fromEmail}>`;
 
-        const result = await resend.emails.send({
+        await resend.emails.send({
           from,
           to: email,
           subject,
           text,
           html,
         });
-
-        console.log("[portal] resend send: OK", result?.data || result);
       } catch (e: any) {
         console.error("[portal] resend send: FAILED", e?.message || e, e);
       }
@@ -663,16 +720,12 @@ Need help? Reply to this email or contact alex@kimoraco.com
       return genericOk();
     } catch (err: any) {
       console.error("POST /api/customer-portal/request error:", err);
-      // Still return generic ok to avoid leaking information
       return genericOk();
     }
   });
 
   /**
    * STEP 2: Exchange token for a Stripe Billing Portal session URL
-   * Supports:
-   *  - POST body: { token }
-   *  - GET query: ?token=...
    */
   async function handleCustomerPortal(req: any, res: any) {
     try {
@@ -730,18 +783,16 @@ Need help? Reply to this email or contact alex@kimoraco.com
   app.get("/api/customer-portal", handleCustomerPortal);
 
   /**
-   * Create Stripe Checkout Session (UPDATED to tie to existing customer when possible)
+   * Create Stripe Checkout Session
    * Body: { items: CheckoutItem[], email?: string }
    */
   app.post("/api/checkout", async (req, res) => {
     try {
       const body = req.body ?? {};
 
-      // Optional email (recommended)
       const emailRaw = String(body.email ?? "").trim();
       const email = emailRaw ? normalizeEmail(emailRaw) : "";
 
-      // If provided, validate it
       if (email && !isValidEmail(email)) {
         return res.status(400).json({ message: "Invalid email." });
       }
@@ -788,7 +839,6 @@ Need help? Reply to this email or contact alex@kimoraco.com
       const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
       const siteUrl = getSiteUrl();
 
-      // ✅ Key change: tie the Checkout Session to an existing Stripe customer (if we can find one)
       const stripeCustomerId = email ? await findStripeCustomerIdByEmail(email) : null;
 
       const session = await stripe.checkout.sessions.create({
@@ -797,7 +847,6 @@ Need help? Reply to this email or contact alex@kimoraco.com
         ...(stripeCustomerId
           ? {
               customer: stripeCustomerId,
-              // Allow Stripe Checkout to update saved customer details for better autofill next time
               customer_update: {
                 address: "auto",
                 shipping: "auto",
@@ -805,15 +854,12 @@ Need help? Reply to this email or contact alex@kimoraco.com
               },
             }
           : {
-              // If we don't have a customer id yet, at least prefill the email
               ...(email ? { customer_email: email } : {}),
             }),
 
         ...(mode === "payment"
           ? {
-              // If no customer id exists, this ensures a customer is created so future checkouts can reuse it
               ...(stripeCustomerId ? {} : { customer_creation: "always" }),
-              // Helps ensure Stripe has the email for receipts on one-time payments
               ...(email ? { payment_intent_data: { receipt_email: email } } : {}),
             }
           : {}),
@@ -830,7 +876,6 @@ Need help? Reply to this email or contact alex@kimoraco.com
         metadata: {
           source: "kimora-site",
           mode,
-          // helpful for debugging / future analytics:
           ...(stripeCustomerId ? { stripeCustomerId } : {}),
         },
       });

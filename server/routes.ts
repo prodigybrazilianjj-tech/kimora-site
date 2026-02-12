@@ -226,6 +226,16 @@ function safeString(v: any, maxLen = 20000) {
   return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
 }
 
+/** Simple email/phone validation to match your new DB constraints */
+function isValidPhoneDigits(digits: string) {
+  // You added DB constraint: >= 10 digits after stripping non-digits
+  return /^\d{10,}$/.test(digits);
+}
+function isPositiveInt(n: unknown) {
+  const v = Number(n);
+  return Number.isInteger(v) && v > 0;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
@@ -235,6 +245,12 @@ export async function registerRoutes(
   /**
    * ✅ Wholesale Apply (stores + emails)
    * POST /api/wholesale/apply
+   *
+   * UPDATED:
+   * - phone is REQUIRED
+   * - memberCount is REQUIRED and must be > 0
+   * - backend validates to match DB constraints
+   * - stores phone as digits-only (required)
    */
   app.post("/api/wholesale/apply", async (req, res) => {
     try {
@@ -244,7 +260,11 @@ export async function registerRoutes(
       const businessName = safeString(body.businessName, 300);
       const contactName = safeString(body.contactName, 300);
       const email = normalizeEmail(String(body.email ?? ""));
-      const phone = safeString(body.phone, 32);
+
+      // phone now REQUIRED (digits only saved)
+      const phoneRaw = safeString(body.phone, 64);
+      const phoneDigits = onlyDigits(phoneRaw);
+
       const websiteOrInstagram = safeString(body.websiteOrInstagram, 500);
       const city = safeString(body.city, 120);
       const state = safeString(body.state, 16);
@@ -252,12 +272,13 @@ export async function registerRoutes(
       const businessType = safeString(body.businessType, 32);
       const businessTypeOther = safeString(body.businessTypeOther, 300);
 
-      const memberCount =
-        body.memberCount === null || body.memberCount === undefined
-          ? null
-          : Number.isFinite(Number(body.memberCount))
-            ? Number(body.memberCount)
-            : null;
+      // memberCount now REQUIRED and > 0
+      const memberCountRaw = body.memberCount;
+      const memberCount = isPositiveInt(memberCountRaw)
+        ? Number(memberCountRaw)
+        : Number.isFinite(Number(memberCountRaw))
+          ? Math.trunc(Number(memberCountRaw))
+          : NaN;
 
       const retailSetup = safeString(body.retailSetup, 32);
 
@@ -268,7 +289,7 @@ export async function registerRoutes(
 
       const notes = safeString(body.notes, 5000);
 
-      // Validation (match your frontend required fields)
+      // Validation (match frontend + DB constraints)
       if (!businessName) {
         return res
           .status(400)
@@ -284,6 +305,20 @@ export async function registerRoutes(
           .status(400)
           .json({ ok: false, message: "Valid email is required." });
       }
+
+      // NEW: phone required + >= 10 digits
+      if (!phoneDigits) {
+        return res
+          .status(400)
+          .json({ ok: false, message: "Phone number is required." });
+      }
+      if (!isValidPhoneDigits(phoneDigits)) {
+        return res.status(400).json({
+          ok: false,
+          message: "Phone number must include at least 10 digits.",
+        });
+      }
+
       if (!city) {
         return res.status(400).json({ ok: false, message: "City is required." });
       }
@@ -298,8 +333,13 @@ export async function registerRoutes(
           .json({ ok: false, message: "Please specify business type." });
       }
 
-      // Normalize phone digits (your UI does this too, but keep backend consistent)
-      const phoneDigits = phone ? onlyDigits(phone) : "";
+      // NEW: memberCount required + > 0
+      if (!Number.isInteger(memberCount) || memberCount <= 0) {
+        return res.status(400).json({
+          ok: false,
+          message: "Approx members / active clients is required and must be > 0.",
+        });
+      }
 
       const ip =
         (req.headers["x-forwarded-for"] as string | undefined)
@@ -311,20 +351,20 @@ export async function registerRoutes(
       const userAgent = String(req.headers["user-agent"] ?? "") || null;
       const referer = String(req.headers["referer"] ?? "") || null;
 
-      // Store in DB
+      // Store in DB (phone + memberCount now non-null)
       const inserted = await db
         .insert(wholesaleApplications)
         .values({
           businessName,
           contactName,
           email,
-          phone: phoneDigits || null,
+          phone: phoneDigits, // REQUIRED
           websiteOrInstagram: websiteOrInstagram || null,
           city,
           state,
           businessType: businessType || "gym",
           businessTypeOther: businessTypeOther || null,
-          memberCount,
+          memberCount, // REQUIRED
           retailSetup: retailSetup || null,
           interestedOnShelf,
           interestedCoachAffiliate,
@@ -344,7 +384,8 @@ export async function registerRoutes(
 
       // Email notifications (optional in dev)
       const resendKey = process.env.RESEND_API_KEY;
-      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail =
+        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       const notifyTo = process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
       const siteUrl = getSiteUrl();
 
@@ -362,33 +403,58 @@ export async function registerRoutes(
           `Business: ${businessName}\n` +
           `Contact: ${contactName}\n` +
           `Email: ${email}\n` +
-          `Phone: ${phoneDigits || "(not provided)"}\n` +
+          `Phone: ${phoneDigits}\n` +
           `Website/IG: ${websiteOrInstagram || "(not provided)"}\n` +
           `City/State: ${city}, ${state}\n` +
-          `Business type: ${businessType}${businessType === "other" ? ` (${businessTypeOther})` : ""}\n` +
-          `Member count: ${memberCount ?? "(not provided)"}\n` +
+          `Business type: ${businessType}${
+            businessType === "other" ? ` (${businessTypeOther})` : ""
+          }\n` +
+          `Member count: ${memberCount}\n` +
           `Retail setup: ${retailSetup || "(not provided)"}\n` +
           `Interested: onShelf=${interestedOnShelf}, coachAffiliate=${interestedCoachAffiliate}, eventSponsorship=${interestedEventSponsorship}\n\n` +
           `Notes:\n${notes || "(none)"}\n\n` +
           `Raw submission:\n${JSON.stringify(body, null, 2)}\n\n` +
           `Wholesale page: ${siteUrl}/wholesale\n`;
 
+        const escapeHtml = (s: string) =>
+          s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
         const internalHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">New wholesale application</h2>
-  <div style="margin:0 0 8px;"><b>Application ID:</b> ${safeString(applicationId ?? "(unknown)")}</div>
-  <div style="margin:0 0 8px;"><b>Business:</b> ${safeString(businessName)}</div>
-  <div style="margin:0 0 8px;"><b>Contact:</b> ${safeString(contactName)}</div>
-  <div style="margin:0 0 8px;"><b>Email:</b> ${safeString(email)}</div>
-  <div style="margin:0 0 8px;"><b>Phone:</b> ${safeString(phoneDigits || "(not provided)")}</div>
-  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${safeString(websiteOrInstagram || "(not provided)")}</div>
-  <div style="margin:0 0 8px;"><b>City/State:</b> ${safeString(city)}, ${safeString(state)}</div>
-  <div style="margin:0 0 8px;"><b>Business type:</b> ${safeString(businessType)}${
+  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(
+    safeString(applicationId ?? "(unknown)"),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Business:</b> ${escapeHtml(
+    safeString(businessName),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(
+    safeString(contactName),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(
+    safeString(email),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(
+    safeString(phoneDigits),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(
+    safeString(websiteOrInstagram || "(not provided)"),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(
+    safeString(city),
+  )}, ${escapeHtml(safeString(state))}</div>
+  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(
+    safeString(businessType),
+  )}${
           businessType === "other" && businessTypeOther
-            ? ` (${safeString(businessTypeOther)})`
+            ? ` (${escapeHtml(safeString(businessTypeOther))})`
             : ""
         }</div>
-  <div style="margin:0 0 8px;"><b>Member count:</b> ${safeString(memberCount ?? "(not provided)")}</div>
-  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${safeString(retailSetup || "(not provided)")}</div>
+  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(
+    safeString(memberCount),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(
+    safeString(retailSetup || "(not provided)"),
+  )}</div>
   <div style="margin:0 0 8px;"><b>Interested:</b>
     onShelf=${String(interestedOnShelf)},
     coachAffiliate=${String(interestedCoachAffiliate)},
@@ -396,17 +462,13 @@ export async function registerRoutes(
   </div>
   <hr style="border:none;border-top:1px solid #eee;margin:14px 0;" />
   <div style="margin:0 0 6px;"><b>Notes</b></div>
-  <pre style="white-space:pre-wrap;background:#f7f7f7;padding:12px;border-radius:10px;font-size:12px;">${safeString(
-    notes || "(none)",
-  )
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")}</pre>
+  <pre style="white-space:pre-wrap;background:#f7f7f7;padding:12px;border-radius:10px;font-size:12px;">${escapeHtml(
+    safeString(notes || "(none)"),
+  )}</pre>
   <div style="margin:12px 0 6px;"><b>Raw submission</b></div>
-  <pre style="background:#f7f7f7;padding:12px;border-radius:10px;overflow:auto;font-size:12px;">${safeString(
-    JSON.stringify(body, null, 2),
-  )
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")}</pre>
+  <pre style="background:#f7f7f7;padding:12px;border-radius:10px;overflow:auto;font-size:12px;">${escapeHtml(
+    safeString(JSON.stringify(body, null, 2)),
+  )}</pre>
 </div>`;
 
         const applicantSubject = "Kimora Co — wholesale application received";
@@ -418,8 +480,8 @@ export async function registerRoutes(
         const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Wholesale application received</h2>
   <p style="margin:0 0 12px;">
-    Thanks${contactName ? `, ${safeString(contactName)}` : ""}! We received your wholesale application for <b>${safeString(
-          businessName,
+    Thanks${contactName ? `, ${escapeHtml(safeString(contactName))}` : ""}! We received your wholesale application for <b>${escapeHtml(
+          safeString(businessName),
         )}</b>.
   </p>
   <p style="margin:0 0 12px;">
@@ -441,7 +503,11 @@ export async function registerRoutes(
             replyTo: email,
           });
         } catch (e: any) {
-          console.error("[wholesale] internal email send failed:", e?.message || e, e);
+          console.error(
+            "[wholesale] internal email send failed:",
+            e?.message || e,
+            e,
+          );
         }
 
         try {
@@ -453,7 +519,11 @@ export async function registerRoutes(
             html: applicantHtml,
           });
         } catch (e: any) {
-          console.error("[wholesale] applicant email send failed:", e?.message || e, e);
+          console.error(
+            "[wholesale] applicant email send failed:",
+            e?.message || e,
+            e,
+          );
         }
       } else {
         console.warn(
@@ -464,6 +534,22 @@ export async function registerRoutes(
       return res.json({ ok: true, id: applicationId });
     } catch (err: any) {
       console.error("POST /api/wholesale/apply error:", err?.message || err);
+
+      // If DB constraint throws, return a helpful 400 (not 500)
+      const msg = String(err?.message || "");
+      if (
+        msg.includes("wholesale_phone_len_chk") ||
+        msg.includes("wholesale_member_count_chk") ||
+        msg.includes("violates check constraint") ||
+        msg.includes("violates not-null constraint")
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            "Please check required fields (phone + member count) and try again.",
+        });
+      }
+
       return res
         .status(500)
         .json({ ok: false, message: "Failed to submit wholesale application." });

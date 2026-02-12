@@ -226,14 +226,33 @@ function safeString(v: any, maxLen = 20000) {
   return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
 }
 
-/** Simple email/phone validation to match your new DB constraints */
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Simple validations to match your DB constraints */
 function isValidPhoneDigits(digits: string) {
-  // You added DB constraint: >= 10 digits after stripping non-digits
+  // DB CHECK: length(regexp_replace(phone, '\D', '', 'g')) >= 10
   return /^\d{10,}$/.test(digits);
 }
-function isPositiveInt(n: unknown) {
-  const v = Number(n);
-  return Number.isInteger(v) && v > 0;
+
+function parsePositiveInt(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+
+  // If they send a number (your new UI sends memberCountNum)
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return null;
+    const n = Math.trunc(value);
+    return n > 0 ? n : null;
+  }
+
+  // If they send a string, extract digits
+  const digits = onlyDigits(String(value));
+  if (!digits) return null;
+  const n = Number(digits);
+  if (!Number.isFinite(n)) return null;
+  const i = Math.trunc(n);
+  return i > 0 ? i : null;
 }
 
 export async function registerRoutes(
@@ -246,22 +265,18 @@ export async function registerRoutes(
    * ✅ Wholesale Apply (stores + emails)
    * POST /api/wholesale/apply
    *
-   * UPDATED:
-   * - phone is REQUIRED
-   * - memberCount is REQUIRED and must be > 0
-   * - backend validates to match DB constraints
-   * - stores phone as digits-only (required)
+   * REQUIRED now:
+   * - phone (>= 10 digits)
+   * - memberCount (> 0)
    */
   app.post("/api/wholesale/apply", async (req, res) => {
     try {
       const body = req.body ?? {};
 
-      // Expecting the exact payload from WholesaleApply.tsx
       const businessName = safeString(body.businessName, 300);
       const contactName = safeString(body.contactName, 300);
       const email = normalizeEmail(String(body.email ?? ""));
 
-      // phone now REQUIRED (digits only saved)
       const phoneRaw = safeString(body.phone, 64);
       const phoneDigits = onlyDigits(phoneRaw);
 
@@ -272,13 +287,7 @@ export async function registerRoutes(
       const businessType = safeString(body.businessType, 32);
       const businessTypeOther = safeString(body.businessTypeOther, 300);
 
-      // memberCount now REQUIRED and > 0
-      const memberCountRaw = body.memberCount;
-      const memberCount = isPositiveInt(memberCountRaw)
-        ? Number(memberCountRaw)
-        : Number.isFinite(Number(memberCountRaw))
-          ? Math.trunc(Number(memberCountRaw))
-          : NaN;
+      const memberCount = parsePositiveInt(body.memberCount);
 
       const retailSetup = safeString(body.retailSetup, 32);
 
@@ -289,7 +298,7 @@ export async function registerRoutes(
 
       const notes = safeString(body.notes, 5000);
 
-      // Validation (match frontend + DB constraints)
+      // Validation (match frontend + DB)
       if (!businessName) {
         return res
           .status(400)
@@ -306,7 +315,6 @@ export async function registerRoutes(
           .json({ ok: false, message: "Valid email is required." });
       }
 
-      // NEW: phone required + >= 10 digits
       if (!phoneDigits) {
         return res
           .status(400)
@@ -333,8 +341,7 @@ export async function registerRoutes(
           .json({ ok: false, message: "Please specify business type." });
       }
 
-      // NEW: memberCount required + > 0
-      if (!Number.isInteger(memberCount) || memberCount <= 0) {
+      if (!memberCount || memberCount <= 0) {
         return res.status(400).json({
           ok: false,
           message: "Approx members / active clients is required and must be > 0.",
@@ -351,20 +358,22 @@ export async function registerRoutes(
       const userAgent = String(req.headers["user-agent"] ?? "") || null;
       const referer = String(req.headers["referer"] ?? "") || null;
 
-      // Store in DB (phone + memberCount now non-null)
       const inserted = await db
         .insert(wholesaleApplications)
         .values({
           businessName,
           contactName,
           email,
-          phone: phoneDigits, // REQUIRED
+
+          // REQUIRED now
+          phone: phoneDigits,
+          memberCount,
+
           websiteOrInstagram: websiteOrInstagram || null,
           city,
           state,
           businessType: businessType || "gym",
           businessTypeOther: businessTypeOther || null,
-          memberCount, // REQUIRED
           retailSetup: retailSetup || null,
           interestedOnShelf,
           interestedCoachAffiliate,
@@ -372,11 +381,7 @@ export async function registerRoutes(
           notes: notes || null,
           status: "new",
           source: "kimoraco.com",
-          metadata: {
-            ip,
-            userAgent,
-            referer,
-          },
+          metadata: { ip, userAgent, referer },
         })
         .returning({ id: wholesaleApplications.id });
 
@@ -415,9 +420,6 @@ export async function registerRoutes(
           `Notes:\n${notes || "(none)"}\n\n` +
           `Raw submission:\n${JSON.stringify(body, null, 2)}\n\n` +
           `Wholesale page: ${siteUrl}/wholesale\n`;
-
-        const escapeHtml = (s: string) =>
-          s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
         const internalHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">New wholesale application</h2>
@@ -480,13 +482,13 @@ export async function registerRoutes(
         const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Wholesale application received</h2>
   <p style="margin:0 0 12px;">
-    Thanks${contactName ? `, ${escapeHtml(safeString(contactName))}` : ""}! We received your wholesale application for <b>${escapeHtml(
+    Thanks${
+      contactName ? `, ${escapeHtml(safeString(contactName))}` : ""
+    }! We received your wholesale application for <b>${escapeHtml(
           safeString(businessName),
         )}</b>.
   </p>
-  <p style="margin:0 0 12px;">
-    We’ll review it and get back to you shortly.
-  </p>
+  <p style="margin:0 0 12px;">We’ll review it and get back to you shortly.</p>
   <p style="margin:16px 0 0;font-size:12px;color:#666;">
     Need to add something? Reply to this email or contact
     <a href="mailto:alex@kimoraco.com">alex@kimoraco.com</a>.
@@ -928,7 +930,9 @@ Need help? Reply to this email or contact alex@kimoraco.com
         });
       }
 
-      const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
+      const mode: "payment" | "subscription" = hasSub
+        ? "subscription"
+        : "payment";
       const siteUrl = getSiteUrl();
 
       const stripeCustomerId = email

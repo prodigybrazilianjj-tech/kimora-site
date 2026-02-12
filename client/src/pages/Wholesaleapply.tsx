@@ -10,6 +10,8 @@ type FormState = {
   businessName: string;
   contactName: string;
   email: string;
+
+  // ✅ now required
   phone: string;
 
   websiteOrInstagram: string;
@@ -19,7 +21,9 @@ type FormState = {
   businessType: "gym" | "bjj" | "performance" | "trainer" | "retail" | "other";
   businessTypeOther: string;
 
-  memberCount: string; // keep as string for input UX
+  // ✅ now required (keep as string for input UX)
+  memberCount: string;
+
   retailSetup: "front_desk" | "pro_shop" | "supplement_wall" | "not_sure";
 
   interestedIn: {
@@ -50,6 +54,7 @@ export default function WholesaleApply() {
     businessName: "",
     contactName: "",
     email: "",
+
     phone: "",
 
     websiteOrInstagram: "",
@@ -77,16 +82,32 @@ export default function WholesaleApply() {
   const [submitted, setSubmitted] = useState(false);
 
   const emailNormalized = useMemo(() => normalizeEmail(form.email), [form.email]);
+  const phoneDigits = useMemo(() => onlyDigits(form.phone), [form.phone]);
+
+  const memberCountNum = useMemo(() => {
+    const digits = onlyDigits(form.memberCount);
+    if (!digits) return NaN;
+    return Number(digits);
+  }, [form.memberCount]);
 
   const requiredOk = useMemo(() => {
     if (!form.businessName.trim()) return false;
     if (!form.contactName.trim()) return false;
     if (!emailNormalized || !isValidEmail(emailNormalized)) return false;
+
+    // ✅ now required
+    if (!phoneDigits || phoneDigits.length < 10) return false;
+
     if (!form.city.trim()) return false;
     if (!form.state.trim()) return false;
+
     if (form.businessType === "other" && !form.businessTypeOther.trim()) return false;
+
+    // ✅ now required
+    if (!Number.isFinite(memberCountNum) || memberCountNum < 1) return false;
+
     return true;
-  }, [form, emailNormalized]);
+  }, [form, emailNormalized, phoneDigits, memberCountNum]);
 
   function markTouched(key: string) {
     setTouched((t) => ({ ...t, [key]: true }));
@@ -105,6 +126,11 @@ export default function WholesaleApply() {
       businessName: true,
       contactName: true,
       email: true,
+
+      // ✅ new required
+      phone: true,
+      memberCount: true,
+
       city: true,
       state: true,
       businessTypeOther: true,
@@ -118,8 +144,8 @@ export default function WholesaleApply() {
       const payload = {
         ...form,
         email: emailNormalized,
-        phone: form.phone ? onlyDigits(form.phone) : "",
-        memberCount: form.memberCount ? Number(onlyDigits(form.memberCount)) : null,
+        phone: phoneDigits, // ✅ required, always send digits
+        memberCount: memberCountNum, // ✅ required, always send number
       };
 
       const res = await fetch("/api/wholesale/apply", {
@@ -319,15 +345,19 @@ export default function WholesaleApply() {
 
               <div>
                 <Label className="text-sm text-white mb-2 block" htmlFor="phone">
-                  Phone (optional)
+                  Phone <span className="text-white/40">*</span>
                 </Label>
                 <Input
                   id="phone"
                   value={form.phone}
                   onChange={(e) => update("phone", e.target.value)}
+                  onBlur={() => markTouched("phone")}
                   className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
                   placeholder="(555) 555-5555"
                 />
+                {showErr("phone") && (!phoneDigits || phoneDigits.length < 10) ? (
+                  <p className="text-xs text-red-200 mt-2">Phone number is required.</p>
+                ) : null}
               </div>
 
               <div>
@@ -434,15 +464,20 @@ export default function WholesaleApply() {
 
               <div>
                 <Label className="text-sm text-white mb-2 block" htmlFor="memberCount">
-                  Approx members / active clients (optional)
+                  Approx members / active clients <span className="text-white/40">*</span>
                 </Label>
                 <Input
                   id="memberCount"
                   value={form.memberCount}
                   onChange={(e) => update("memberCount", e.target.value)}
+                  onBlur={() => markTouched("memberCount")}
                   className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
                   placeholder="e.g., 150"
                 />
+                {showErr("memberCount") &&
+                (!Number.isFinite(memberCountNum) || memberCountNum < 1) ? (
+                  <p className="text-xs text-red-200 mt-2">Approx member count is required.</p>
+                ) : null}
 
                 <div className="mt-4 text-sm text-white mb-2">Retail setup</div>
                 <div className="grid grid-cols-2 gap-2">
@@ -493,9 +528,7 @@ export default function WholesaleApply() {
                   ].join(" ")}
                 >
                   <div className="font-semibold">On-shelf wholesale</div>
-                  <div className="text-xs text-white/60 mt-1">
-                    Stock Kimora in your gym
-                  </div>
+                  <div className="text-xs text-white/60 mt-1">Stock Kimora in your gym</div>
                 </button>
 
                 <button
@@ -517,9 +550,7 @@ export default function WholesaleApply() {
                   ].join(" ")}
                 >
                   <div className="font-semibold">Coach / affiliate</div>
-                  <div className="text-xs text-white/60 mt-1">
-                    Coaches promote to members
-                  </div>
+                  <div className="text-xs text-white/60 mt-1">Coaches promote to members</div>
                 </button>
 
                 <button
@@ -541,9 +572,7 @@ export default function WholesaleApply() {
                   ].join(" ")}
                 >
                   <div className="font-semibold">Events / sponsorship</div>
-                  <div className="text-xs text-white/60 mt-1">
-                    Tournament + gym events
-                  </div>
+                  <div className="text-xs text-white/60 mt-1">Tournament + gym events</div>
                 </button>
               </div>
             </div>
@@ -596,8 +625,8 @@ export default function WholesaleApply() {
 
           {/* Footer note */}
           <div className="mt-8 text-center text-xs text-white/40">
-            By applying, you agree to respect MAP/MSRP guidelines and in-gym retail
-            positioning. Wholesale details are provided after approval.
+            By applying, you agree to respect MAP/MSRP guidelines and in-gym retail positioning.
+            Wholesale details are provided after approval.
           </div>
         </div>
       </main>

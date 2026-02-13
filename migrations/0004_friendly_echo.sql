@@ -8,8 +8,9 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'wholesale_phone_len_chk'
+    FROM pg_constraint c
+    WHERE c.conname = 'wholesale_phone_len_chk'
+      AND c.conrelid = 'wholesale_applications'::regclass
   ) THEN
     ALTER TABLE "wholesale_applications"
       ADD CONSTRAINT "wholesale_phone_len_chk"
@@ -21,8 +22,9 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'wholesale_member_count_chk'
+    FROM pg_constraint c
+    WHERE c.conname = 'wholesale_member_count_chk'
+      AND c.conrelid = 'wholesale_applications'::regclass
   ) THEN
     ALTER TABLE "wholesale_applications"
       ADD CONSTRAINT "wholesale_member_count_chk"

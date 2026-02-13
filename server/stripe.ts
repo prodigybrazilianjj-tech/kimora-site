@@ -1,11 +1,13 @@
+// server/stripe.ts
+import "dotenv/config";
 import Stripe from "stripe";
 
-const secretKey = process.env.STRIPE_SECRET_KEY;
+const key = process.env.STRIPE_SECRET_KEY;
 
-if (!secretKey) {
+if (!key) {
+  console.error("CWD:", process.cwd());
+  console.error("Has STRIPE_SECRET_KEY:", Boolean(process.env.STRIPE_SECRET_KEY));
   throw new Error("Missing STRIPE_SECRET_KEY env var");
 }
 
-export const stripe = new Stripe(secretKey, {
-  apiVersion: "2024-06-20",
-});
+export const stripe = new Stripe(key);

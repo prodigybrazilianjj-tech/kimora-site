@@ -29,6 +29,13 @@
       "when": 1770676626261,
       "tag": "0003_lame_vector",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771007401748,
+      "tag": "0004_friendly_echo",
+      "breakpoints": true
     }
   ]
 }

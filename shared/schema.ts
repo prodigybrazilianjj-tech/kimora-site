@@ -9,6 +9,7 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  check,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -103,7 +104,7 @@ export const orderItems = pgTable(
   (t) => ({
     orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
 
-    // Fallback uniqueness: one price per order
+    // Fallback uniqueness: one price per order (if priceId exists)
     orderPriceUnique: uniqueIndex("order_items_order_price_unique").on(
       t.orderId,
       t.stripePriceId,
@@ -120,7 +121,10 @@ export const orderItems = pgTable(
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = typeof orderItems.$inferInsert;
 
-/** PORTAL TOKENS (single-use magic links) */
+/**
+ * PORTAL TOKENS
+ * (Keeping this in case you still use it elsewhere. If not used, safe to delete later.)
+ */
 export const portalTokens = pgTable(
   "portal_tokens",
   {
@@ -164,7 +168,9 @@ export const wholesaleApplications = pgTable(
     contactName: text("contact_name").notNull(),
 
     email: varchar("email", { length: 320 }).notNull(),
-    phone: varchar("phone", { length: 32 }),
+
+    // REQUIRED now (backend stores digits-only)
+    phone: varchar("phone", { length: 32 }).notNull(),
 
     websiteOrInstagram: text("website_or_instagram"),
     city: text("city").notNull(),
@@ -173,7 +179,9 @@ export const wholesaleApplications = pgTable(
     businessType: varchar("business_type", { length: 32 }).notNull(), // gym|bjj|performance|trainer|retail|other
     businessTypeOther: text("business_type_other"),
 
-    memberCount: integer("member_count"),
+    // REQUIRED now
+    memberCount: integer("member_count").notNull(),
+
     retailSetup: varchar("retail_setup", { length: 32 }), // front_desk|pro_shop|supplement_wall|not_sure
 
     interestedOnShelf: boolean("interested_on_shelf").notNull().default(true),
@@ -202,6 +210,17 @@ export const wholesaleApplications = pgTable(
   (t) => ({
     createdAtIdx: index("wholesale_applications_created_at_idx").on(t.createdAt),
     emailIdx: index("wholesale_applications_email_idx").on(t.email),
+    statusIdx: index("wholesale_applications_status_idx").on(t.status),
+
+    // DB constraints to match your backend validation
+    wholesalePhoneLenChk: check(
+      "wholesale_phone_len_chk",
+      sql`length(regexp_replace(${t.phone}, '\\D', '', 'g')) >= 10`,
+    ),
+    wholesaleMemberCountChk: check(
+      "wholesale_member_count_chk",
+      sql`${t.memberCount} > 0`,
+    ),
   }),
 );
 

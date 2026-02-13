@@ -1,11 +1,13 @@
+// routes.ts
 import type { Express } from "express";
 import type { Server } from "http";
 import { eq, desc } from "drizzle-orm";
+import crypto from "crypto";
+import { Resend } from "resend";
+
 import { stripe } from "./stripe";
 import { db } from "./db";
 import { orders, orderItems, wholesaleApplications } from "../shared/schema";
-import crypto from "crypto";
-import { Resend } from "resend";
 
 type CheckoutItem = {
   flavor: string; // e.g. "strawberry-guava"
@@ -239,7 +241,7 @@ function isValidPhoneDigits(digits: string) {
 function parsePositiveInt(value: unknown): number | null {
   if (value === null || value === undefined) return null;
 
-  // If they send a number (your new UI sends memberCountNum)
+  // If they send a number (your UI sends memberCountNum)
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return null;
     const n = Math.trunc(value);
@@ -255,11 +257,121 @@ function parsePositiveInt(value: unknown): number | null {
   return i > 0 ? i : null;
 }
 
+function adminTokenFromReq(req: any) {
+  const header =
+    String(req.headers["x-admin-token"] ?? "").trim() ||
+    String(req.headers["authorization"] ?? "").trim();
+
+  if (!header) return "";
+
+  // Support both:
+  // 1) x-admin-token: <token>
+  // 2) Authorization: Bearer <token>
+  if (header.toLowerCase().startsWith("bearer ")) {
+    return header.slice(7).trim();
+  }
+  return header;
+}
+
+function requireAdmin(req: any, res: any) {
+  const expected = String(process.env.ADMIN_DASHBOARD_TOKEN ?? "").trim();
+  if (!expected) {
+    return res.status(500).json({
+      ok: false,
+      message: "ADMIN_DASHBOARD_TOKEN is not set on the server.",
+    });
+  }
+
+  const got = adminTokenFromReq(req);
+  if (!got || got !== expected) {
+    return res.status(401).json({ ok: false, message: "Unauthorized" });
+  }
+
+  return null; // ok
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+  /**
+   * ✅ Admin: List wholesale applications
+   * GET /api/admin/wholesale-applications
+   * Header: x-admin-token: <ADMIN_DASHBOARD_TOKEN>
+   */
+  app.get("/api/admin/wholesale-applications", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const rows = await db
+        .select()
+        .from(wholesaleApplications)
+        .orderBy(desc(wholesaleApplications.createdAt))
+        .limit(500);
+
+      return res.json({ ok: true, rows });
+    } catch (err: any) {
+      console.error(
+        "GET /api/admin/wholesale-applications error:",
+        err?.message || err,
+      );
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to load applications." });
+    }
+  });
+
+  /**
+   * ✅ Admin: Update application status
+   * PATCH /api/admin/wholesale-applications/:id
+   * Body: { status: "new" | "reviewing" | "approved" | "rejected" | "closed" }
+   * Header: x-admin-token: <ADMIN_DASHBOARD_TOKEN>
+   */
+  app.patch("/api/admin/wholesale-applications/:id", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const id = String(req.params.id || "").trim();
+      const status = String(req.body?.status || "").trim();
+
+      const allowed = new Set([
+        "new",
+        "reviewing",
+        "approved",
+        "rejected",
+        "closed",
+      ]);
+
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+      if (!allowed.has(status)) {
+        return res.status(400).json({ ok: false, message: "Invalid status." });
+      }
+
+      const updated = await db
+        .update(wholesaleApplications)
+        .set({ status })
+        .where(eq(wholesaleApplications.id, id))
+        .returning({ id: wholesaleApplications.id });
+
+      if (!updated?.length) {
+        return res.status(404).json({ ok: false, message: "Not found." });
+      }
+
+      return res.json({ ok: true });
+    } catch (err: any) {
+      console.error(
+        "PATCH /api/admin/wholesale-applications/:id error:",
+        err?.message || err,
+      );
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to update status." });
+    }
+  });
 
   /**
    * ✅ Wholesale Apply (stores + emails)
@@ -387,7 +499,7 @@ export async function registerRoutes(
 
       const applicationId = inserted?.[0]?.id ?? null;
 
-      // Email notifications (optional in dev)
+      // Email notifications
       const resendKey = process.env.RESEND_API_KEY;
       const fromEmail =
         process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
@@ -958,7 +1070,9 @@ Need help? Reply to this email or contact alex@kimoraco.com
         ...(mode === "payment"
           ? {
               ...(stripeCustomerId ? {} : { customer_creation: "always" }),
-              ...(email ? { payment_intent_data: { receipt_email: email } } : {}),
+              ...(email
+                ? { payment_intent_data: { receipt_email: email } }
+                : {}),
             }
           : {}),
 
@@ -987,7 +1101,9 @@ Need help? Reply to this email or contact alex@kimoraco.com
       return res.json({ url: session.url });
     } catch (err: any) {
       console.error("POST /api/checkout error:", err);
-      return res.status(500).json({ message: err?.message || "Checkout failed." });
+      return res
+        .status(500)
+        .json({ message: err?.message || "Checkout failed." });
     }
   });
 

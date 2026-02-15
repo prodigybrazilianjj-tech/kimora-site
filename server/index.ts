@@ -1,10 +1,5 @@
 // server/index.ts
-
-// Load .env ONLY in local dev. In production (Render), use Render env vars.
-if (process.env.NODE_ENV !== "production") {
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  import("dotenv/config");
-}
+import "dotenv/config";
 
 import express, { type Request, type Response, type NextFunction } from "express";
 import { createServer } from "http";
@@ -55,11 +50,8 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
 
     if (path.startsWith("/api")) {
-      // Minimal, safe logging
       log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
 
-      // Optional: log a little extra for server errors without dumping payloads
-      // (kept intentionally minimal)
       if (res.statusCode >= 500) {
         log(`Server error on ${req.method} ${path}`, "error");
       }
@@ -77,7 +69,6 @@ app.use((req, res, next) => {
     const status = err?.status || err?.statusCode || 500;
     const message = err?.message || "Internal Server Error";
 
-    // Safe server-side error log (don’t log request bodies here)
     console.error("Unhandled error:", message);
 
     res.status(status).json({ message });

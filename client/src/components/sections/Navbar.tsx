@@ -15,12 +15,11 @@ function scrollToSelectorWithNudge(selector: string) {
   const el = document.querySelector(selector);
   if (!(el instanceof HTMLElement)) return;
 
-  // ✅ If you're STILL landing too low, increase this number.
-  // More nudge = scroll further DOWN = content appears higher on screen.
   const NUDGE_PX = 160;
 
   const navHeight = getNavHeight();
-  const targetTop = window.scrollY + el.getBoundingClientRect().top - navHeight;
+  const targetTop =
+    window.scrollY + el.getBoundingClientRect().top - navHeight;
 
   window.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
   window.scrollBy({ top: NUDGE_PX, behavior: "auto" });
@@ -60,29 +59,46 @@ export function Navbar() {
 
   function goToSection(hash: string) {
     const normalizedHash = hash.startsWith("#") ? hash : `#${hash}`;
-    const selector = `${normalizedHash}-anchor`; // "#flavors-anchor"
+    const selector = normalizedHash;
 
     if (!isHome) {
-      // Navigate home first; Home.tsx will handle the scroll after mount
       setLocation("/");
+
       window.setTimeout(() => {
         window.location.hash = normalizedHash;
+        forceScrollTo(selector);
       }, 0);
+
       return;
     }
 
-    // Already on home: update hash and scroll now
     window.location.hash = normalizedHash;
     forceScrollTo(selector);
   }
 
+  // Force scroll on direct hash load
+  useEffect(() => {
+    if (!isHome) return;
+
+    const run = () => {
+      const hash = window.location.hash;
+      if (!hash) return;
+      forceScrollTo(hash);
+    };
+
+    run();
+    window.addEventListener("hashchange", run);
+    return () => window.removeEventListener("hashchange", run);
+  }, [isHome]);
+
+  // ✅ REORDERED: Wholesale now last in link row
   const navLinks = [
     { name: "Flavors", action: () => goToSection("#flavors") },
-    { name: "Shop", action: () => setLocation("/shop") },
-    { name: "Wholesale", action: () => setLocation("/wholesale") },
     { name: "Formula", action: () => goToSection("#formula") },
     { name: "Why Not a Tub?", action: () => goToSection("#comparison") },
     { name: "About", action: () => goToSection("#about") },
+    { name: "Shop", action: () => setLocation("/shop") },
+    { name: "Wholesale", action: () => setLocation("/wholesale") }, // ✅ now furthest right
   ];
 
   return (

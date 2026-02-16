@@ -22,15 +22,11 @@ function scrollToSelectorWithNudge(selector: string) {
   const navHeight = getNavHeight();
   const targetTop = window.scrollY + el.getBoundingClientRect().top - navHeight;
 
-  // Set base scroll position
   window.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
-
-  // Then nudge down to raise the content visually
   window.scrollBy({ top: NUDGE_PX, behavior: "auto" });
 }
 
 function forceScrollTo(selector: string) {
-  // Multi-pass to beat layout shifts (fonts/images/motion)
   scrollToSelectorWithNudge(selector);
   requestAnimationFrame(() => scrollToSelectorWithNudge(selector));
   window.setTimeout(() => scrollToSelectorWithNudge(selector), 250);
@@ -64,45 +60,24 @@ export function Navbar() {
 
   function goToSection(hash: string) {
     const normalizedHash = hash.startsWith("#") ? hash : `#${hash}`;
-    const selector = `${normalizedHash}-anchor`; // e.g. "#flavors-anchor"
+    const selector = `${normalizedHash}-anchor`; // "#flavors-anchor"
 
     if (!isHome) {
-      // Navigate home first
+      // Navigate home first; Home.tsx will handle the scroll after mount
       setLocation("/");
-
-      // Then force-scroll once the home sections mount
       window.setTimeout(() => {
         window.location.hash = normalizedHash;
-        forceScrollTo(selector);
       }, 0);
-
       return;
     }
 
-    // Already on home: just update hash and scroll
+    // Already on home: update hash and scroll now
     window.location.hash = normalizedHash;
     forceScrollTo(selector);
   }
 
-  // If user hits a direct hash URL like /#flavors, force scroll after mount
-  useEffect(() => {
-    if (!isHome) return;
-
-    const run = () => {
-      const hash = window.location.hash;
-      if (!hash) return;
-
-      const selector = `${hash}-anchor`;
-      forceScrollTo(selector);
-    };
-
-    run();
-    window.addEventListener("hashchange", run);
-    return () => window.removeEventListener("hashchange", run);
-  }, [isHome]);
-
   const navLinks = [
-    { name: "Flavors", action: () => (window.location.href = "/#flavors") },
+    { name: "Flavors", action: () => goToSection("#flavors") },
     { name: "Shop", action: () => setLocation("/shop") },
     { name: "Wholesale", action: () => setLocation("/wholesale") },
     { name: "Formula", action: () => goToSection("#formula") },

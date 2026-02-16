@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -21,30 +22,52 @@ import Refunds from "@/pages/Refunds";
 
 import NotFound from "@/pages/not-found";
 
+/**
+ * ✅ Scroll to top on route change (Wouter doesn't do this by default)
+ * - If there's a hash (#something), we let the page-level hash logic handle it.
+ * - Otherwise we scroll to the top.
+ */
+function ScrollToTop() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    // If navigating to a hash route like "/#flavors", don't fight the hash scroller
+    if (typeof window !== "undefined" && window.location.hash) return;
+
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location]);
+
+  return null;
+}
+
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/faq" component={FAQ} />
-      <Route path="/shop" component={Shop} />
-      <Route path="/product" component={Product} />
+    <>
+      <ScrollToTop />
 
-      {/* ✅ Put the more specific route BEFORE /wholesale */}
-      <Route path="/wholesale/apply" component={WholesaleApply} />
-      <Route path="/wholesale" component={Wholesale} />
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/faq" component={FAQ} />
+        <Route path="/shop" component={Shop} />
+        <Route path="/product" component={Product} />
 
-      <Route path="/cart" component={Cart} />
-      <Route path="/checkout" component={Checkout} />
-      <Route path="/order-success" component={OrderSuccess} />
-      <Route path="/manage-subscription" component={ManageSubscription} />
+        {/* ✅ Put the more specific route BEFORE /wholesale */}
+        <Route path="/wholesale/apply" component={WholesaleApply} />
+        <Route path="/wholesale" component={Wholesale} />
 
-      {/* Legal */}
-      <Route path="/terms" component={Terms} />
-      <Route path="/privacy" component={Privacy} />
-      <Route path="/refunds" component={Refunds} />
+        <Route path="/cart" component={Cart} />
+        <Route path="/checkout" component={Checkout} />
+        <Route path="/order-success" component={OrderSuccess} />
+        <Route path="/manage-subscription" component={ManageSubscription} />
 
-      <Route component={NotFound} />
-    </Switch>
+        {/* Legal */}
+        <Route path="/terms" component={Terms} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/refunds" component={Refunds} />
+
+        <Route component={NotFound} />
+      </Switch>
+    </>
   );
 }
 

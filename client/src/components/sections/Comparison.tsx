@@ -40,17 +40,16 @@ export function Comparison() {
 
           {/* RIGHT SIDE IMAGE */}
           <div className="relative">
-            <div className="aspect-square rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center p-6">
-              
-              <img
-                src="/assets/comparison/tub-vs-sticks.png"
-                alt="Creatine tub vs Kimora sticks comparison"
-                className="w-full h-full object-contain"
-                loading="lazy"
-              />
+  <div className="aspect-square rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-8">
+    <img
+      src="/assets/products/tub-vs-sticks.png"
+      alt="Creatine tub vs Kimora sticks comparison"
+      className="w-full h-full object-contain"
+      loading="lazy"
+    />
+  </div>
+</div>
 
-            </div>
-          </div>
 
         </div>
       </section>

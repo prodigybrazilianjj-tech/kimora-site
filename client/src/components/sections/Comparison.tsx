@@ -3,16 +3,18 @@ import { Check } from "lucide-react";
 export function Comparison() {
   return (
     <>
-      {/* ✅ OFFSET ANCHOR */}
-      {/* Navbar uses hash "#comparison" and scrolls to "#comparison-anchor" */}
+      {/* OFFSET ANCHOR FOR NAVBAR HASH LINK */}
       <div id="comparison-anchor" className="h-[140px] md:h-[160px]" />
 
       <section id="comparison" className="py-24 bg-background">
         <div className="container px-4 mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          
+          {/* LEFT SIDE TEXT */}
           <div>
             <h2 className="text-4xl md:text-6xl font-display font-bold text-white mb-6 leading-[0.9]">
               WHY NOT JUST A HUGE TUB OF PLAIN CREATINE?
             </h2>
+
             <p className="text-lg text-muted-foreground mb-8">
               Most people buy a tub, take it a few weeks, then fall off. Kimora is
               built to be the opposite: single-serve sticks that taste good,
@@ -36,16 +38,20 @@ export function Comparison() {
             </ul>
           </div>
 
+          {/* RIGHT SIDE IMAGE */}
           <div className="relative">
-            <div className="aspect-square rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-12">
-              <div className="text-center space-y-8 opacity-50">
-                <div className="text-8xl">🥡 vs 🥢</div>
-                <p className="font-display text-2xl tracking-widest">
-                  OLD SCHOOL vs NEW STANDARD
-                </p>
-              </div>
+            <div className="aspect-square rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center p-6">
+              
+              <img
+                src="/assets/comparison/tub-vs-sticks.png"
+                alt="Creatine tub vs Kimora sticks comparison"
+                className="w-full h-full object-contain"
+                loading="lazy"
+              />
+
             </div>
           </div>
+
         </div>
       </section>
     </>

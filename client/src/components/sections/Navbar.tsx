@@ -18,8 +18,7 @@ function scrollToSelectorWithNudge(selector: string) {
   const NUDGE_PX = 160;
 
   const navHeight = getNavHeight();
-  const targetTop =
-    window.scrollY + el.getBoundingClientRect().top - navHeight;
+  const targetTop = window.scrollY + el.getBoundingClientRect().top - navHeight;
 
   window.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
   window.scrollBy({ top: NUDGE_PX, behavior: "auto" });
@@ -30,6 +29,13 @@ function forceScrollTo(selector: string) {
   requestAnimationFrame(() => scrollToSelectorWithNudge(selector));
   window.setTimeout(() => scrollToSelectorWithNudge(selector), 250);
   window.setTimeout(() => scrollToSelectorWithNudge(selector), 800);
+}
+
+function scrollToTop() {
+  // Do a couple passes because some browsers/layouts update height after route swap
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+  window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }), 60);
 }
 
 export function Navbar() {
@@ -57,6 +63,25 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
+  function goHomeTop() {
+    // Always go to the true top of the home page
+    // (and clear any previous hash so it doesn't auto-jump)
+    if (window.location.hash) {
+      // clear hash without adding a history entry
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+
+    if (!isHome) {
+      setLocation("/");
+      window.setTimeout(() => {
+        scrollToTop();
+      }, 0);
+      return;
+    }
+
+    scrollToTop();
+  }
+
   function goToSection(hash: string) {
     const normalizedHash = hash.startsWith("#") ? hash : `#${hash}`;
     const selector = normalizedHash;
@@ -76,7 +101,7 @@ export function Navbar() {
     forceScrollTo(selector);
   }
 
-  // Force scroll on direct hash load
+  // Force scroll on direct hash load (home only)
   useEffect(() => {
     if (!isHome) return;
 
@@ -91,14 +116,13 @@ export function Navbar() {
     return () => window.removeEventListener("hashchange", run);
   }, [isHome]);
 
-  // ✅ REORDERED: Wholesale now last in link row
   const navLinks = [
     { name: "Flavors", action: () => goToSection("#flavors") },
     { name: "Formula", action: () => goToSection("#formula") },
     { name: "Why Not a Tub?", action: () => goToSection("#comparison") },
     { name: "About", action: () => goToSection("#about") },
     { name: "Shop", action: () => setLocation("/shop") },
-    { name: "Wholesale", action: () => setLocation("/wholesale") }, // ✅ now furthest right
+    { name: "Wholesale", action: () => setLocation("/wholesale") },
   ];
 
   return (
@@ -109,8 +133,13 @@ export function Navbar() {
       )}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
+        {/* ✅ Clicking logo ALWAYS returns to top of homepage */}
         <Link
           href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            goHomeTop();
+          }}
           className="text-3xl font-display font-bold tracking-wider text-white hover:text-primary transition-colors"
         >
           KIMORA
@@ -166,11 +195,16 @@ export function Navbar() {
               </Button>
             </SheetTrigger>
 
-            <SheetContent
-              side="right"
-              className="bg-background border-l border-border"
-            >
+            <SheetContent side="right" className="bg-background border-l border-border">
               <div className="flex flex-col gap-6 mt-10">
+                {/* ✅ Home Top shortcut on mobile too */}
+                <button
+                  onClick={goHomeTop}
+                  className="text-lg font-display text-left text-white/90 hover:text-white transition-colors"
+                >
+                  Home
+                </button>
+
                 {navLinks.map((link) => (
                   <button
                     key={link.name}

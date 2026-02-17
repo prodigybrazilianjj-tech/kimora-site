@@ -3,6 +3,8 @@ import "dotenv/config";
 
 import express, { type Request, type Response, type NextFunction } from "express";
 import { createServer } from "http";
+import path from "path";
+
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 
@@ -44,16 +46,16 @@ export function log(message: string, source = "express") {
  */
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
+  const reqPath = req.path;
 
   res.on("finish", () => {
     const duration = Date.now() - start;
 
-    if (path.startsWith("/api")) {
-      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
+    if (reqPath.startsWith("/api")) {
+      log(`${req.method} ${reqPath} ${res.statusCode} in ${duration}ms`);
 
       if (res.statusCode >= 500) {
-        log(`Server error on ${req.method} ${path}`, "error");
+        log(`Server error on ${req.method} ${reqPath}`, "error");
       }
     }
   });
@@ -74,10 +76,18 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
   });
 
-  // Production serves built client; dev uses Vite middleware
+  /**
+   * Static files / Vite:
+   * - Production: serve built client via serveStatic(app)
+   * - Dev: use Vite middleware, AND also serve client/public (favicon, og images, etc.)
+   */
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
+    // ✅ Serve client/public in dev so /favicon.png and /opengraph.jpg work
+    const publicDir = path.resolve(process.cwd(), "client", "public");
+    app.use(express.static(publicDir));
+
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }

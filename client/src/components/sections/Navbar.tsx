@@ -32,9 +32,10 @@ function forceScrollTo(selector: string) {
 }
 
 function scrollToTop() {
-  // Do a couple passes because some browsers/layouts update height after route swap
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+  requestAnimationFrame(() =>
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" }),
+  );
   window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }), 60);
 }
 
@@ -45,10 +46,15 @@ export function Navbar() {
 
   const isHome = location === "/";
 
+  // ✅ IMPORTANT: keep height/padding CONSTANT to prevent flicker
+  const navBase =
+    "fixed top-0 left-0 right-0 z-50 border-b border-transparent " +
+    "transition-colors duration-300"; // ✅ no transition-all
+
   const navBackground =
     !isHome || isScrolled
-      ? "bg-background/90 backdrop-blur-md border-border py-4"
-      : "bg-transparent py-6";
+      ? "bg-background/90 backdrop-blur-md border-border"
+      : "bg-transparent";
 
   useEffect(() => {
     if (!isHome) {
@@ -57,17 +63,15 @@ export function Navbar() {
     }
 
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
   function goHomeTop() {
-    // Always go to the true top of the home page
-    // (and clear any previous hash so it doesn't auto-jump)
+    // Clear hash (prevents auto-jump / weirdness)
     if (window.location.hash) {
-      // clear hash without adding a history entry
       history.replaceState(null, "", window.location.pathname + window.location.search);
     }
 
@@ -88,12 +92,10 @@ export function Navbar() {
 
     if (!isHome) {
       setLocation("/");
-
       window.setTimeout(() => {
         window.location.hash = normalizedHash;
         forceScrollTo(selector);
       }, 0);
-
       return;
     }
 
@@ -101,7 +103,6 @@ export function Navbar() {
     forceScrollTo(selector);
   }
 
-  // Force scroll on direct hash load (home only)
   useEffect(() => {
     if (!isHome) return;
 
@@ -126,14 +127,9 @@ export function Navbar() {
   ];
 
   return (
-    <nav
-      className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-transparent",
-        navBackground
-      )}
-    >
-      <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-        {/* ✅ Clicking logo ALWAYS returns to top of homepage */}
+    <nav className={cn(navBase, navBackground)}>
+      {/* ✅ constant height container so nothing shifts */}
+      <div className="container mx-auto px-4 md:px-6 h-[72px] flex items-center justify-between">
         <Link
           href="/"
           onClick={(e) => {
@@ -197,7 +193,6 @@ export function Navbar() {
 
             <SheetContent side="right" className="bg-background border-l border-border">
               <div className="flex flex-col gap-6 mt-10">
-                {/* ✅ Home Top shortcut on mobile too */}
                 <button
                   onClick={goHomeTop}
                   className="text-lg font-display text-left text-white/90 hover:text-white transition-colors"

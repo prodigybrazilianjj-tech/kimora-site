@@ -304,11 +304,161 @@ function requireAdmin(req: any, res: any) {
   return null; // ok
 }
 
+function isFrequency(v: any): v is CheckoutItem["frequency"] {
+  return v === "2" || v === "4" || v === "6";
+}
+
+function isCheckoutType(v: any): v is CheckoutItem["type"] {
+  return v === "onetime" || v === "subscribe";
+}
+
+function parseCheckoutItems(raw: any): CheckoutItem[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  const items: CheckoutItem[] = [];
+
+  for (const it of arr) {
+    const flavor = safeString(it?.flavor, 200).toLowerCase();
+    const type = it?.type;
+
+    if (!flavor) continue;
+    if (!isCheckoutType(type)) continue;
+
+    const quantityRaw = Number(it?.quantity);
+    const quantity = Number.isFinite(quantityRaw)
+      ? Math.max(1, Math.floor(quantityRaw))
+      : 1;
+
+    if (type === "subscribe") {
+      const freq = it?.frequency;
+      if (!isFrequency(freq)) continue;
+
+      items.push({
+        flavor,
+        type: "subscribe",
+        frequency: freq,
+        quantity,
+      });
+    } else {
+      items.push({
+        flavor,
+        type: "onetime",
+        quantity,
+      });
+    }
+  }
+
+  return items;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+  // ✅ MISSING ENDPOINT FIX: create Stripe Checkout session
+  app.post("/api/checkout", async (req, res) => {
+    try {
+      const email = normalizeEmail(String(req.body?.email ?? ""));
+      const items = parseCheckoutItems(req.body?.items);
+
+      if (!email || !isValidEmail(email)) {
+        return res.status(400).json({ message: "Valid email is required." });
+      }
+
+      if (!items.length) {
+        return res.status(400).json({ message: "No items to checkout." });
+      }
+
+      // Enforce "single mode" per session (your frontend already separates these)
+      const hasSub = items.some((i) => i.type === "subscribe");
+      const hasOne = items.some((i) => i.type === "onetime");
+      if (hasSub && hasOne) {
+        return res.status(400).json({
+          message: "Subscriptions and one-time items must be checked out separately.",
+        });
+      }
+
+      const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
+
+      // If subscription: enforce all items share the same frequency (Stripe generally expects same interval)
+      if (mode === "subscription") {
+        const freqs = new Set(items.map((i) => i.frequency).filter(Boolean));
+        if (freqs.size > 1) {
+          return res.status(400).json({
+            message: "Subscription items must share the same billing frequency.",
+          });
+        }
+      }
+
+      const siteUrl = getSiteUrl();
+
+      const cancelModeParam = mode === "subscription" ? "subscription" : "onetime";
+      const successUrl = `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${siteUrl}/checkout?resume=1&mode=${encodeURIComponent(
+        cancelModeParam,
+      )}`;
+
+      // Build line items from env-mapped Stripe prices
+      const line_items = items.map((item) => ({
+        price: getPriceId(item),
+        quantity: item.quantity,
+      }));
+
+      // Reuse known Stripe customer if we can (helps subscription portal, etc.)
+      const existingCustomerId = await findStripeCustomerIdByEmail(email);
+
+      const session = await stripe.checkout.sessions.create({
+        mode,
+        line_items,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+
+        // Prefill + receipt destination
+        customer_email: email,
+
+        // If we already know the customer, attach them too
+        ...(existingCustomerId ? { customer: existingCustomerId } : {}),
+
+        // Helpful metadata for debugging/reconciliation
+        metadata: {
+          source: "kimoraco.com",
+          mode,
+          email,
+        },
+
+        // Allow shipping info to be collected by Stripe
+        shipping_address_collection: {
+          allowed_countries: ["US"],
+        },
+
+        // For subscription, ensure customer is created/kept
+        ...(mode === "subscription"
+          ? {
+              subscription_data: {
+                metadata: { email },
+              },
+            }
+          : {}),
+
+        // Nice-to-have
+        allow_promotion_codes: true,
+      });
+
+      return res.json({ url: session.url, id: session.id });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/checkout error:", s);
+
+      // Surface env var issues cleanly
+      const msg = String(err?.message || "");
+      if (msg.startsWith("Missing env var:")) {
+        return res.status(500).json({ message: msg });
+      }
+
+      return res.status(500).json({ message: "Failed to create checkout session." });
+    }
+  });
 
   app.get("/api/admin/wholesale-applications", async (req, res) => {
     const denied = requireAdmin(req, res);
@@ -477,8 +627,6 @@ export async function registerRoutes(
 
         const internalSubject = `New wholesale application — ${businessName}`;
 
-        // NOTE: This email goes only to you (notifyTo). Keeping it detailed is fine.
-        // If you want to reduce PII exposure further, remove "Raw submission" below.
         const internalText =
           `New wholesale application received\n\n` +
           `Application ID: ${applicationId ?? "(unknown)"}\n` +
@@ -577,7 +725,6 @@ export async function registerRoutes(
 
       return res.json({ ok: true, id: applicationId });
     } catch (err: any) {
-      // IMPORTANT: don't dump err directly (may include SQL + params)
       const s = safeErrSummary(err);
       console.error("POST /api/wholesale/apply error:", s);
 
@@ -720,9 +867,6 @@ export async function registerRoutes(
     }
   });
 
-  // (rest unchanged) — your portal + checkout endpoints can keep their logic;
-  // just swap their console.error(...) to safeErrSummary(...) if you want them equally clean.
-
   /**
    * STEP 1: Request a magic link to manage subscription
    * Body: { email }
@@ -816,9 +960,6 @@ Need help? Reply to this email or contact alex@kimoraco.com
       return genericOk();
     }
   });
-
-  // NOTE: rest of your handleCustomerPortal + checkout can remain as-is;
-  // if you want, I’ll apply safeErrSummary to those errors too.
 
   return httpServer;
 }

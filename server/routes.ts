@@ -1,4 +1,4 @@
-// routes.ts
+// server/routes.ts
 import type { Express } from "express";
 import type { Server } from "http";
 import { eq, desc } from "drizzle-orm";
@@ -304,50 +304,12 @@ function requireAdmin(req: any, res: any) {
   return null; // ok
 }
 
-function isFrequency(v: any): v is CheckoutItem["frequency"] {
+function isFrequency(v: unknown): v is CheckoutItem["frequency"] {
   return v === "2" || v === "4" || v === "6";
 }
 
-function isCheckoutType(v: any): v is CheckoutItem["type"] {
+function isCheckoutType(v: unknown): v is CheckoutItem["type"] {
   return v === "onetime" || v === "subscribe";
-}
-
-function parseCheckoutItems(raw: any): CheckoutItem[] {
-  const arr = Array.isArray(raw) ? raw : [];
-  const items: CheckoutItem[] = [];
-
-  for (const it of arr) {
-    const flavor = safeString(it?.flavor, 200).toLowerCase();
-    const type = it?.type;
-
-    if (!flavor) continue;
-    if (!isCheckoutType(type)) continue;
-
-    const quantityRaw = Number(it?.quantity);
-    const quantity = Number.isFinite(quantityRaw)
-      ? Math.max(1, Math.floor(quantityRaw))
-      : 1;
-
-    if (type === "subscribe") {
-      const freq = it?.frequency;
-      if (!isFrequency(freq)) continue;
-
-      items.push({
-        flavor,
-        type: "subscribe",
-        frequency: freq,
-        quantity,
-      });
-    } else {
-      items.push({
-        flavor,
-        type: "onetime",
-        quantity,
-      });
-    }
-  }
-
-  return items;
 }
 
 export async function registerRoutes(
@@ -356,23 +318,45 @@ export async function registerRoutes(
 ): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-  // ✅ MISSING ENDPOINT FIX: create Stripe Checkout session
+  /**
+   * ✅ CREATE STRIPE CHECKOUT SESSION
+   * Body: { email, items: CheckoutItem[] }
+   * Returns: { url }
+   */
   app.post("/api/checkout", async (req, res) => {
     try {
       const email = normalizeEmail(String(req.body?.email ?? ""));
-      const items = parseCheckoutItems(req.body?.items);
+      const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
 
       if (!email || !isValidEmail(email)) {
         return res.status(400).json({ message: "Valid email is required." });
       }
-
-      if (!items.length) {
+      if (!rawItems.length) {
         return res.status(400).json({ message: "No items to checkout." });
       }
 
-      // Enforce "single mode" per session (your frontend already separates these)
+      const items: CheckoutItem[] = rawItems
+        .map((it: any) => ({
+          flavor: safeString(it?.flavor, 200).toLowerCase(),
+          type: it?.type === "subscribe" ? "subscribe" : "onetime",
+          frequency: it?.frequency,
+          quantity: Math.max(1, Math.floor(Number(it?.quantity) || 1)),
+        }))
+        .filter((it: any) => {
+          if (!it.flavor) return false;
+          if (!isCheckoutType(it.type)) return false;
+          if (it.type === "subscribe" && !isFrequency(it.frequency)) return false;
+          if (!Number.isInteger(it.quantity) || it.quantity < 1) return false;
+          return true;
+        });
+
+      if (!items.length) {
+        return res.status(400).json({ message: "No valid items to checkout." });
+      }
+
       const hasSub = items.some((i) => i.type === "subscribe");
       const hasOne = items.some((i) => i.type === "onetime");
+
       if (hasSub && hasOne) {
         return res.status(400).json({
           message: "Subscriptions and one-time items must be checked out separately.",
@@ -381,7 +365,7 @@ export async function registerRoutes(
 
       const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
 
-      // If subscription: enforce all items share the same frequency (Stripe generally expects same interval)
+      // Stripe expects subscription items to share interval; enforce it
       if (mode === "subscription") {
         const freqs = new Set(items.map((i) => i.frequency).filter(Boolean));
         if (freqs.size > 1) {
@@ -392,20 +376,18 @@ export async function registerRoutes(
       }
 
       const siteUrl = getSiteUrl();
-
       const cancelModeParam = mode === "subscription" ? "subscription" : "onetime";
+
       const successUrl = `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${siteUrl}/checkout?resume=1&mode=${encodeURIComponent(
         cancelModeParam,
       )}`;
 
-      // Build line items from env-mapped Stripe prices
       const line_items = items.map((item) => ({
         price: getPriceId(item),
         quantity: item.quantity,
       }));
 
-      // Reuse known Stripe customer if we can (helps subscription portal, etc.)
       const existingCustomerId = await findStripeCustomerIdByEmail(email);
 
       const session = await stripe.checkout.sessions.create({
@@ -413,36 +395,14 @@ export async function registerRoutes(
         line_items,
         success_url: successUrl,
         cancel_url: cancelUrl,
-
-        // Prefill + receipt destination
         customer_email: email,
-
-        // If we already know the customer, attach them too
         ...(existingCustomerId ? { customer: existingCustomerId } : {}),
-
-        // Helpful metadata for debugging/reconciliation
-        metadata: {
-          source: "kimoraco.com",
-          mode,
-          email,
-        },
-
-        // Allow shipping info to be collected by Stripe
-        shipping_address_collection: {
-          allowed_countries: ["US"],
-        },
-
-        // For subscription, ensure customer is created/kept
-        ...(mode === "subscription"
-          ? {
-              subscription_data: {
-                metadata: { email },
-              },
-            }
-          : {}),
-
-        // Nice-to-have
+        shipping_address_collection: { allowed_countries: ["US"] },
         allow_promotion_codes: true,
+        metadata: { source: "kimoraco.com", mode, email },
+        ...(mode === "subscription"
+          ? { subscription_data: { metadata: { email } } }
+          : {}),
       });
 
       return res.json({ url: session.url, id: session.id });
@@ -450,15 +410,21 @@ export async function registerRoutes(
       const s = safeErrSummary(err);
       console.error("POST /api/checkout error:", s);
 
-      // Surface env var issues cleanly
-      const msg = String(err?.message || "");
-      if (msg.startsWith("Missing env var:")) {
-        return res.status(500).json({ message: msg });
-      }
+      // Stripe error message (safe to show; no secrets)
+      const stripeMsg =
+        err?.raw?.message ||
+        err?.message ||
+        "Failed to create checkout session.";
 
-      return res.status(500).json({ message: "Failed to create checkout session." });
+      return res.status(500).json({
+        message: stripeMsg,
+        code: err?.code || err?.raw?.code || undefined,
+        type: err?.type || err?.raw?.type || undefined,
+      });
     }
   });
+
+  // ---------------- ADMIN: wholesale applications ----------------
 
   app.get("/api/admin/wholesale-applications", async (req, res) => {
     const denied = requireAdmin(req, res);
@@ -515,6 +481,8 @@ export async function registerRoutes(
         .json({ ok: false, message: "Failed to update status." });
     }
   });
+
+  // ---------------- WHOLESALE APPLY ----------------
 
   app.post("/api/wholesale/apply", async (req, res) => {
     try {
@@ -741,9 +709,13 @@ export async function registerRoutes(
         });
       }
 
-      return res.status(500).json({ ok: false, message: "Failed to submit wholesale application." });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to submit wholesale application." });
     }
   });
+
+  // ---------------- CHECKOUT SESSION LOOKUP (ORDER SUCCESS) ----------------
 
   app.get("/api/checkout/session", async (req, res) => {
     try {
@@ -768,6 +740,8 @@ export async function registerRoutes(
     }
   });
 
+  // ---------------- STRIPE WEBHOOK ----------------
+
   app.post("/api/stripe/webhook", async (req, res) => {
     try {
       const sig = req.headers["stripe-signature"];
@@ -791,7 +765,9 @@ export async function registerRoutes(
         const session = event.data.object as any;
         const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(session);
 
-        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+          limit: 100,
+        });
 
         const inserted = await db
           .insert(orders)
@@ -800,7 +776,8 @@ export async function registerRoutes(
             stripePaymentIntentId: session.payment_intent ?? null,
             stripeSubscriptionId: session.subscription ?? null,
             stripeCustomerId,
-            customerEmail: session.customer_details?.email ?? session.customer_email ?? null,
+            customerEmail:
+              session.customer_details?.email ?? session.customer_email ?? null,
             currency: session.currency ?? "usd",
             amountSubtotal: session.amount_subtotal ?? null,
             amountTotal: session.amount_total ?? null,
@@ -840,7 +817,11 @@ export async function registerRoutes(
 
             const mapped = priceId
               ? mapPriceIdToItem(priceId)
-              : { flavor: "unknown", purchaseType: "onetime" as const, frequencyWeeks: null };
+              : {
+                  flavor: "unknown",
+                  purchaseType: "onetime" as const,
+                  frequencyWeeks: null,
+                };
 
             await db
               .insert(orderItems)
@@ -907,7 +888,9 @@ export async function registerRoutes(
         sessionSecret,
       );
 
-      const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(token)}`;
+      const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(
+        token,
+      )}`;
       const fallbackLink = `${siteUrl}/manage-subscription`;
 
       const resendKey = process.env.RESEND_API_KEY;

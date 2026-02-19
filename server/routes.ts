@@ -234,7 +234,6 @@ function escapeHtml(s: string) {
 
 /** Simple validations to match your DB constraints */
 function isValidPhoneDigits(digits: string) {
-  // DB CHECK: length(regexp_replace(phone, '\D', '', 'g')) >= 10
   return /^\d{10,}$/.test(digits);
 }
 
@@ -268,7 +267,6 @@ function safeErrSummary(err: any) {
     err?.errno ||
     null;
 
-  // Truncate message so logs don’t become a data leak
   const shortMsg = message.length > 180 ? message.slice(0, 180) + "…" : message;
 
   return { code, message: shortMsg };
@@ -301,7 +299,7 @@ function requireAdmin(req: any, res: any) {
     return res.status(401).json({ ok: false, message: "Unauthorized" });
   }
 
-  return null; // ok
+  return null;
 }
 
 function isFrequency(v: unknown): v is CheckoutItem["frequency"] {
@@ -390,26 +388,37 @@ export async function registerRoutes(
 
       const existingCustomerId = await findStripeCustomerIdByEmail(email);
 
-      const session = await stripe.checkout.sessions.create({
+      // IMPORTANT:
+      // Stripe does NOT allow providing both `customer` and `customer_email`.
+      // If we have an existing customer id, use `customer` and OMIT `customer_email`.
+      const sessionParams: any = {
         mode,
         line_items,
         success_url: successUrl,
         cancel_url: cancelUrl,
-        customer_email: email,
-        ...(existingCustomerId ? { customer: existingCustomerId } : {}),
         shipping_address_collection: { allowed_countries: ["US"] },
         allow_promotion_codes: true,
         metadata: { source: "kimoraco.com", mode, email },
-        ...(mode === "subscription"
-          ? { subscription_data: { metadata: { email } } }
-          : {}),
-      });
+        ...(mode === "subscription" ? { subscription_data: { metadata: { email } } } : {}),
+      };
+
+      if (existingCustomerId) {
+        sessionParams.customer = existingCustomerId;
+        sessionParams.customer_update = {
+          address: "auto",
+          name: "auto",
+          shipping: "auto",
+        };
+      } else {
+        sessionParams.customer_email = email;
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionParams);
 
       return res.json({ url: session.url, id: session.id });
     } catch (err: any) {
       const s = safeErrSummary(err);
 
-      // Stripe errors usually include message and sometimes raw.message
       const stripeMsg =
         safeString(err?.raw?.message, 500) ||
         safeString(err?.message, 500) ||
@@ -591,7 +600,6 @@ export async function registerRoutes(
 
       const applicationId = inserted?.[0]?.id ?? null;
 
-      // Email notifications
       const resendKey = process.env.RESEND_API_KEY;
       const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       const notifyTo = process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
@@ -622,20 +630,40 @@ export async function registerRoutes(
 
         const internalHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">New wholesale application</h2>
-  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(safeString(applicationId ?? "(unknown)"))}</div>
-  <div style="margin:0 0 8px;"><b>Business:</b> ${escapeHtml(safeString(businessName))}</div>
-  <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(safeString(contactName))}</div>
-  <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(safeString(email))}</div>
-  <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(safeString(phoneDigits))}</div>
-  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(safeString(websiteOrInstagram || "(not provided)"))}</div>
-  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(safeString(city))}, ${escapeHtml(safeString(state))}</div>
-  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(safeString(businessType))}${
+  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(
+    safeString(applicationId ?? "(unknown)"),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Business:</b> ${escapeHtml(
+    safeString(businessName),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(
+    safeString(contactName),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(
+    safeString(email),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(
+    safeString(phoneDigits),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(
+    safeString(websiteOrInstagram || "(not provided)"),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(
+    safeString(city),
+  )}, ${escapeHtml(safeString(state))}</div>
+  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(
+    safeString(businessType),
+  )}${
           businessType === "other" && businessTypeOther
             ? ` (${escapeHtml(safeString(businessTypeOther))})`
             : ""
         }</div>
-  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(safeString(memberCount))}</div>
-  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(safeString(retailSetup || "(not provided)"))}</div>
+  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(
+    safeString(memberCount),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(
+    safeString(retailSetup || "(not provided)"),
+  )}</div>
   <div style="margin:0 0 8px;"><b>Interested:</b>
     onShelf=${String(interestedOnShelf)},
     coachAffiliate=${String(interestedCoachAffiliate)},
@@ -657,7 +685,9 @@ export async function registerRoutes(
         const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Wholesale application received</h2>
   <p style="margin:0 0 12px;">
-    Thanks${contactName ? `, ${escapeHtml(safeString(contactName))}` : ""}! We received your wholesale application for <b>${escapeHtml(
+    Thanks${
+      contactName ? `, ${escapeHtml(safeString(contactName))}` : ""
+    }! We received your wholesale application for <b>${escapeHtml(
           safeString(businessName),
         )}</b>.
   </p>

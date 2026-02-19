@@ -321,7 +321,7 @@ export async function registerRoutes(
   /**
    * ✅ CREATE STRIPE CHECKOUT SESSION
    * Body: { email, items: CheckoutItem[] }
-   * Returns: { url }
+   * Returns: { url, id }
    */
   app.post("/api/checkout", async (req, res) => {
     try {
@@ -408,18 +408,27 @@ export async function registerRoutes(
       return res.json({ url: session.url, id: session.id });
     } catch (err: any) {
       const s = safeErrSummary(err);
-      console.error("POST /api/checkout error:", s);
 
-      // Stripe error message (safe to show; no secrets)
+      // Stripe errors usually include message and sometimes raw.message
       const stripeMsg =
-        err?.raw?.message ||
-        err?.message ||
-        "Failed to create checkout session.";
+        safeString(err?.raw?.message, 500) ||
+        safeString(err?.message, 500) ||
+        safeString(s?.message, 500) ||
+        "Checkout failed (unknown error).";
+
+      const code = err?.code || err?.raw?.code || s?.code || undefined;
+      const type = err?.type || err?.raw?.type || undefined;
+
+      console.error("POST /api/checkout error:", {
+        ...s,
+        stripe_code: code,
+        stripe_type: type,
+      });
 
       return res.status(500).json({
         message: stripeMsg,
-        code: err?.code || err?.raw?.code || undefined,
-        type: err?.type || err?.raw?.type || undefined,
+        code,
+        type,
       });
     }
   });
@@ -729,7 +738,8 @@ export async function registerRoutes(
       return res.json({
         id: session.id,
         mode: session.mode,
-        customer_email: session.customer_details?.email ?? session.customer_email ?? null,
+        customer_email:
+          session.customer_details?.email ?? session.customer_email ?? null,
         payment_status: session.payment_status ?? null,
         subscription: session.subscription ?? null,
       });
@@ -763,7 +773,9 @@ export async function registerRoutes(
 
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
-        const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(session);
+        const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(
+          session,
+        );
 
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
           limit: 100,

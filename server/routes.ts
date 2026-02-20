@@ -34,6 +34,46 @@ function getSiteUrl() {
   );
 }
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function onlyDigits(s: string) {
+  return s.replace(/[^\d]/g, "");
+}
+
+function safeString(v: any, maxLen = 20000) {
+  const s = String(v ?? "").trim();
+  if (!s) return "";
+  return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * IMPORTANT: never log raw DB errors that include SQL params (PII).
+ * Summarize safely.
+ */
+function safeErrSummary(err: any) {
+  const message = String(err?.message || "unknown error");
+  const code =
+    err?.code ||
+    err?.cause?.code ||
+    err?.cause?.errno ||
+    err?.errno ||
+    null;
+
+  const shortMsg = message.length > 180 ? message.slice(0, 180) + "…" : message;
+
+  return { code, message: shortMsg };
+}
+
 function getPriceId(item: CheckoutItem) {
   const flavorKey = slugToEnvKey(item.flavor);
 
@@ -130,70 +170,12 @@ async function getStripeCustomerIdFromCheckoutSession(
   return stripeCustomerId;
 }
 
-/**
- * Magic link token (HMAC signed). No DB changes.
- */
-function base64url(input: string) {
-  return Buffer.from(input).toString("base64url");
-}
-function unbase64url(input: string) {
-  return Buffer.from(input, "base64url").toString("utf8");
-}
-function signToken(payload: object, secret: string) {
-  const body = base64url(JSON.stringify(payload));
-  const sig = crypto
-    .createHmac("sha256", secret)
-    .update(body)
-    .digest("base64url");
-  return `${body}.${sig}`;
-}
-function verifyToken<T extends { exp?: number }>(
-  token: string,
-  secret: string,
-): T | null {
-  const parts = token.split(".");
-  if (parts.length !== 2) return null;
-
-  const [body, sig] = parts;
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(body)
-    .digest("base64url");
-
-  if (sig.length !== expected.length) return null;
-
-  const ok = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
-  if (!ok) return null;
-
-  try {
-    const payload = JSON.parse(unbase64url(body)) as T;
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && now > payload.exp) return null;
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
-}
-
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function onlyDigits(s: string) {
-  return s.replace(/[^\d]/g, "");
-}
-
 async function findStripeCustomerIdByEmail(
   email: string,
 ): Promise<string | null> {
   const normalized = normalizeEmail(email);
   if (!normalized || !isValidEmail(normalized)) return null;
 
-  // 1) DB lookup (fast + consistent)
   try {
     const found = await db
       .select({ stripeCustomerId: orders.stripeCustomerId })
@@ -208,7 +190,6 @@ async function findStripeCustomerIdByEmail(
     console.warn("[checkout] DB customer lookup failed:", e);
   }
 
-  // 2) Stripe fallback
   try {
     const list = await stripe.customers.list({
       email: normalized,
@@ -220,16 +201,6 @@ async function findStripeCustomerIdByEmail(
     console.warn("[checkout] Stripe customer lookup failed:", e);
     return null;
   }
-}
-
-function safeString(v: any, maxLen = 20000) {
-  const s = String(v ?? "").trim();
-  if (!s) return "";
-  return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
-}
-
-function escapeHtml(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 /** Simple validations to match your DB constraints */
@@ -252,24 +223,6 @@ function parsePositiveInt(value: unknown): number | null {
   if (!Number.isFinite(n)) return null;
   const i = Math.trunc(n);
   return i > 0 ? i : null;
-}
-
-/**
- * IMPORTANT: never log raw DB errors that include SQL params (PII).
- * Summarize safely.
- */
-function safeErrSummary(err: any) {
-  const message = String(err?.message || "unknown error");
-  const code =
-    err?.code ||
-    err?.cause?.code ||
-    err?.cause?.errno ||
-    err?.errno ||
-    null;
-
-  const shortMsg = message.length > 180 ? message.slice(0, 180) + "…" : message;
-
-  return { code, message: shortMsg };
 }
 
 function adminTokenFromReq(req: any) {
@@ -302,12 +255,322 @@ function requireAdmin(req: any, res: any) {
   return null;
 }
 
-function isFrequency(v: unknown): v is CheckoutItem["frequency"] {
-  return v === "2" || v === "4" || v === "6";
+function formatMoney(
+  amountCents: number | null | undefined,
+  currency: string | null | undefined,
+) {
+  if (amountCents === null || amountCents === undefined) return "";
+  const ccy = String(currency || "usd").toUpperCase();
+  const dollars = amountCents / 100;
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: ccy,
+    }).format(dollars);
+  } catch {
+    return `${ccy} ${dollars.toFixed(2)}`;
+  }
 }
 
-function isCheckoutType(v: unknown): v is CheckoutItem["type"] {
-  return v === "onetime" || v === "subscribe";
+function addressToOneLine(addr: any): string {
+  if (!addr) return "";
+  const parts = [
+    addr.line1,
+    addr.line2,
+    addr.city,
+    addr.state,
+    addr.postal_code,
+    addr.country,
+  ]
+    .map((x: any) => String(x || "").trim())
+    .filter(Boolean);
+  return parts.join(", ");
+}
+
+async function sendOrderConfirmationEmail(args: {
+  session: any;
+  lineItems: any[];
+  isSubscription: boolean;
+}) {
+  const resendKey = String(process.env.RESEND_API_KEY || "").trim();
+  const fromEmail = String(
+    process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "",
+  ).trim();
+  if (!resendKey || !fromEmail) {
+    console.warn(
+      "[order-email] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM).",
+    );
+    return;
+  }
+
+  const resend = new Resend(resendKey);
+  const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
+
+  const siteUrl = getSiteUrl();
+
+  const email =
+    normalizeEmail(
+      String(
+        args.session?.customer_details?.email ??
+          args.session?.customer_email ??
+          "",
+      ),
+    ) || "";
+
+  if (!email || !isValidEmail(email)) {
+    console.warn("[order-email] Missing/invalid customer email; skipping send.");
+    return;
+  }
+
+  const name = safeString(args.session?.customer_details?.name, 200);
+  const shippingName =
+    safeString(args.session?.shipping_details?.name, 200) || name;
+  const shippingAddr = args.session?.shipping_details?.address || null;
+
+  const currency = String(args.session?.currency || "usd");
+  const amountSubtotal = args.session?.amount_subtotal ?? null;
+  const amountTotal = args.session?.amount_total ?? null;
+
+  const sessionId = String(args.session?.id || "").trim();
+  const orderNumber = sessionId ? sessionId.replace(/^cs_/, "") : "";
+
+  const lines = (args.lineItems || []).map((li: any) => {
+    const qty = Number(li?.quantity ?? 1) || 1;
+    const priceId = li?.price?.id ?? null;
+    const mapped = priceId
+      ? mapPriceIdToItem(String(priceId))
+      : {
+          flavor: "unknown",
+          purchaseType: args.isSubscription ? "subscribe" : "onetime",
+          frequencyWeeks: null,
+        };
+
+    const unit = li?.price?.unit_amount ?? null;
+    const lineTotal =
+      unit !== null && unit !== undefined ? unit * qty : null;
+
+    return {
+      qty,
+      flavor: mapped.flavor,
+      purchaseType: mapped.purchaseType,
+      frequencyWeeks: mapped.frequencyWeeks,
+      unitAmount: unit,
+      lineTotal,
+    };
+  });
+
+  const subject = args.isSubscription
+    ? "Kimora Co — Subscription confirmed"
+    : "Kimora Co — Order confirmed";
+
+  const manageLink = `${siteUrl}/manage-subscription`;
+  const supportEmail = "alex@kimoraco.com";
+
+  const itemsText = lines
+    .map((l: any) => {
+      const flavor = String(l.flavor || "")
+        .split("-")
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+      const cadence =
+        l.purchaseType === "subscribe" && l.frequencyWeeks
+          ? ` (Subscription — every ${l.frequencyWeeks} weeks)`
+          : "";
+      const money =
+        l.unitAmount != null ? ` @ ${formatMoney(l.unitAmount, currency)}` : "";
+      const total =
+        l.lineTotal != null ? ` = ${formatMoney(l.lineTotal, currency)}` : "";
+      return `- ${flavor} x${l.qty}${cadence}${money}${total}`;
+    })
+    .join("\n");
+
+  const text =
+    `Thanks${shippingName ? `, ${shippingName}` : ""} — your Kimora order is confirmed.\n\n` +
+    (orderNumber ? `Order: ${orderNumber}\n` : "") +
+    (itemsText ? `\nItems:\n${itemsText}\n` : "") +
+    (amountSubtotal != null
+      ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n`
+      : "") +
+    (amountTotal != null
+      ? `Total: ${formatMoney(amountTotal, currency)}\n`
+      : "") +
+    (shippingAddr
+      ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(
+          shippingAddr,
+        )}\n`
+      : "") +
+    (args.isSubscription
+      ? `\nManage your subscription anytime:\n${manageLink}\n`
+      : "") +
+    `\nNeed help? Reply to this email or contact ${supportEmail}.\n\n` +
+    `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
+
+  const itemsHtml = lines
+    .map((l: any) => {
+      const flavor = escapeHtml(
+        String(l.flavor || "")
+          .split("-")
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" "),
+      );
+      const cadence =
+        l.purchaseType === "subscribe" && l.frequencyWeeks
+          ? ` <span style="color:#666;">(Subscription — every ${l.frequencyWeeks} weeks)</span>`
+          : "";
+      const money =
+        l.unitAmount != null
+          ? ` <span style="color:#666;">@ ${escapeHtml(
+              formatMoney(l.unitAmount, currency),
+            )}</span>`
+          : "";
+      const total =
+        l.lineTotal != null
+          ? ` <span style="color:#111;font-weight:600;">${escapeHtml(
+              formatMoney(l.lineTotal, currency),
+            )}</span>`
+          : "";
+      return `<li style="margin:6px 0;">${flavor} <b>x${l.qty}</b>${cadence}${money}${
+        total ? ` — ${total}` : ""
+      }</li>`;
+    })
+    .join("");
+
+  const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
+  <h2 style="margin:0 0 10px;">Order confirmed 🎉</h2>
+  <p style="margin:0 0 14px;">
+    Thanks${
+      shippingName ? `, <b>${escapeHtml(shippingName)}</b>` : ""
+    }. Your Kimora order is confirmed.
+  </p>
+
+  ${
+    orderNumber
+      ? `<div style="margin:0 0 12px;color:#444;"><b>Order:</b> ${escapeHtml(
+          orderNumber,
+        )}</div>`
+      : ""
+  }
+
+  ${
+    itemsHtml
+      ? `<div style="margin:0 0 10px;"><b>Items</b></div>
+  <ul style="margin:0 0 14px;padding-left:18px;">${itemsHtml}</ul>`
+      : ""
+  }
+
+  <div style="margin:0 0 12px;">
+    ${
+      amountSubtotal != null
+        ? `<div><b>Subtotal:</b> ${escapeHtml(
+            formatMoney(amountSubtotal, currency),
+          )}</div>`
+        : ""
+    }
+    ${
+      amountTotal != null
+        ? `<div><b>Total:</b> ${escapeHtml(
+            formatMoney(amountTotal, currency),
+          )}</div>`
+        : ""
+    }
+  </div>
+
+  ${
+    shippingAddr
+      ? `<div style="margin:0 0 14px;">
+          <div><b>Shipping to</b></div>
+          <div style="color:#444;">${escapeHtml(shippingName || "(name)")}</div>
+          <div style="color:#444;">${escapeHtml(
+            addressToOneLine(shippingAddr),
+          )}</div>
+        </div>`
+      : ""
+  }
+
+  ${
+    args.isSubscription
+      ? `<div style="margin:16px 0 12px;">
+          <a href="${manageLink}" style="display:inline-block;padding:12px 16px;border-radius:10px;background:#111;color:#fff;text-decoration:none;">
+            Manage subscription
+          </a>
+          <div style="margin-top:8px;font-size:12px;color:#666;">
+            Pause, cancel, or change frequency anytime.
+          </div>
+        </div>`
+      : ""
+  }
+
+  <div style="margin:16px 0 0;font-size:12px;color:#666;">
+    Need help? Reply to this email or contact
+    <a href="mailto:${supportEmail}">${supportEmail}</a>.
+  </div>
+
+  <div style="margin:14px 0 0;font-size:12px;letter-spacing:0.08em;color:#999;text-transform:uppercase;">
+    OUT-TRAIN. OUT-SMART. OUT-LAST.
+  </div>
+</div>`;
+
+  try {
+    await resend.emails.send({
+      from,
+      to: email,
+      subject,
+      text,
+      html,
+      replyTo: supportEmail,
+    } as any);
+  } catch (e: any) {
+    const s = safeErrSummary(e);
+    console.error("[order-email] send failed:", s);
+  }
+}
+
+/**
+ * Magic link token (HMAC signed). No DB changes.
+ */
+function base64url(input: string) {
+  return Buffer.from(input).toString("base64url");
+}
+function unbase64url(input: string) {
+  return Buffer.from(input, "base64url").toString("utf8");
+}
+function signToken(payload: object, secret: string) {
+  const body = base64url(JSON.stringify(payload));
+  const sig = crypto
+    .createHmac("sha256", secret)
+    .update(body)
+    .digest("base64url");
+  return `${body}.${sig}`;
+}
+
+/**
+ * Generic token verifier.
+ * We still enforce exp if present (payload.exp).
+ */
+function verifyToken<T>(token: string, secret: string): T | null {
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+
+  const [body, sig] = parts;
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(body)
+    .digest("base64url");
+
+  if (sig.length !== expected.length) return null;
+
+  const ok = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  if (!ok) return null;
+
+  try {
+    const payload = JSON.parse(unbase64url(body)) as T;
+    const exp = (payload as any)?.exp as number | undefined;
+    const now = Math.floor(Date.now() / 1000);
+    if (typeof exp === "number" && now > exp) return null;
+    return payload;
+  } catch {
+    return null;
+  }
 }
 
 export async function registerRoutes(
@@ -316,134 +579,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-  /**
-   * ✅ CREATE STRIPE CHECKOUT SESSION
-   * Body: { email, items: CheckoutItem[] }
-   * Returns: { url, id }
-   */
-  app.post("/api/checkout", async (req, res) => {
-    try {
-      const email = normalizeEmail(String(req.body?.email ?? ""));
-      const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
-
-      if (!email || !isValidEmail(email)) {
-        return res.status(400).json({ message: "Valid email is required." });
-      }
-      if (!rawItems.length) {
-        return res.status(400).json({ message: "No items to checkout." });
-      }
-
-      const items: CheckoutItem[] = rawItems
-        .map((it: any) => ({
-          flavor: safeString(it?.flavor, 200).toLowerCase(),
-          type: it?.type === "subscribe" ? "subscribe" : "onetime",
-          frequency: it?.frequency,
-          quantity: Math.max(1, Math.floor(Number(it?.quantity) || 1)),
-        }))
-        .filter((it: any) => {
-          if (!it.flavor) return false;
-          if (!isCheckoutType(it.type)) return false;
-          if (it.type === "subscribe" && !isFrequency(it.frequency)) return false;
-          if (!Number.isInteger(it.quantity) || it.quantity < 1) return false;
-          return true;
-        });
-
-      if (!items.length) {
-        return res.status(400).json({ message: "No valid items to checkout." });
-      }
-
-      const hasSub = items.some((i) => i.type === "subscribe");
-      const hasOne = items.some((i) => i.type === "onetime");
-
-      if (hasSub && hasOne) {
-        return res.status(400).json({
-          message: "Subscriptions and one-time items must be checked out separately.",
-        });
-      }
-
-      const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
-
-      // Stripe expects subscription items to share interval; enforce it
-      if (mode === "subscription") {
-        const freqs = new Set(items.map((i) => i.frequency).filter(Boolean));
-        if (freqs.size > 1) {
-          return res.status(400).json({
-            message: "Subscription items must share the same billing frequency.",
-          });
-        }
-      }
-
-      const siteUrl = getSiteUrl();
-      const cancelModeParam = mode === "subscription" ? "subscription" : "onetime";
-
-      const successUrl = `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${siteUrl}/checkout?resume=1&mode=${encodeURIComponent(
-        cancelModeParam,
-      )}`;
-
-      const line_items = items.map((item) => ({
-        price: getPriceId(item),
-        quantity: item.quantity,
-      }));
-
-      const existingCustomerId = await findStripeCustomerIdByEmail(email);
-
-      // IMPORTANT:
-      // Stripe does NOT allow providing both `customer` and `customer_email`.
-      // If we have an existing customer id, use `customer` and OMIT `customer_email`.
-      const sessionParams: any = {
-        mode,
-        line_items,
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        shipping_address_collection: { allowed_countries: ["US"] },
-        allow_promotion_codes: true,
-        metadata: { source: "kimoraco.com", mode, email },
-        ...(mode === "subscription" ? { subscription_data: { metadata: { email } } } : {}),
-      };
-
-      if (existingCustomerId) {
-        sessionParams.customer = existingCustomerId;
-        sessionParams.customer_update = {
-          address: "auto",
-          name: "auto",
-          shipping: "auto",
-        };
-      } else {
-        sessionParams.customer_email = email;
-      }
-
-      const session = await stripe.checkout.sessions.create(sessionParams);
-
-      return res.json({ url: session.url, id: session.id });
-    } catch (err: any) {
-      const s = safeErrSummary(err);
-
-      const stripeMsg =
-        safeString(err?.raw?.message, 500) ||
-        safeString(err?.message, 500) ||
-        safeString(s?.message, 500) ||
-        "Checkout failed (unknown error).";
-
-      const code = err?.code || err?.raw?.code || s?.code || undefined;
-      const type = err?.type || err?.raw?.type || undefined;
-
-      console.error("POST /api/checkout error:", {
-        ...s,
-        stripe_code: code,
-        stripe_type: type,
-      });
-
-      return res.status(500).json({
-        message: stripeMsg,
-        code,
-        type,
-      });
-    }
-  });
-
-  // ---------------- ADMIN: wholesale applications ----------------
-
+  // -----------------------------
+  // Admin: wholesale applications
+  // -----------------------------
   app.get("/api/admin/wholesale-applications", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
@@ -473,7 +611,13 @@ export async function registerRoutes(
       const id = String(req.params.id || "").trim();
       const status = String(req.body?.status || "").trim();
 
-      const allowed = new Set(["new", "reviewing", "approved", "rejected", "closed"]);
+      const allowed = new Set([
+        "new",
+        "reviewing",
+        "approved",
+        "rejected",
+        "closed",
+      ]);
 
       if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
       if (!allowed.has(status)) {
@@ -500,11 +644,12 @@ export async function registerRoutes(
     }
   });
 
-  // ---------------- WHOLESALE APPLY ----------------
-
+  // -----------------------------
+  // Wholesale apply
+  // -----------------------------
   app.post("/api/wholesale/apply", async (req, res) => {
     try {
-      const body = req.body ?? {};
+      const body: any = req.body ?? {};
 
       const businessName = safeString(body.businessName, 300);
       const contactName = safeString(body.contactName, 300);
@@ -523,7 +668,7 @@ export async function registerRoutes(
       const memberCount = parsePositiveInt(body.memberCount);
       const retailSetup = safeString(body.retailSetup, 32);
 
-      const interestedIn = body.interestedIn ?? {};
+      const interestedIn: any = body.interestedIn ?? {};
       const interestedOnShelf = Boolean(interestedIn.onShelf);
       const interestedCoachAffiliate = Boolean(interestedIn.coachAffiliate);
       const interestedEventSponsorship = Boolean(interestedIn.eventSponsorship);
@@ -531,17 +676,25 @@ export async function registerRoutes(
       const notes = safeString(body.notes, 5000);
 
       if (!businessName) {
-        return res.status(400).json({ ok: false, message: "Business name is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Business name is required." });
       }
       if (!contactName) {
-        return res.status(400).json({ ok: false, message: "Contact name is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Contact name is required." });
       }
       if (!email || !isValidEmail(email)) {
-        return res.status(400).json({ ok: false, message: "Valid email is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Valid email is required." });
       }
 
       if (!phoneDigits) {
-        return res.status(400).json({ ok: false, message: "Phone number is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Phone number is required." });
       }
       if (!isValidPhoneDigits(phoneDigits)) {
         return res.status(400).json({
@@ -550,17 +703,22 @@ export async function registerRoutes(
         });
       }
 
-      if (!city) return res.status(400).json({ ok: false, message: "City is required." });
-      if (!state) return res.status(400).json({ ok: false, message: "State is required." });
+      if (!city)
+        return res.status(400).json({ ok: false, message: "City is required." });
+      if (!state)
+        return res.status(400).json({ ok: false, message: "State is required." });
 
       if (businessType === "other" && !businessTypeOther) {
-        return res.status(400).json({ ok: false, message: "Please specify business type." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Please specify business type." });
       }
 
       if (!memberCount || memberCount <= 0) {
         return res.status(400).json({
           ok: false,
-          message: "Approx members / active clients is required and must be > 0.",
+          message:
+            "Approx members / active clients is required and must be > 0.",
         });
       }
 
@@ -608,7 +766,9 @@ export async function registerRoutes(
       const canSend = Boolean(resendKey && fromEmail);
       if (canSend) {
         const resend = new Resend(resendKey!);
-        const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
+        const from = fromEmail.includes("<")
+          ? fromEmail
+          : `Kimora Co <${fromEmail}>`;
 
         const internalSubject = `New wholesale application — ${businessName}`;
 
@@ -621,7 +781,9 @@ export async function registerRoutes(
           `Phone: ${phoneDigits}\n` +
           `Website/IG: ${websiteOrInstagram || "(not provided)"}\n` +
           `City/State: ${city}, ${state}\n` +
-          `Business type: ${businessType}${businessType === "other" ? ` (${businessTypeOther})` : ""}\n` +
+          `Business type: ${businessType}${
+            businessType === "other" ? ` (${businessTypeOther})` : ""
+          }\n` +
           `Member count: ${memberCount}\n` +
           `Retail setup: ${retailSetup || "(not provided)"}\n` +
           `Interested: onShelf=${interestedOnShelf}, coachAffiliate=${interestedCoachAffiliate}, eventSponsorship=${interestedEventSponsorship}\n\n` +
@@ -639,9 +801,7 @@ export async function registerRoutes(
   <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(
     safeString(contactName),
   )}</div>
-  <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(
-    safeString(email),
-  )}</div>
+  <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(safeString(email))}</div>
   <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(
     safeString(phoneDigits),
   )}</div>
@@ -706,7 +866,7 @@ export async function registerRoutes(
             text: internalText,
             html: internalHtml,
             replyTo: email,
-          });
+          } as any);
         } catch (e: any) {
           const s = safeErrSummary(e);
           console.error("[wholesale] internal email send failed:", s);
@@ -719,7 +879,7 @@ export async function registerRoutes(
             subject: applicantSubject,
             text: applicantText,
             html: applicantHtml,
-          });
+          } as any);
         } catch (e: any) {
           const s = safeErrSummary(e);
           console.error("[wholesale] applicant email send failed:", s);
@@ -744,7 +904,8 @@ export async function registerRoutes(
       ) {
         return res.status(400).json({
           ok: false,
-          message: "Please check required fields (phone + member count) and try again.",
+          message:
+            "Please check required fields (phone + member count) and try again.",
         });
       }
 
@@ -754,8 +915,122 @@ export async function registerRoutes(
     }
   });
 
-  // ---------------- CHECKOUT SESSION LOOKUP (ORDER SUCCESS) ----------------
+  // -----------------------------
+  // Checkout session creation
+  // -----------------------------
+  app.post("/api/checkout", async (req, res) => {
+    try {
+      const emailRaw = String(req.body?.email ?? "");
+      const email = normalizeEmail(emailRaw);
 
+      const itemsRaw: any[] = Array.isArray(req.body?.items) ? req.body.items : [];
+      const items: CheckoutItem[] = itemsRaw
+        .map((it: any) => {
+          const flavor = String(it?.flavor ?? "").trim();
+          const type: CheckoutItem["type"] =
+            it?.type === "subscribe" ? "subscribe" : "onetime";
+          const frequency: CheckoutItem["frequency"] | undefined =
+            type === "subscribe" &&
+            (it?.frequency === "2" || it?.frequency === "4" || it?.frequency === "6")
+              ? it.frequency
+              : undefined;
+          const qRaw = Number(it?.quantity);
+          const quantity = Number.isFinite(qRaw)
+            ? Math.max(1, Math.floor(qRaw))
+            : 1;
+          return { flavor, type, frequency, quantity };
+        })
+        .filter((it: CheckoutItem) => {
+          if (!it.flavor) return false;
+          if (it.type === "subscribe" && !it.frequency) return false;
+          if (!Number.isInteger(it.quantity) || it.quantity < 1) return false;
+          return true;
+        });
+
+      if (!email || !isValidEmail(email)) {
+        return res.status(400).json({ message: "Valid email is required." });
+      }
+      if (!items.length) {
+        return res.status(400).json({ message: "Cart is empty." });
+      }
+
+      const hasSub = items.some((it: CheckoutItem) => it.type === "subscribe");
+      const hasOne = items.some((it: CheckoutItem) => it.type === "onetime");
+      if (hasSub && hasOne) {
+        return res.status(400).json({
+          message:
+            "Subscriptions and one-time items must be checked out separately.",
+        });
+      }
+
+      const siteUrl = getSiteUrl();
+      const successUrl = `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${siteUrl}/checkout?canceled=1`;
+
+      const mode: "payment" | "subscription" = hasSub
+        ? "subscription"
+        : "payment";
+
+      const line_items = items.map((it: CheckoutItem) => ({
+        price: getPriceId(it),
+        quantity: it.quantity,
+      }));
+
+      // IMPORTANT: Stripe allows only ONE of (customer, customer_email)
+      const existingCustomerId = await findStripeCustomerIdByEmail(email);
+
+      const sessionParams: any = {
+        mode,
+        line_items,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        allow_promotion_codes: false,
+
+        shipping_address_collection: { allowed_countries: ["US"] },
+        phone_number_collection: { enabled: true },
+
+        customer_update: {
+          address: "auto",
+          name: "auto",
+          shipping: "auto",
+        },
+
+        automatic_tax: { enabled: true },
+      };
+
+      if (existingCustomerId) {
+        sessionParams.customer = existingCustomerId;
+      } else {
+        sessionParams.customer_email = email;
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionParams);
+
+      return res.json({ url: session.url });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/checkout error:", s);
+
+      const stripeMsg =
+        err?.raw?.message ||
+        err?.message ||
+        "Failed to create checkout session.";
+
+      if (String(stripeMsg).startsWith("Missing env var:")) {
+        return res.status(500).json({ message: stripeMsg });
+      }
+
+      return res.status(500).json({
+        message: stripeMsg,
+        code: err?.code || err?.raw?.code || undefined,
+        type: err?.type || err?.raw?.type || undefined,
+      });
+    }
+  });
+
+  // -----------------------------
+  // Checkout session fetch (OrderSuccess uses this)
+  // -----------------------------
   app.get("/api/checkout/session", async (req, res) => {
     try {
       const sessionId = String(req.query?.session_id ?? "").trim();
@@ -780,8 +1055,9 @@ export async function registerRoutes(
     }
   });
 
-  // ---------------- STRIPE WEBHOOK ----------------
-
+  // -----------------------------
+  // Stripe webhook (DB write + order confirmation email)
+  // -----------------------------
   app.post("/api/stripe/webhook", async (req, res) => {
     try {
       const sig = req.headers["stripe-signature"];
@@ -796,20 +1072,22 @@ export async function registerRoutes(
 
       const rawBody = (req as any).rawBody as Buffer | undefined;
       if (!rawBody) {
-        return res.status(400).send("Missing rawBody for webhook verification");
+        return res
+          .status(400)
+          .send("Missing rawBody for webhook verification");
       }
 
       const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
 
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
-        const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(
-          session,
-        );
+        const stripeCustomerId =
+          await getStripeCustomerIdFromCheckoutSession(session);
 
-        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
-          limit: 100,
-        });
+        const lineItems = await stripe.checkout.sessions.listLineItems(
+          session.id,
+          { limit: 100 },
+        );
 
         const inserted = await db
           .insert(orders)
@@ -858,7 +1136,7 @@ export async function registerRoutes(
             const qty = li.quantity ?? 1;
 
             const mapped = priceId
-              ? mapPriceIdToItem(priceId)
+              ? mapPriceIdToItem(String(priceId))
               : {
                   flavor: "unknown",
                   purchaseType: "onetime" as const,
@@ -880,6 +1158,16 @@ export async function registerRoutes(
               .onConflictDoNothing();
           }
         }
+
+        const wasNewInsert = Boolean(inserted?.length);
+        if (wasNewInsert) {
+          await sendOrderConfirmationEmail({
+            session,
+            lineItems: lineItems.data,
+            isSubscription:
+              session.mode === "subscription" || Boolean(session.subscription),
+          });
+        }
       }
 
       return res.json({ received: true });
@@ -898,7 +1186,8 @@ export async function registerRoutes(
     const genericOk = () =>
       res.json({
         ok: true,
-        message: "If that email is in our system, you’ll receive a link shortly.",
+        message:
+          "If that email is in our system, you’ll receive a link shortly.",
       });
 
     try {
@@ -936,7 +1225,8 @@ export async function registerRoutes(
       const fallbackLink = `${siteUrl}/manage-subscription`;
 
       const resendKey = process.env.RESEND_API_KEY;
-      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail =
+        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       if (!resendKey || !fromEmail) return genericOk();
 
       const resend = new Resend(resendKey);
@@ -971,8 +1261,10 @@ Need help? Reply to this email or contact alex@kimoraco.com
 </div>`;
 
       try {
-        const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
-        await resend.emails.send({ from, to: email, subject, text, html });
+        const from = fromEmail.includes("<")
+          ? fromEmail
+          : `Kimora Co <${fromEmail}>`;
+        await resend.emails.send({ from, to: email, subject, text, html } as any);
       } catch (e: any) {
         const s = safeErrSummary(e);
         console.error("[portal] resend send failed:", s);
@@ -983,6 +1275,32 @@ Need help? Reply to this email or contact alex@kimoraco.com
       const s = safeErrSummary(err);
       console.error("POST /api/customer-portal/request error:", s);
       return genericOk();
+    }
+  });
+
+  // Optional helper (if your ManageSubscription page ever wants to validate token server-side)
+  app.get("/api/customer-portal/verify", async (req, res) => {
+    try {
+      const token = String((req.query as any)?.token ?? "").trim();
+      const sessionSecret = String(process.env.SESSION_SECRET ?? "").trim();
+      if (!token || !sessionSecret) {
+        return res.status(400).json({ ok: false, message: "Missing token." });
+      }
+
+      const payload = verifyToken<{ email?: string }>(token, sessionSecret);
+      if (!payload?.email || !isValidEmail(payload.email)) {
+        return res
+          .status(401)
+          .json({ ok: false, message: "Invalid or expired token." });
+      }
+
+      return res.json({ ok: true, email: payload.email });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("GET /api/customer-portal/verify error:", s);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to verify token." });
     }
   });
 

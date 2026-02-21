@@ -1,9 +1,21 @@
+// client/src/pages/ManageSubscription.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
 
 type Status = "redirecting" | "request" | "sent" | "error";
+
+async function safeReadJson(res: Response): Promise<any> {
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.toLowerCase().includes("application/json")) {
+    // If the server/proxy returned HTML, avoid JSON.parse crash.
+    const text = await res.text().catch(() => "");
+    const snippet = (text || "").slice(0, 200).trim();
+    throw new Error(snippet ? snippet : "Unexpected non-JSON response.");
+  }
+  return res.json();
+}
 
 export default function ManageSubscription() {
   const [email, setEmail] = useState("");
@@ -30,10 +42,12 @@ export default function ManageSubscription() {
 
         const res = await fetch(
           `/api/customer-portal?token=${encodeURIComponent(token)}`,
+          { method: "GET" },
         );
 
-        const data = await res.json();
-        if (!res.ok || !data.url) {
+        const data = await safeReadJson(res);
+
+        if (!res.ok || !data?.url) {
           throw new Error(data?.message || "Invalid or expired link.");
         }
 
@@ -68,7 +82,7 @@ export default function ManageSubscription() {
         body: JSON.stringify({ email: normalizedEmail }),
       });
 
-      const data = await res.json();
+      const data = await safeReadJson(res).catch(() => ({}));
 
       // Always returns ok:true (anti-enumeration)
       setStatus("sent");

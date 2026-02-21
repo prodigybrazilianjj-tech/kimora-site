@@ -989,18 +989,19 @@ export async function registerRoutes(
         shipping_address_collection: { allowed_countries: ["US"] },
         phone_number_collection: { enabled: true },
 
-        customer_update: {
-          address: "auto",
-          name: "auto",
-          shipping: "auto",
-        },
-
         automatic_tax: { enabled: true },
       };
 
       if (existingCustomerId) {
+        // If we pass `customer`, we can also use customer_update.
         sessionParams.customer = existingCustomerId;
+        sessionParams.customer_update = {
+          address: "auto",
+          name: "auto",
+          shipping: "auto",
+        };
       } else {
+        // If we pass `customer_email`, we MUST NOT include customer_update.
         sessionParams.customer_email = email;
       }
 

@@ -44,6 +44,9 @@ export function Navbar() {
   const [location, setLocation] = useLocation();
   const { cartCount } = useCart();
 
+  // ✅ control mobile Sheet open state so we can close it on link tap
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   const isHome = location === "/";
 
   // ✅ IMPORTANT: keep height/padding CONSTANT to prevent flicker
@@ -117,13 +120,55 @@ export function Navbar() {
     return () => window.removeEventListener("hashchange", run);
   }, [isHome]);
 
+  // ✅ helper to close the mobile menu after selecting a link
+  function closeMobileMenuSoon() {
+    // allow any navigation/scroll logic to run, then close sheet
+    window.setTimeout(() => setMobileOpen(false), 0);
+  }
+
   const navLinks = [
-    { name: "Flavors", action: () => goToSection("#flavors") },
-    { name: "Formula", action: () => goToSection("#formula") },
-    { name: "Why Not a Tub?", action: () => goToSection("#comparison") },
-    { name: "About", action: () => goToSection("#about") },
-    { name: "Shop", action: () => setLocation("/shop") },
-    { name: "Wholesale", action: () => setLocation("/wholesale") },
+    {
+      name: "Flavors",
+      action: () => {
+        goToSection("#flavors");
+        closeMobileMenuSoon();
+      },
+    },
+    {
+      name: "Formula",
+      action: () => {
+        goToSection("#formula");
+        closeMobileMenuSoon();
+      },
+    },
+    {
+      name: "Why Not a Tub?",
+      action: () => {
+        goToSection("#comparison");
+        closeMobileMenuSoon();
+      },
+    },
+    {
+      name: "About",
+      action: () => {
+        goToSection("#about");
+        closeMobileMenuSoon();
+      },
+    },
+    {
+      name: "Shop",
+      action: () => {
+        setLocation("/shop");
+        closeMobileMenuSoon();
+      },
+    },
+    {
+      name: "Wholesale",
+      action: () => {
+        setLocation("/wholesale");
+        closeMobileMenuSoon();
+      },
+    },
   ];
 
   return (
@@ -184,7 +229,7 @@ export function Navbar() {
             )}
           </Link>
 
-          <Sheet>
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-white">
                 <Menu className="h-6 w-6" />
@@ -194,7 +239,10 @@ export function Navbar() {
             <SheetContent side="right" className="bg-background border-l border-border">
               <div className="flex flex-col gap-6 mt-10">
                 <button
-                  onClick={goHomeTop}
+                  onClick={() => {
+                    goHomeTop();
+                    closeMobileMenuSoon();
+                  }}
                   className="text-lg font-display text-left text-white/90 hover:text-white transition-colors"
                 >
                   Home
@@ -211,7 +259,10 @@ export function Navbar() {
                 ))}
 
                 <Button
-                  onClick={() => setLocation("/shop")}
+                  onClick={() => {
+                    setLocation("/shop");
+                    closeMobileMenuSoon();
+                  }}
                   className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider mt-4"
                 >
                   Shop Now

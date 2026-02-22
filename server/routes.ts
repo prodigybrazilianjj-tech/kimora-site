@@ -346,7 +346,8 @@ async function sendOrderConfirmationEmail(args: {
         };
 
     const unit = li?.price?.unit_amount ?? null;
-    const lineTotal = unit !== null && unit !== undefined ? unit * qty : null;
+    const lineTotal =
+      unit !== null && unit !== undefined ? unit * qty : null;
 
     return {
       qty,
@@ -375,8 +376,10 @@ async function sendOrderConfirmationEmail(args: {
         l.purchaseType === "subscribe" && l.frequencyWeeks
           ? ` (Subscription — every ${l.frequencyWeeks} weeks)`
           : "";
-      const money = l.unitAmount != null ? ` @ ${formatMoney(l.unitAmount, currency)}` : "";
-      const total = l.lineTotal != null ? ` = ${formatMoney(l.lineTotal, currency)}` : "";
+      const money =
+        l.unitAmount != null ? ` @ ${formatMoney(l.unitAmount, currency)}` : "";
+      const total =
+        l.lineTotal != null ? ` = ${formatMoney(l.lineTotal, currency)}` : "";
       return `- ${flavor} x${l.qty}${cadence}${money}${total}`;
     })
     .join("\n");
@@ -388,9 +391,13 @@ async function sendOrderConfirmationEmail(args: {
     (amountSubtotal != null
       ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n`
       : "") +
-    (amountTotal != null ? `Total: ${formatMoney(amountTotal, currency)}\n` : "") +
+    (amountTotal != null
+      ? `Total: ${formatMoney(amountTotal, currency)}\n`
+      : "") +
     (shippingAddr
-      ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(shippingAddr)}\n`
+      ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(
+          shippingAddr,
+        )}\n`
       : "") +
     (args.isSubscription
       ? `\nManage your subscription anytime:\n${manageLink}\n`
@@ -412,25 +419,35 @@ async function sendOrderConfirmationEmail(args: {
           : "";
       const money =
         l.unitAmount != null
-          ? ` <span style="color:#666;">@ ${escapeHtml(formatMoney(l.unitAmount, currency))}</span>`
+          ? ` <span style="color:#666;">@ ${escapeHtml(
+              formatMoney(l.unitAmount, currency),
+            )}</span>`
           : "";
       const total =
         l.lineTotal != null
-          ? ` <span style="color:#111;font-weight:600;">${escapeHtml(formatMoney(l.lineTotal, currency))}</span>`
+          ? ` <span style="color:#111;font-weight:600;">${escapeHtml(
+              formatMoney(l.lineTotal, currency),
+            )}</span>`
           : "";
-      return `<li style="margin:6px 0;">${flavor} <b>x${l.qty}</b>${cadence}${money}${total ? ` — ${total}` : ""}</li>`;
+      return `<li style="margin:6px 0;">${flavor} <b>x${l.qty}</b>${cadence}${money}${
+        total ? ` — ${total}` : ""
+      }</li>`;
     })
     .join("");
 
   const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Order confirmed 🎉</h2>
   <p style="margin:0 0 14px;">
-    Thanks${shippingName ? `, <b>${escapeHtml(shippingName)}</b>` : ""}. Your Kimora order is confirmed.
+    Thanks${
+      shippingName ? `, <b>${escapeHtml(shippingName)}</b>` : ""
+    }. Your Kimora order is confirmed.
   </p>
 
   ${
     orderNumber
-      ? `<div style="margin:0 0 12px;color:#444;"><b>Order:</b> ${escapeHtml(orderNumber)}</div>`
+      ? `<div style="margin:0 0 12px;color:#444;"><b>Order:</b> ${escapeHtml(
+          orderNumber,
+        )}</div>`
       : ""
   }
 
@@ -444,12 +461,16 @@ async function sendOrderConfirmationEmail(args: {
   <div style="margin:0 0 12px;">
     ${
       amountSubtotal != null
-        ? `<div><b>Subtotal:</b> ${escapeHtml(formatMoney(amountSubtotal, currency))}</div>`
+        ? `<div><b>Subtotal:</b> ${escapeHtml(
+            formatMoney(amountSubtotal, currency),
+          )}</div>`
         : ""
     }
     ${
       amountTotal != null
-        ? `<div><b>Total:</b> ${escapeHtml(formatMoney(amountTotal, currency))}</div>`
+        ? `<div><b>Total:</b> ${escapeHtml(
+            formatMoney(amountTotal, currency),
+          )}</div>`
         : ""
     }
   </div>
@@ -459,7 +480,9 @@ async function sendOrderConfirmationEmail(args: {
       ? `<div style="margin:0 0 14px;">
           <div><b>Shipping to</b></div>
           <div style="color:#444;">${escapeHtml(shippingName || "(name)")}</div>
-          <div style="color:#444;">${escapeHtml(addressToOneLine(shippingAddr))}</div>
+          <div style="color:#444;">${escapeHtml(
+            addressToOneLine(shippingAddr),
+          )}</div>
         </div>`
       : ""
   }
@@ -513,7 +536,10 @@ function unbase64url(input: string) {
 }
 function signToken(payload: object, secret: string) {
   const body = base64url(JSON.stringify(payload));
-  const sig = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+  const sig = crypto
+    .createHmac("sha256", secret)
+    .update(body)
+    .digest("base64url");
   return `${body}.${sig}`;
 }
 
@@ -526,7 +552,10 @@ function verifyToken<T>(token: string, secret: string): T | null {
   if (parts.length !== 2) return null;
 
   const [body, sig] = parts;
-  const expected = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(body)
+    .digest("base64url");
 
   if (sig.length !== expected.length) return null;
 
@@ -544,7 +573,10 @@ function verifyToken<T>(token: string, secret: string): T | null {
   }
 }
 
-export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express,
+): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
   // -----------------------------
@@ -565,7 +597,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/admin/wholesale-applications error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to load applications." });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to load applications." });
     }
   });
 
@@ -577,7 +611,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const id = String(req.params.id || "").trim();
       const status = String(req.body?.status || "").trim();
 
-      const allowed = new Set(["new", "reviewing", "approved", "rejected", "closed"]);
+      const allowed = new Set([
+        "new",
+        "reviewing",
+        "approved",
+        "rejected",
+        "closed",
+      ]);
 
       if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
       if (!allowed.has(status)) {
@@ -598,7 +638,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("PATCH /api/admin/wholesale-applications/:id error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to update status." });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to update status." });
     }
   });
 
@@ -634,17 +676,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const notes = safeString(body.notes, 5000);
 
       if (!businessName) {
-        return res.status(400).json({ ok: false, message: "Business name is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Business name is required." });
       }
       if (!contactName) {
-        return res.status(400).json({ ok: false, message: "Contact name is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Contact name is required." });
       }
       if (!email || !isValidEmail(email)) {
-        return res.status(400).json({ ok: false, message: "Valid email is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Valid email is required." });
       }
 
       if (!phoneDigits) {
-        return res.status(400).json({ ok: false, message: "Phone number is required." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Phone number is required." });
       }
       if (!isValidPhoneDigits(phoneDigits)) {
         return res.status(400).json({
@@ -653,22 +703,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
-      if (!city) return res.status(400).json({ ok: false, message: "City is required." });
-      if (!state) return res.status(400).json({ ok: false, message: "State is required." });
+      if (!city)
+        return res.status(400).json({ ok: false, message: "City is required." });
+      if (!state)
+        return res.status(400).json({ ok: false, message: "State is required." });
 
       if (businessType === "other" && !businessTypeOther) {
-        return res.status(400).json({ ok: false, message: "Please specify business type." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Please specify business type." });
       }
 
       if (!memberCount || memberCount <= 0) {
         return res.status(400).json({
           ok: false,
-          message: "Approx members / active clients is required and must be > 0.",
+          message:
+            "Approx members / active clients is required and must be > 0.",
         });
       }
 
       const ip =
-        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+        (req.headers["x-forwarded-for"] as string | undefined)
+          ?.split(",")[0]
+          ?.trim() ||
         req.socket?.remoteAddress ||
         null;
 
@@ -709,7 +766,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const canSend = Boolean(resendKey && fromEmail);
       if (canSend) {
         const resend = new Resend(resendKey!);
-        const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
+        const from = fromEmail.includes("<")
+          ? fromEmail
+          : `Kimora Co <${fromEmail}>`;
 
         const internalSubject = `New wholesale application — ${businessName}`;
 
@@ -722,7 +781,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           `Phone: ${phoneDigits}\n` +
           `Website/IG: ${websiteOrInstagram || "(not provided)"}\n` +
           `City/State: ${city}, ${state}\n` +
-          `Business type: ${businessType}${businessType === "other" ? ` (${businessTypeOther})` : ""}\n` +
+          `Business type: ${businessType}${
+            businessType === "other" ? ` (${businessTypeOther})` : ""
+          }\n` +
           `Member count: ${memberCount}\n` +
           `Retail setup: ${retailSetup || "(not provided)"}\n` +
           `Interested: onShelf=${interestedOnShelf}, coachAffiliate=${interestedCoachAffiliate}, eventSponsorship=${interestedEventSponsorship}\n\n` +
@@ -731,20 +792,38 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         const internalHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">New wholesale application</h2>
-  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(safeString(applicationId ?? "(unknown)"))}</div>
-  <div style="margin:0 0 8px;"><b>Business:</b> ${escapeHtml(safeString(businessName))}</div>
-  <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(safeString(contactName))}</div>
+  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(
+    safeString(applicationId ?? "(unknown)"),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Business:</b> ${escapeHtml(
+    safeString(businessName),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(
+    safeString(contactName),
+  )}</div>
   <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(safeString(email))}</div>
-  <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(safeString(phoneDigits))}</div>
-  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(safeString(websiteOrInstagram || "(not provided)"))}</div>
-  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(safeString(city))}, ${escapeHtml(safeString(state))}</div>
-  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(safeString(businessType))}${
+  <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(
+    safeString(phoneDigits),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(
+    safeString(websiteOrInstagram || "(not provided)"),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(
+    safeString(city),
+  )}, ${escapeHtml(safeString(state))}</div>
+  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(
+    safeString(businessType),
+  )}${
           businessType === "other" && businessTypeOther
             ? ` (${escapeHtml(safeString(businessTypeOther))})`
             : ""
         }</div>
-  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(safeString(memberCount))}</div>
-  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(safeString(retailSetup || "(not provided)"))}</div>
+  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(
+    safeString(memberCount),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(
+    safeString(retailSetup || "(not provided)"),
+  )}</div>
   <div style="margin:0 0 8px;"><b>Interested:</b>
     onShelf=${String(interestedOnShelf)},
     coachAffiliate=${String(interestedCoachAffiliate)},
@@ -766,7 +845,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Wholesale application received</h2>
   <p style="margin:0 0 12px;">
-    Thanks${contactName ? `, ${escapeHtml(safeString(contactName))}` : ""}! We received your wholesale application for <b>${escapeHtml(
+    Thanks${
+      contactName ? `, ${escapeHtml(safeString(contactName))}` : ""
+    }! We received your wholesale application for <b>${escapeHtml(
           safeString(businessName),
         )}</b>.
   </p>
@@ -823,11 +904,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       ) {
         return res.status(400).json({
           ok: false,
-          message: "Please check required fields (phone + member count) and try again.",
+          message:
+            "Please check required fields (phone + member count) and try again.",
         });
       }
 
-      return res.status(500).json({ ok: false, message: "Failed to submit wholesale application." });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to submit wholesale application." });
     }
   });
 
@@ -843,14 +927,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const items: CheckoutItem[] = itemsRaw
         .map((it: any) => {
           const flavor = String(it?.flavor ?? "").trim();
-          const type: CheckoutItem["type"] = it?.type === "subscribe" ? "subscribe" : "onetime";
+          const type: CheckoutItem["type"] =
+            it?.type === "subscribe" ? "subscribe" : "onetime";
           const frequency: CheckoutItem["frequency"] | undefined =
             type === "subscribe" &&
             (it?.frequency === "2" || it?.frequency === "4" || it?.frequency === "6")
               ? it.frequency
               : undefined;
           const qRaw = Number(it?.quantity);
-          const quantity = Number.isFinite(qRaw) ? Math.max(1, Math.floor(qRaw)) : 1;
+          const quantity = Number.isFinite(qRaw)
+            ? Math.max(1, Math.floor(qRaw))
+            : 1;
           return { flavor, type, frequency, quantity };
         })
         .filter((it: CheckoutItem) => {
@@ -871,7 +958,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const hasOne = items.some((it: CheckoutItem) => it.type === "onetime");
       if (hasSub && hasOne) {
         return res.status(400).json({
-          message: "Subscriptions and one-time items must be checked out separately.",
+          message:
+            "Subscriptions and one-time items must be checked out separately.",
         });
       }
 
@@ -879,7 +967,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const successUrl = `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${siteUrl}/checkout?canceled=1`;
 
-      const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
+      const mode: "payment" | "subscription" = hasSub
+        ? "subscription"
+        : "payment";
 
       const line_items = items.map((it: CheckoutItem) => ({
         price: getPriceId(it),
@@ -902,17 +992,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         automatic_tax: { enabled: true },
       };
 
+      // ✅ Ensure one-time purchases generate Stripe receipts reliably
+      // (subscription “receipts” usually come from invoice emails)
+      if (mode === "payment") {
+        sessionParams.payment_intent_data = {
+          receipt_email: email,
+        };
+      }
+
       if (existingCustomerId) {
-        // If we pass `customer`, we can also use customer_update.
         sessionParams.customer = existingCustomerId;
+
+        // If we pass `customer`, we can also use customer_update.
         sessionParams.customer_update = {
           address: "auto",
           name: "auto",
           shipping: "auto",
         };
       } else {
-        // If we pass `customer_email`, we MUST NOT include customer_update.
         sessionParams.customer_email = email;
+
+        // ✅ Recommended for consistent behavior (creates a Customer for one-time too)
+        if (mode === "payment") {
+          sessionParams.customer_creation = "always";
+        }
       }
 
       const session = await stripe.checkout.sessions.create(sessionParams);
@@ -922,7 +1025,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const s = safeErrSummary(err);
       console.error("POST /api/checkout error:", s);
 
-      const stripeMsg = err?.raw?.message || err?.message || "Failed to create checkout session.";
+      const stripeMsg =
+        err?.raw?.message ||
+        err?.message ||
+        "Failed to create checkout session.";
 
       if (String(stripeMsg).startsWith("Missing env var:")) {
         return res.status(500).json({ message: stripeMsg });
@@ -951,7 +1057,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       return res.json({
         id: session.id,
         mode: session.mode,
-        customer_email: session.customer_details?.email ?? session.customer_email ?? null,
+        customer_email:
+          session.customer_details?.email ?? session.customer_email ?? null,
         payment_status: session.payment_status ?? null,
         subscription: session.subscription ?? null,
       });
@@ -979,16 +1086,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const rawBody = (req as any).rawBody as Buffer | undefined;
       if (!rawBody) {
-        return res.status(400).send("Missing rawBody for webhook verification");
+        return res
+          .status(400)
+          .send("Missing rawBody for webhook verification");
       }
 
       const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
 
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
-        const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(session);
+        const stripeCustomerId =
+          await getStripeCustomerIdFromCheckoutSession(session);
 
-        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
+        const lineItems = await stripe.checkout.sessions.listLineItems(
+          session.id,
+          { limit: 100 },
+        );
 
         const inserted = await db
           .insert(orders)
@@ -997,7 +1110,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             stripePaymentIntentId: session.payment_intent ?? null,
             stripeSubscriptionId: session.subscription ?? null,
             stripeCustomerId,
-            customerEmail: session.customer_details?.email ?? session.customer_email ?? null,
+            customerEmail:
+              session.customer_details?.email ?? session.customer_email ?? null,
             currency: session.currency ?? "usd",
             amountSubtotal: session.amount_subtotal ?? null,
             amountTotal: session.amount_total ?? null,
@@ -1064,7 +1178,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           await sendOrderConfirmationEmail({
             session,
             lineItems: lineItems.data,
-            isSubscription: session.mode === "subscription" || Boolean(session.subscription),
+            isSubscription:
+              session.mode === "subscription" || Boolean(session.subscription),
           });
         }
       }
@@ -1085,7 +1200,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const genericOk = () =>
       res.json({
         ok: true,
-        message: "If that email is in our system, you’ll receive a link shortly.",
+        message:
+          "If that email is in our system, you’ll receive a link shortly.",
       });
 
     try {
@@ -1117,11 +1233,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         sessionSecret,
       );
 
-      const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(token)}`;
+      const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(
+        token,
+      )}`;
       const fallbackLink = `${siteUrl}/manage-subscription`;
 
       const resendKey = process.env.RESEND_API_KEY;
-      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail =
+        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       if (!resendKey || !fromEmail) return genericOk();
 
       const resend = new Resend(resendKey);
@@ -1156,7 +1275,9 @@ Need help? Reply to this email or contact alex@kimoraco.com
 </div>`;
 
       try {
-        const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
+        const from = fromEmail.includes("<")
+          ? fromEmail
+          : `Kimora Co <${fromEmail}>`;
         await resend.emails.send({ from, to: email, subject, text, html } as any);
       } catch (e: any) {
         const s = safeErrSummary(e);
@@ -1187,12 +1308,16 @@ Need help? Reply to this email or contact alex@kimoraco.com
       const payload = verifyToken<{ email?: string }>(token, sessionSecret);
       const email = normalizeEmail(String(payload?.email ?? ""));
       if (!email || !isValidEmail(email)) {
-        return res.status(401).json({ ok: false, message: "Invalid or expired token." });
+        return res
+          .status(401)
+          .json({ ok: false, message: "Invalid or expired token." });
       }
 
       const stripeCustomerId = await findStripeCustomerIdByEmail(email);
       if (!stripeCustomerId) {
-        return res.status(404).json({ ok: false, message: "No customer found for that email." });
+        return res
+          .status(404)
+          .json({ ok: false, message: "No customer found for that email." });
       }
 
       const siteUrl = getSiteUrl();
@@ -1205,7 +1330,9 @@ Need help? Reply to this email or contact alex@kimoraco.com
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/customer-portal error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to open subscription portal." });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to open subscription portal." });
     }
   });
 
@@ -1220,14 +1347,18 @@ Need help? Reply to this email or contact alex@kimoraco.com
 
       const payload = verifyToken<{ email?: string }>(token, sessionSecret);
       if (!payload?.email || !isValidEmail(payload.email)) {
-        return res.status(401).json({ ok: false, message: "Invalid or expired token." });
+        return res
+          .status(401)
+          .json({ ok: false, message: "Invalid or expired token." });
       }
 
       return res.json({ ok: true, email: payload.email });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/customer-portal/verify error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to verify token." });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to verify token." });
     }
   });
 

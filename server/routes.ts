@@ -759,7 +759,8 @@ export async function registerRoutes(
       const applicationId = inserted?.[0]?.id ?? null;
 
       const resendKey = process.env.RESEND_API_KEY;
-      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail =
+        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       const notifyTo = process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
       const siteUrl = getSiteUrl();
 
@@ -801,7 +802,9 @@ export async function registerRoutes(
   <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(
     safeString(contactName),
   )}</div>
-  <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(safeString(email))}</div>
+  <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(
+    safeString(email),
+  )}</div>
   <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(
     safeString(phoneDigits),
   )}</div>
@@ -814,10 +817,10 @@ export async function registerRoutes(
   <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(
     safeString(businessType),
   )}${
-          businessType === "other" && businessTypeOther
-            ? ` (${escapeHtml(safeString(businessTypeOther))})`
-            : ""
-        }</div>
+    businessType === "other" && businessTypeOther
+      ? ` (${escapeHtml(safeString(businessTypeOther))})`
+      : ""
+  }</div>
   <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(
     safeString(memberCount),
   )}</div>
@@ -992,30 +995,25 @@ export async function registerRoutes(
         automatic_tax: { enabled: true },
       };
 
-      // ✅ Ensure one-time purchases generate Stripe receipts reliably
-      // (subscription “receipts” usually come from invoice emails)
-      if (mode === "payment") {
-        sessionParams.payment_intent_data = {
-          receipt_email: email,
-        };
-      }
-
       if (existingCustomerId) {
-        sessionParams.customer = existingCustomerId;
-
         // If we pass `customer`, we can also use customer_update.
+        sessionParams.customer = existingCustomerId;
         sessionParams.customer_update = {
           address: "auto",
           name: "auto",
           shipping: "auto",
         };
       } else {
+        // If we pass `customer_email`, we MUST NOT include customer_update.
         sessionParams.customer_email = email;
+      }
 
-        // ✅ Recommended for consistent behavior (creates a Customer for one-time too)
-        if (mode === "payment") {
-          sessionParams.customer_creation = "always";
-        }
+      // ✅ KEY FIX: make Stripe send a Stripe receipt email for one-time purchases
+      // by setting receipt_email on the underlying PaymentIntent.
+      if (mode === "payment") {
+        sessionParams.payment_intent_data = {
+          receipt_email: email,
+        };
       }
 
       const session = await stripe.checkout.sessions.create(sessionParams);

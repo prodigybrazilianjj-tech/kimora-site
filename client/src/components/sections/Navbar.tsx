@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,32 +11,49 @@ function getNavHeight() {
   return nav instanceof HTMLElement ? nav.offsetHeight : 0;
 }
 
-function scrollToSelectorWithNudge(selector: string) {
+/**
+ * Single, controlled scroll (no multi-jump flicker).
+ * We also add a small nudge (your original intent).
+ */
+function scrollToSelector(selector: string) {
   const el = document.querySelector(selector);
   if (!(el instanceof HTMLElement)) return;
 
+  const navHeight = getNavHeight();
   const NUDGE_PX = 160;
 
-  const navHeight = getNavHeight();
-  const targetTop = window.scrollY + el.getBoundingClientRect().top - navHeight;
+  const targetTop =
+    window.scrollY + el.getBoundingClientRect().top - navHeight + NUDGE_PX;
 
-  window.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
-  window.scrollBy({ top: NUDGE_PX, behavior: "auto" });
-}
+  window.scrollTo({
+    top: Math.max(0, targetTop),
+    behavior: "auto",
+  });
 
-function forceScrollTo(selector: string) {
-  scrollToSelectorWithNudge(selector);
-  requestAnimationFrame(() => scrollToSelectorWithNudge(selector));
-  window.setTimeout(() => scrollToSelectorWithNudge(selector), 250);
-  window.setTimeout(() => scrollToSelectorWithNudge(selector), 800);
+  // One extra frame helps if layout is still settling
+  requestAnimationFrame(() => {
+    const el2 = document.querySelector(selector);
+    if (!(el2 instanceof HTMLElement)) return;
+    const targetTop2 =
+      window.scrollY + el2.getBoundingClientRect().top - getNavHeight() + NUDGE_PX;
+    window.scrollTo({ top: Math.max(0, targetTop2), behavior: "auto" });
+  });
 }
 
 function scrollToTop() {
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  requestAnimationFrame(() =>
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" }),
-  );
-  window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }), 60);
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  });
+}
+
+/**
+ * Update URL hash WITHOUT the browser doing a native anchor jump.
+ */
+function setHashNoJump(hash: string) {
+  const h = hash.startsWith("#") ? hash : `#${hash}`;
+  const url = `${window.location.pathname}${window.location.search}${h}`;
+  history.replaceState(null, "", url);
 }
 
 export function Navbar() {
@@ -44,15 +61,13 @@ export function Navbar() {
   const [location, setLocation] = useLocation();
   const { cartCount } = useCart();
 
-  // ✅ control mobile Sheet open state so we can close it on link tap
+  // Control mobile sheet so we can close it on navigation
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isHome = location === "/";
 
-  // ✅ IMPORTANT: keep height/padding CONSTANT to prevent flicker
   const navBase =
-    "fixed top-0 left-0 right-0 z-50 border-b border-transparent " +
-    "transition-colors duration-300"; // ✅ no transition-all
+    "fixed top-0 left-0 right-0 z-50 border-b border-transparent transition-colors duration-300";
 
   const navBackground =
     !isHome || isScrolled
@@ -72,9 +87,15 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
+  function closeMobile() {
+    setMobileOpen(false);
+  }
+
   function goHomeTop() {
-    // Clear hash (prevents auto-jump / weirdness)
-    if (window.location.hash) {
+    closeMobile();
+
+    // Clear hash without causing a jump
+    if (typeof window !== "undefined" && window.location.hash) {
       history.replaceState(null, "", window.location.pathname + window.location.search);
     }
 
@@ -90,90 +111,56 @@ export function Navbar() {
   }
 
   function goToSection(hash: string) {
+    closeMobile();
+
     const normalizedHash = hash.startsWith("#") ? hash : `#${hash}`;
     const selector = normalizedHash;
 
     if (!isHome) {
       setLocation("/");
       window.setTimeout(() => {
-        window.location.hash = normalizedHash;
-        forceScrollTo(selector);
+        // Set hash without native jump, then scroll once
+        setHashNoJump(normalizedHash);
+        scrollToSelector(selector);
       }, 0);
       return;
     }
 
-    window.location.hash = normalizedHash;
-    forceScrollTo(selector);
+    setHashNoJump(normalizedHash);
+    scrollToSelector(selector);
   }
+
+  /**
+   * Optional: support arriving on home with a hash already in the URL.
+   * Only run once when we land on home.
+   */
+  const initialHash = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return window.location.hash || "";
+  }, []);
 
   useEffect(() => {
     if (!isHome) return;
+    if (!initialHash) return;
 
-    const run = () => {
-      const hash = window.location.hash;
-      if (!hash) return;
-      forceScrollTo(hash);
-    };
-
-    run();
-    window.addEventListener("hashchange", run);
-    return () => window.removeEventListener("hashchange", run);
+    // Scroll once on load; don't attach hashchange listener (avoids flicker)
+    window.setTimeout(() => {
+      scrollToSelector(initialHash);
+    }, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHome]);
 
-  // ✅ helper to close the mobile menu after selecting a link
-  function closeMobileMenuSoon() {
-    // allow any navigation/scroll logic to run, then close sheet
-    window.setTimeout(() => setMobileOpen(false), 0);
-  }
-
   const navLinks = [
-    {
-      name: "Flavors",
-      action: () => {
-        goToSection("#flavors");
-        closeMobileMenuSoon();
-      },
-    },
-    {
-      name: "Formula",
-      action: () => {
-        goToSection("#formula");
-        closeMobileMenuSoon();
-      },
-    },
-    {
-      name: "Why Not a Tub?",
-      action: () => {
-        goToSection("#comparison");
-        closeMobileMenuSoon();
-      },
-    },
-    {
-      name: "About",
-      action: () => {
-        goToSection("#about");
-        closeMobileMenuSoon();
-      },
-    },
-    {
-      name: "Shop",
-      action: () => {
-        setLocation("/shop");
-        closeMobileMenuSoon();
-      },
-    },
-    {
-      name: "Wholesale",
-      action: () => {
-        setLocation("/wholesale");
-        closeMobileMenuSoon();
-      },
-    },
+    { name: "Flavors", action: () => goToSection("#flavors") },
+    { name: "Formula", action: () => goToSection("#formula") },
+    { name: "Why Not a Tub?", action: () => goToSection("#comparison") },
+    { name: "About", action: () => goToSection("#about") },
+    { name: "Shop", action: () => { closeMobile(); setLocation("/shop"); } },
+    { name: "Wholesale", action: () => { closeMobile(); setLocation("/wholesale"); } },
   ];
 
   return (
     <nav className={cn(navBase, navBackground)}>
-      {/* ✅ constant height container so nothing shifts */}
       <div className="container mx-auto px-4 md:px-6 h-[72px] flex items-center justify-between">
         <Link
           href="/"
@@ -239,10 +226,7 @@ export function Navbar() {
             <SheetContent side="right" className="bg-background border-l border-border">
               <div className="flex flex-col gap-6 mt-10">
                 <button
-                  onClick={() => {
-                    goHomeTop();
-                    closeMobileMenuSoon();
-                  }}
+                  onClick={goHomeTop}
                   className="text-lg font-display text-left text-white/90 hover:text-white transition-colors"
                 >
                   Home
@@ -260,8 +244,8 @@ export function Navbar() {
 
                 <Button
                   onClick={() => {
+                    closeMobile();
                     setLocation("/shop");
-                    closeMobileMenuSoon();
                   }}
                   className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider mt-4"
                 >

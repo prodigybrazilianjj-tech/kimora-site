@@ -323,9 +323,13 @@ async function sendOrderConfirmationEmail(args: {
   }
 
   const name = safeString(args.session?.customer_details?.name, 200);
-  const shippingName =
-    safeString(args.session?.shipping_details?.name, 200) || name;
-  const shippingAddr = args.session?.shipping_details?.address || null;
+
+  // ✅ FIX: some Stripe TS versions don’t type `shipping_details` on Checkout Sessions.
+  // At runtime it exists; we safely read it via `any` to avoid TS errors.
+  const shippingDetails = (args.session as any)?.shipping_details ?? null;
+
+  const shippingName = safeString(shippingDetails?.name, 200) || name;
+  const shippingAddr = shippingDetails?.address || null;
 
   const currency = String(args.session?.currency || "usd");
   const amountSubtotal = args.session?.amount_subtotal ?? null;
@@ -759,8 +763,7 @@ export async function registerRoutes(
       const applicationId = inserted?.[0]?.id ?? null;
 
       const resendKey = process.env.RESEND_API_KEY;
-      const fromEmail =
-        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       const notifyTo = process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
       const siteUrl = getSiteUrl();
 
@@ -802,9 +805,7 @@ export async function registerRoutes(
   <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(
     safeString(contactName),
   )}</div>
-  <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(
-    safeString(email),
-  )}</div>
+  <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(safeString(email))}</div>
   <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(
     safeString(phoneDigits),
   )}</div>
@@ -817,10 +818,10 @@ export async function registerRoutes(
   <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(
     safeString(businessType),
   )}${
-    businessType === "other" && businessTypeOther
-      ? ` (${escapeHtml(safeString(businessTypeOther))})`
-      : ""
-  }</div>
+          businessType === "other" && businessTypeOther
+            ? ` (${escapeHtml(safeString(businessTypeOther))})`
+            : ""
+        }</div>
   <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(
     safeString(memberCount),
   )}</div>
@@ -1008,14 +1009,6 @@ export async function registerRoutes(
         sessionParams.customer_email = email;
       }
 
-      // ✅ KEY FIX: make Stripe send a Stripe receipt email for one-time purchases
-      // by setting receipt_email on the underlying PaymentIntent.
-      if (mode === "payment") {
-        sessionParams.payment_intent_data = {
-          receipt_email: email,
-        };
-      }
-
       const session = await stripe.checkout.sessions.create(sessionParams);
 
       return res.json({ url: session.url });
@@ -1115,8 +1108,8 @@ export async function registerRoutes(
             amountTotal: session.amount_total ?? null,
             isSubscription: session.mode === "subscription",
             status: session.payment_status || "paid",
-            shippingName: session.shipping_details?.name ?? null,
-            shippingAddress: session.shipping_details?.address ?? null,
+            shippingName: (session as any)?.shipping_details?.name ?? null,
+            shippingAddress: (session as any)?.shipping_details?.address ?? null,
           })
           .onConflictDoNothing({
             target: orders.stripeCheckoutSessionId,

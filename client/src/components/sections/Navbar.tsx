@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,49 +11,38 @@ function getNavHeight() {
   return nav instanceof HTMLElement ? nav.offsetHeight : 0;
 }
 
-/**
- * Single, controlled scroll (no multi-jump flicker).
- * We also add a small nudge (your original intent).
- */
 function scrollToSelector(selector: string) {
   const el = document.querySelector(selector);
   if (!(el instanceof HTMLElement)) return;
 
   const navHeight = getNavHeight();
-  const NUDGE_PX = 160;
+  const top = window.scrollY + el.getBoundingClientRect().top - navHeight;
 
-  const targetTop =
-    window.scrollY + el.getBoundingClientRect().top - navHeight + NUDGE_PX;
+  window.scrollTo({ top: Math.max(0, top), left: 0, behavior: "auto" });
 
-  window.scrollTo({
-    top: Math.max(0, targetTop),
-    behavior: "auto",
-  });
-
-  // One extra frame helps if layout is still settling
+  // One extra frame helps when fonts/layout settle (prevents “jump then settle”)
   requestAnimationFrame(() => {
-    const el2 = document.querySelector(selector);
-    if (!(el2 instanceof HTMLElement)) return;
-    const targetTop2 =
-      window.scrollY + el2.getBoundingClientRect().top - getNavHeight() + NUDGE_PX;
-    window.scrollTo({ top: Math.max(0, targetTop2), behavior: "auto" });
+    const navH2 = getNavHeight();
+    const top2 = window.scrollY + el.getBoundingClientRect().top - navH2;
+    window.scrollTo({ top: Math.max(0, top2), left: 0, behavior: "auto" });
   });
+}
+
+function setHashNoJump(hash: string) {
+  const normalized = hash.startsWith("#") ? hash : `#${hash}`;
+  const url = window.location.pathname + window.location.search + normalized;
+  // pushState avoids the browser’s default anchor jump that causes flicker
+  history.pushState(null, "", url);
+}
+
+function clearHashNoJump() {
+  const url = window.location.pathname + window.location.search;
+  history.replaceState(null, "", url);
 }
 
 function scrollToTop() {
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  requestAnimationFrame(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  });
-}
-
-/**
- * Update URL hash WITHOUT the browser doing a native anchor jump.
- */
-function setHashNoJump(hash: string) {
-  const h = hash.startsWith("#") ? hash : `#${hash}`;
-  const url = `${window.location.pathname}${window.location.search}${h}`;
-  history.replaceState(null, "", url);
+  requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
 }
 
 export function Navbar() {
@@ -61,11 +50,15 @@ export function Navbar() {
   const [location, setLocation] = useLocation();
   const { cartCount } = useCart();
 
-  // Control mobile sheet so we can close it on navigation
+  // Mobile sheet state (so it collapses after any tap)
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isHome = location === "/";
 
+  // If we navigate to "/" and want to scroll to a section, we stash it here.
+  const pendingSelectorRef = useRef<string | null>(null);
+
+  // ✅ IMPORTANT: keep height/padding CONSTANT to prevent flicker
   const navBase =
     "fixed top-0 left-0 right-0 z-50 border-b border-transparent transition-colors duration-300";
 
@@ -87,6 +80,21 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
+  // When we arrive on home (after setLocation("/")), execute any pending scroll.
+  useEffect(() => {
+    if (!isHome) return;
+
+    const selector = pendingSelectorRef.current;
+    if (!selector) return;
+
+    pendingSelectorRef.current = null;
+
+    // Wait one tick so the home sections exist in the DOM
+    window.setTimeout(() => {
+      scrollToSelector(selector);
+    }, 0);
+  }, [isHome]);
+
   function closeMobile() {
     setMobileOpen(false);
   }
@@ -94,16 +102,12 @@ export function Navbar() {
   function goHomeTop() {
     closeMobile();
 
-    // Clear hash without causing a jump
-    if (typeof window !== "undefined" && window.location.hash) {
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
+    // Clear hash (prevents auto-jump weirdness)
+    if (window.location.hash) clearHashNoJump();
 
     if (!isHome) {
       setLocation("/");
-      window.setTimeout(() => {
-        scrollToTop();
-      }, 0);
+      window.setTimeout(() => scrollToTop(), 0);
       return;
     }
 
@@ -117,47 +121,61 @@ export function Navbar() {
     const selector = normalizedHash;
 
     if (!isHome) {
+      // Navigate home, then scroll once content is mounted
+      pendingSelectorRef.current = selector;
+
       setLocation("/");
+
+      // Keep URL in sync without triggering native anchor jump
       window.setTimeout(() => {
-        // Set hash without native jump, then scroll once
         setHashNoJump(normalizedHash);
-        scrollToSelector(selector);
       }, 0);
+
       return;
     }
 
+    // Home page: set hash without browser jump, then do our offset scroll
     setHashNoJump(normalizedHash);
     scrollToSelector(selector);
   }
 
-  /**
-   * Optional: support arriving on home with a hash already in the URL.
-   * Only run once when we land on home.
-   */
-  const initialHash = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    return window.location.hash || "";
-  }, []);
-
+  // Optional: if the user hits Back/Forward and hash changes, handle it without flicker.
   useEffect(() => {
     if (!isHome) return;
-    if (!initialHash) return;
 
-    // Scroll once on load; don't attach hashchange listener (avoids flicker)
-    window.setTimeout(() => {
-      scrollToSelector(initialHash);
-    }, 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const onPopState = () => {
+      const hash = window.location.hash;
+      if (!hash) return;
+      scrollToSelector(hash);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, [isHome]);
 
-  const navLinks = [
-    { name: "Flavors", action: () => goToSection("#flavors") },
-    { name: "Formula", action: () => goToSection("#formula") },
-    { name: "Why Not a Tub?", action: () => goToSection("#comparison") },
-    { name: "About", action: () => goToSection("#about") },
-    { name: "Shop", action: () => { closeMobile(); setLocation("/shop"); } },
-    { name: "Wholesale", action: () => { closeMobile(); setLocation("/wholesale"); } },
-  ];
+  const navLinks = useMemo(
+    () => [
+      { name: "Flavors", action: () => goToSection("#flavors") },
+      { name: "Formula", action: () => goToSection("#formula") },
+      { name: "Why Not a Tub?", action: () => goToSection("#comparison") },
+      { name: "About", action: () => goToSection("#about") },
+      {
+        name: "Shop",
+        action: () => {
+          closeMobile();
+          setLocation("/shop");
+        },
+      },
+      {
+        name: "Wholesale",
+        action: () => {
+          closeMobile();
+          setLocation("/wholesale");
+        },
+      },
+    ],
+    [isHome, location],
+  );
 
   return (
     <nav className={cn(navBase, navBackground)}>
@@ -207,7 +225,11 @@ export function Navbar() {
 
         {/* Mobile Nav */}
         <div className="md:hidden flex items-center gap-4">
-          <Link href="/cart" className="relative text-white">
+          <Link
+            href="/cart"
+            className="relative text-white"
+            onClick={() => closeMobile()}
+          >
             <ShoppingBag className="w-6 h-6" />
             {cartCount > 0 && (
               <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">

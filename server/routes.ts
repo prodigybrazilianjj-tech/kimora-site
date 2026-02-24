@@ -20,6 +20,11 @@ function slugToEnvKey(slug: string) {
   return slug.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 
+/**
+ * IMPORTANT:
+ * Never use req.headers.origin for security/correctness.
+ * For emails and Stripe return URLs we want a stable canonical base URL.
+ */
 function getSiteUrl() {
   return (
     process.env.PUBLIC_SITE_URL ||
@@ -51,6 +56,10 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/**
+ * IMPORTANT: never log raw DB errors that include SQL params (PII).
+ * Summarize safely.
+ */
 function safeErrSummary(err: any) {
   const message = String(err?.message || "unknown error");
   const code =
@@ -61,6 +70,7 @@ function safeErrSummary(err: any) {
     null;
 
   const shortMsg = message.length > 180 ? message.slice(0, 180) + "…" : message;
+
   return { code, message: shortMsg };
 }
 
@@ -123,7 +133,13 @@ function mapPriceIdToItem(priceId: string): {
   return { flavor: "unknown", purchaseType: "onetime", frequencyWeeks: null };
 }
 
-async function getStripeCustomerIdFromCheckoutSession(session: any): Promise<string | null> {
+/**
+ * Stripe customer id is sometimes missing from checkout.session.completed in subscription mode.
+ * This helper backfills via the subscription if necessary.
+ */
+async function getStripeCustomerIdFromCheckoutSession(
+  session: any,
+): Promise<string | null> {
   let stripeCustomerId: string | null =
     typeof session.customer === "string"
       ? session.customer
@@ -154,7 +170,9 @@ async function getStripeCustomerIdFromCheckoutSession(session: any): Promise<str
   return stripeCustomerId;
 }
 
-async function findStripeCustomerIdByEmail(email: string): Promise<string | null> {
+async function findStripeCustomerIdByEmail(
+  email: string,
+): Promise<string | null> {
   const normalized = normalizeEmail(email);
   if (!normalized || !isValidEmail(normalized)) return null;
 
@@ -173,14 +191,19 @@ async function findStripeCustomerIdByEmail(email: string): Promise<string | null
   }
 
   try {
-    const list = await stripe.customers.list({ email: normalized, limit: 1 });
-    return list.data?.[0]?.id ?? null;
+    const list = await stripe.customers.list({
+      email: normalized,
+      limit: 1,
+    });
+    const stripeCustomerId = list.data?.[0]?.id ?? null;
+    return stripeCustomerId;
   } catch (e) {
     console.warn("[checkout] Stripe customer lookup failed:", e);
     return null;
   }
 }
 
+/** Simple validations to match your DB constraints */
 function isValidPhoneDigits(digits: string) {
   return /^\d{10,}$/.test(digits);
 }
@@ -232,12 +255,18 @@ function requireAdmin(req: any, res: any) {
   return null;
 }
 
-function formatMoney(amountCents: number | null | undefined, currency: string | null | undefined) {
+function formatMoney(
+  amountCents: number | null | undefined,
+  currency: string | null | undefined,
+) {
   if (amountCents === null || amountCents === undefined) return "";
   const ccy = String(currency || "usd").toUpperCase();
   const dollars = amountCents / 100;
   try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: ccy }).format(dollars);
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: ccy,
+    }).format(dollars);
   } catch {
     return `${ccy} ${dollars.toFixed(2)}`;
   }
@@ -245,66 +274,17 @@ function formatMoney(amountCents: number | null | undefined, currency: string | 
 
 function addressToOneLine(addr: any): string {
   if (!addr) return "";
-  const parts = [addr.line1, addr.line2, addr.city, addr.state, addr.postal_code, addr.country]
+  const parts = [
+    addr.line1,
+    addr.line2,
+    addr.city,
+    addr.state,
+    addr.postal_code,
+    addr.country,
+  ]
     .map((x: any) => String(x || "").trim())
     .filter(Boolean);
   return parts.join(", ");
-}
-
-function extractAddressFromSession(session: any): { name: string | null; address: any | null } {
-  // Preferred
-  if (session?.shipping_details?.address || session?.shipping_details?.name) {
-    return { name: session.shipping_details?.name ?? null, address: session.shipping_details?.address ?? null };
-  }
-  // Older field
-  if (session?.shipping?.address || session?.shipping?.name) {
-    return { name: session.shipping?.name ?? null, address: session.shipping?.address ?? null };
-  }
-  // Fallback: billing address (still useful for fulfillment if you allow it)
-  if (session?.customer_details?.address || session?.customer_details?.name) {
-    return { name: session.customer_details?.name ?? null, address: session.customer_details?.address ?? null };
-  }
-  return { name: null, address: null };
-}
-
-function extractAddressFromPaymentIntent(pi: any): { name: string | null; address: any | null } {
-  if (pi?.shipping?.address || pi?.shipping?.name) {
-    return { name: pi.shipping?.name ?? null, address: pi.shipping?.address ?? null };
-  }
-
-  const ch = pi?.charges?.data?.[0] ?? null;
-
-  if (ch?.shipping?.address || ch?.shipping?.name) {
-    return { name: ch.shipping?.name ?? null, address: ch.shipping?.address ?? null };
-  }
-
-  if (ch?.billing_details?.address || ch?.billing_details?.name) {
-    return { name: ch.billing_details?.name ?? null, address: ch.billing_details?.address ?? null };
-  }
-
-  return { name: null, address: null };
-}
-
-async function resolveAddress(session: any): Promise<{ name: string | null; address: any | null }> {
-  const fromSession = extractAddressFromSession(session);
-  if (fromSession.name || fromSession.address) return fromSession;
-
-  const piId =
-    typeof session?.payment_intent === "string"
-      ? session.payment_intent
-      : session?.payment_intent?.id;
-
-  if (piId) {
-    try {
-      const pi = await stripe.paymentIntents.retrieve(piId, { expand: ["charges.data"] } as any);
-      const fromPi = extractAddressFromPaymentIntent(pi);
-      if (fromPi.name || fromPi.address) return fromPi;
-    } catch (e) {
-      console.warn("[webhook] failed to retrieve payment intent for address:", safeErrSummary(e));
-    }
-  }
-
-  return { name: null, address: null };
 }
 
 async function sendOrderConfirmationEmail(args: {
@@ -313,9 +293,13 @@ async function sendOrderConfirmationEmail(args: {
   isSubscription: boolean;
 }) {
   const resendKey = String(process.env.RESEND_API_KEY || "").trim();
-  const fromEmail = String(process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "").trim();
+  const fromEmail = String(
+    process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "",
+  ).trim();
   if (!resendKey || !fromEmail) {
-    console.warn("[order-email] Resend not configured.");
+    console.warn(
+      "[order-email] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM).",
+    );
     return;
   }
 
@@ -326,7 +310,11 @@ async function sendOrderConfirmationEmail(args: {
 
   const email =
     normalizeEmail(
-      String(args.session?.customer_details?.email ?? args.session?.customer_email ?? ""),
+      String(
+        args.session?.customer_details?.email ??
+          args.session?.customer_email ??
+          "",
+      ),
     ) || "";
 
   if (!email || !isValidEmail(email)) {
@@ -335,17 +323,9 @@ async function sendOrderConfirmationEmail(args: {
   }
 
   const name = safeString(args.session?.customer_details?.name, 200);
-
   const shippingName =
-    safeString(args.session?.shipping_details?.name, 200) ||
-    safeString(args.session?.shipping?.name, 200) ||
-    name;
-
-  const shippingAddr =
-    args.session?.shipping_details?.address ||
-    args.session?.shipping?.address ||
-    args.session?.customer_details?.address ||
-    null;
+    safeString(args.session?.shipping_details?.name, 200) || name;
+  const shippingAddr = args.session?.shipping_details?.address || null;
 
   const currency = String(args.session?.currency || "usd");
   const amountSubtotal = args.session?.amount_subtotal ?? null;
@@ -359,12 +339,24 @@ async function sendOrderConfirmationEmail(args: {
     const priceId = li?.price?.id ?? null;
     const mapped = priceId
       ? mapPriceIdToItem(String(priceId))
-      : { flavor: "unknown", purchaseType: args.isSubscription ? "subscribe" : "onetime", frequencyWeeks: null };
+      : {
+          flavor: "unknown",
+          purchaseType: args.isSubscription ? "subscribe" : "onetime",
+          frequencyWeeks: null,
+        };
 
     const unit = li?.price?.unit_amount ?? null;
-    const lineTotal = unit != null ? unit * qty : null;
+    const lineTotal =
+      unit !== null && unit !== undefined ? unit * qty : null;
 
-    return { qty, flavor: mapped.flavor, purchaseType: mapped.purchaseType, frequencyWeeks: mapped.frequencyWeeks, unitAmount: unit, lineTotal };
+    return {
+      qty,
+      flavor: mapped.flavor,
+      purchaseType: mapped.purchaseType,
+      frequencyWeeks: mapped.frequencyWeeks,
+      unitAmount: unit,
+      lineTotal,
+    };
   });
 
   const subject = args.isSubscription
@@ -384,8 +376,10 @@ async function sendOrderConfirmationEmail(args: {
         l.purchaseType === "subscribe" && l.frequencyWeeks
           ? ` (Subscription — every ${l.frequencyWeeks} weeks)`
           : "";
-      const money = l.unitAmount != null ? ` @ ${formatMoney(l.unitAmount, currency)}` : "";
-      const total = l.lineTotal != null ? ` = ${formatMoney(l.lineTotal, currency)}` : "";
+      const money =
+        l.unitAmount != null ? ` @ ${formatMoney(l.unitAmount, currency)}` : "";
+      const total =
+        l.lineTotal != null ? ` = ${formatMoney(l.lineTotal, currency)}` : "";
       return `- ${flavor} x${l.qty}${cadence}${money}${total}`;
     })
     .join("\n");
@@ -394,33 +388,101 @@ async function sendOrderConfirmationEmail(args: {
     `Thanks${shippingName ? `, ${shippingName}` : ""} — your Kimora order is confirmed.\n\n` +
     (orderNumber ? `Order: ${orderNumber}\n` : "") +
     (itemsText ? `\nItems:\n${itemsText}\n` : "") +
-    (amountSubtotal != null ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n` : "") +
-    (amountTotal != null ? `Total: ${formatMoney(amountTotal, currency)}\n` : "") +
-    (shippingAddr
-      ? `\nAddress:\n${shippingName || "(name)"}\n${addressToOneLine(shippingAddr)}\n`
+    (amountSubtotal != null
+      ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n`
       : "") +
-    (args.isSubscription ? `\nManage your subscription anytime:\n${manageLink}\n` : "") +
+    (amountTotal != null
+      ? `Total: ${formatMoney(amountTotal, currency)}\n`
+      : "") +
+    (shippingAddr
+      ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(
+          shippingAddr,
+        )}\n`
+      : "") +
+    (args.isSubscription
+      ? `\nManage your subscription anytime:\n${manageLink}\n`
+      : "") +
     `\nNeed help? Reply to this email or contact ${supportEmail}.\n\n` +
     `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
+
+  const itemsHtml = lines
+    .map((l: any) => {
+      const flavor = escapeHtml(
+        String(l.flavor || "")
+          .split("-")
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" "),
+      );
+      const cadence =
+        l.purchaseType === "subscribe" && l.frequencyWeeks
+          ? ` <span style="color:#666;">(Subscription — every ${l.frequencyWeeks} weeks)</span>`
+          : "";
+      const money =
+        l.unitAmount != null
+          ? ` <span style="color:#666;">@ ${escapeHtml(
+              formatMoney(l.unitAmount, currency),
+            )}</span>`
+          : "";
+      const total =
+        l.lineTotal != null
+          ? ` <span style="color:#111;font-weight:600;">${escapeHtml(
+              formatMoney(l.lineTotal, currency),
+            )}</span>`
+          : "";
+      return `<li style="margin:6px 0;">${flavor} <b>x${l.qty}</b>${cadence}${money}${
+        total ? ` — ${total}` : ""
+      }</li>`;
+    })
+    .join("");
 
   const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Order confirmed 🎉</h2>
   <p style="margin:0 0 14px;">
-    Thanks${shippingName ? `, <b>${escapeHtml(shippingName)}</b>` : ""}. Your Kimora order is confirmed.
+    Thanks${
+      shippingName ? `, <b>${escapeHtml(shippingName)}</b>` : ""
+    }. Your Kimora order is confirmed.
   </p>
-  ${orderNumber ? `<div style="margin:0 0 12px;color:#444;"><b>Order:</b> ${escapeHtml(orderNumber)}</div>` : ""}
+
+  ${
+    orderNumber
+      ? `<div style="margin:0 0 12px;color:#444;"><b>Order:</b> ${escapeHtml(
+          orderNumber,
+        )}</div>`
+      : ""
+  }
+
+  ${
+    itemsHtml
+      ? `<div style="margin:0 0 10px;"><b>Items</b></div>
+  <ul style="margin:0 0 14px;padding-left:18px;">${itemsHtml}</ul>`
+      : ""
+  }
 
   <div style="margin:0 0 12px;">
-    ${amountSubtotal != null ? `<div><b>Subtotal:</b> ${escapeHtml(formatMoney(amountSubtotal, currency))}</div>` : ""}
-    ${amountTotal != null ? `<div><b>Total:</b> ${escapeHtml(formatMoney(amountTotal, currency))}</div>` : ""}
+    ${
+      amountSubtotal != null
+        ? `<div><b>Subtotal:</b> ${escapeHtml(
+            formatMoney(amountSubtotal, currency),
+          )}</div>`
+        : ""
+    }
+    ${
+      amountTotal != null
+        ? `<div><b>Total:</b> ${escapeHtml(
+            formatMoney(amountTotal, currency),
+          )}</div>`
+        : ""
+    }
   </div>
 
   ${
     shippingAddr
       ? `<div style="margin:0 0 14px;">
-          <div><b>Address</b></div>
+          <div><b>Shipping to</b></div>
           <div style="color:#444;">${escapeHtml(shippingName || "(name)")}</div>
-          <div style="color:#444;">${escapeHtml(addressToOneLine(shippingAddr))}</div>
+          <div style="color:#444;">${escapeHtml(
+            addressToOneLine(shippingAddr),
+          )}</div>
         </div>`
       : ""
   }
@@ -439,17 +501,128 @@ async function sendOrderConfirmationEmail(args: {
   }
 
   <div style="margin:16px 0 0;font-size:12px;color:#666;">
-    Need help? Reply to this email or contact <a href="mailto:${supportEmail}">${supportEmail}</a>.
+    Need help? Reply to this email or contact
+    <a href="mailto:${supportEmail}">${supportEmail}</a>.
+  </div>
+
+  <div style="margin:14px 0 0;font-size:12px;letter-spacing:0.08em;color:#999;text-transform:uppercase;">
+    OUT-TRAIN. OUT-SMART. OUT-LAST.
   </div>
 </div>`;
 
   try {
-    await resend.emails.send({ from, to: email, subject, text, html, replyTo: supportEmail } as any);
+    await resend.emails.send({
+      from,
+      to: email,
+      subject,
+      text,
+      html,
+      replyTo: supportEmail,
+    } as any);
   } catch (e: any) {
-    console.error("[order-email] send failed:", safeErrSummary(e));
+    const s = safeErrSummary(e);
+    console.error("[order-email] send failed:", s);
   }
 }
 
+/**
+ * Shipping strategy:
+ * - Subscriptions: FREE shipping
+ * - One-time:
+ *    - $5 flat under $50
+ *    - FREE at $50+
+ *
+ * Stripe Checkout requires shipping_options to actually collect "shipping_details"
+ * reliably on checkout.session.completed in many setups.
+ */
+async function computeCartSubtotalCentsFromStripePrices(
+  lineItems: Array<{ price: string; quantity: number }>,
+): Promise<number> {
+  const cache = new Map<string, Stripe.Price>();
+  let subtotal = 0;
+
+  for (const li of lineItems) {
+    const priceId = String(li.price || "").trim();
+    const qty = Number(li.quantity ?? 1) || 1;
+    if (!priceId || qty < 1) continue;
+
+    let price = cache.get(priceId);
+    if (!price) {
+      // We only need unit_amount/currency; keep it simple.
+      price = (await stripe.prices.retrieve(priceId)) as any;
+      cache.set(priceId, price);
+    }
+
+    const unit = (price as any)?.unit_amount;
+    if (typeof unit === "number" && Number.isFinite(unit)) {
+      subtotal += unit * qty;
+    }
+  }
+
+  return subtotal;
+}
+
+function buildShippingOptions(params: {
+  mode: "payment" | "subscription";
+  currency: string;
+  subtotalCents: number;
+}): any[] {
+  const currency = params.currency || "usd";
+
+  // Always free for subscriptions (you requested this).
+  if (params.mode === "subscription") {
+    return [
+      {
+        shipping_rate_data: {
+          type: "fixed_amount",
+          fixed_amount: { amount: 0, currency },
+          display_name: "Free Shipping",
+          delivery_estimate: {
+            minimum: { unit: "business_day", value: 3 },
+            maximum: { unit: "business_day", value: 7 },
+          },
+        },
+      },
+    ];
+  }
+
+  const FREE_THRESHOLD_CENTS = 5000; // $50.00
+  const isFree = params.subtotalCents >= FREE_THRESHOLD_CENTS;
+
+  if (isFree) {
+    return [
+      {
+        shipping_rate_data: {
+          type: "fixed_amount",
+          fixed_amount: { amount: 0, currency },
+          display_name: "Free Shipping (orders $50+)",
+          delivery_estimate: {
+            minimum: { unit: "business_day", value: 3 },
+            maximum: { unit: "business_day", value: 7 },
+          },
+        },
+      },
+    ];
+  }
+
+  return [
+    {
+      shipping_rate_data: {
+        type: "fixed_amount",
+        fixed_amount: { amount: 500, currency }, // $5.00
+        display_name: "Standard Shipping",
+        delivery_estimate: {
+          minimum: { unit: "business_day", value: 3 },
+          maximum: { unit: "business_day", value: 7 },
+        },
+      },
+    },
+  ];
+}
+
+/**
+ * Magic link token (HMAC signed). No DB changes.
+ */
 function base64url(input: string) {
   return Buffer.from(input).toString("base64url");
 }
@@ -458,16 +631,27 @@ function unbase64url(input: string) {
 }
 function signToken(payload: object, secret: string) {
   const body = base64url(JSON.stringify(payload));
-  const sig = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+  const sig = crypto
+    .createHmac("sha256", secret)
+    .update(body)
+    .digest("base64url");
   return `${body}.${sig}`;
 }
 
+/**
+ * Generic token verifier.
+ * We still enforce exp if present (payload.exp).
+ */
 function verifyToken<T>(token: string, secret: string): T | null {
   const parts = token.split(".");
   if (parts.length !== 2) return null;
 
   const [body, sig] = parts;
-  const expected = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(body)
+    .digest("base64url");
+
   if (sig.length !== expected.length) return null;
 
   const ok = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
@@ -484,57 +668,11 @@ function verifyToken<T>(token: string, secret: string): T | null {
   }
 }
 
-export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express,
+): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
-
-  // ✅ Admin debug: inspect Stripe Checkout Session + PaymentIntent to see what Stripe is actually returning
-  app.get("/api/admin/stripe/session", async (req, res) => {
-    const denied = requireAdmin(req, res);
-    if (denied) return;
-
-    try {
-      const sessionId = String(req.query?.session_id ?? "").trim();
-      if (!sessionId) return res.status(400).json({ ok: false, message: "session_id is required" });
-
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
-
-      const piId =
-        typeof (session as any).payment_intent === "string"
-          ? (session as any).payment_intent
-          : (session as any).payment_intent?.id;
-
-      let paymentIntent: any = null;
-      if (piId) {
-        paymentIntent = await stripe.paymentIntents.retrieve(piId, { expand: ["charges.data"] } as any);
-      }
-
-      const charge = paymentIntent?.charges?.data?.[0] ?? null;
-
-      return res.json({
-        ok: true,
-        session: {
-          id: (session as any).id,
-          mode: (session as any).mode,
-          customer_email: (session as any).customer_details?.email ?? (session as any).customer_email ?? null,
-          shipping_details: (session as any).shipping_details ?? null,
-          shipping: (session as any).shipping ?? null,
-          customer_details_address: (session as any).customer_details?.address ?? null,
-          customer_details_name: (session as any).customer_details?.name ?? null,
-        },
-        payment_intent: paymentIntent
-          ? {
-              id: paymentIntent.id,
-              shipping: paymentIntent.shipping ?? null,
-              billing_details: charge?.billing_details ?? null,
-              charge_shipping: charge?.shipping ?? null,
-            }
-          : null,
-      });
-    } catch (err: any) {
-      console.error("GET /api/admin/stripe/session error:", safeErrSummary(err));
-      return res.status(500).json({ ok: false, message: "Failed to load Stripe session" });
-    }
-  });
 
   // -----------------------------
   // Admin: wholesale applications
@@ -552,8 +690,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       return res.json({ ok: true, rows });
     } catch (err: any) {
-      console.error("GET /api/admin/wholesale-applications error:", safeErrSummary(err));
-      return res.status(500).json({ ok: false, message: "Failed to load applications." });
+      const s = safeErrSummary(err);
+      console.error("GET /api/admin/wholesale-applications error:", s);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to load applications." });
     }
   });
 
@@ -564,10 +705,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const id = String(req.params.id || "").trim();
       const status = String(req.body?.status || "").trim();
-      const allowed = new Set(["new", "reviewing", "approved", "rejected", "closed"]);
 
-      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
-      if (!allowed.has(status)) return res.status(400).json({ ok: false, message: "Invalid status." });
+      const allowed = new Set([
+        "new",
+        "reviewing",
+        "approved",
+        "rejected",
+        "closed",
+      ]);
+
+      if (!id)
+        return res.status(400).json({ ok: false, message: "Missing id." });
+      if (!allowed.has(status)) {
+        return res.status(400).json({ ok: false, message: "Invalid status." });
+      }
 
       const updated = await db
         .update(wholesaleApplications)
@@ -575,11 +726,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         .where(eq(wholesaleApplications.id, id))
         .returning({ id: wholesaleApplications.id });
 
-      if (!updated?.length) return res.status(404).json({ ok: false, message: "Not found." });
+      if (!updated?.length) {
+        return res.status(404).json({ ok: false, message: "Not found." });
+      }
+
       return res.json({ ok: true });
     } catch (err: any) {
-      console.error("PATCH /api/admin/wholesale-applications/:id error:", safeErrSummary(err));
-      return res.status(500).json({ ok: false, message: "Failed to update status." });
+      const s = safeErrSummary(err);
+      console.error("PATCH /api/admin/wholesale-applications/:id error:", s);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to update status." });
     }
   });
 
@@ -614,28 +771,59 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const notes = safeString(body.notes, 5000);
 
-      if (!businessName) return res.status(400).json({ ok: false, message: "Business name is required." });
-      if (!contactName) return res.status(400).json({ ok: false, message: "Contact name is required." });
-      if (!email || !isValidEmail(email)) return res.status(400).json({ ok: false, message: "Valid email is required." });
-
-      if (!phoneDigits) return res.status(400).json({ ok: false, message: "Phone number is required." });
-      if (!isValidPhoneDigits(phoneDigits)) {
-        return res.status(400).json({ ok: false, message: "Phone number must include at least 10 digits." });
+      if (!businessName) {
+        return res
+          .status(400)
+          .json({ ok: false, message: "Business name is required." });
+      }
+      if (!contactName) {
+        return res
+          .status(400)
+          .json({ ok: false, message: "Contact name is required." });
+      }
+      if (!email || !isValidEmail(email)) {
+        return res
+          .status(400)
+          .json({ ok: false, message: "Valid email is required." });
       }
 
-      if (!city) return res.status(400).json({ ok: false, message: "City is required." });
-      if (!state) return res.status(400).json({ ok: false, message: "State is required." });
+      if (!phoneDigits) {
+        return res
+          .status(400)
+          .json({ ok: false, message: "Phone number is required." });
+      }
+      if (!isValidPhoneDigits(phoneDigits)) {
+        return res.status(400).json({
+          ok: false,
+          message: "Phone number must include at least 10 digits.",
+        });
+      }
+
+      if (!city)
+        return res.status(400).json({ ok: false, message: "City is required." });
+      if (!state)
+        return res
+          .status(400)
+          .json({ ok: false, message: "State is required." });
 
       if (businessType === "other" && !businessTypeOther) {
-        return res.status(400).json({ ok: false, message: "Please specify business type." });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Please specify business type." });
       }
 
       if (!memberCount || memberCount <= 0) {
-        return res.status(400).json({ ok: false, message: "Approx members / active clients is required and must be > 0." });
+        return res.status(400).json({
+          ok: false,
+          message:
+            "Approx members / active clients is required and must be > 0.",
+        });
       }
 
       const ip =
-        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+        (req.headers["x-forwarded-for"] as string | undefined)
+          ?.split(",")[0]
+          ?.trim() ||
         req.socket?.remoteAddress ||
         null;
 
@@ -669,16 +857,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const applicationId = inserted?.[0]?.id ?? null;
 
       const resendKey = process.env.RESEND_API_KEY;
-      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail =
+        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       const notifyTo = process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
       const siteUrl = getSiteUrl();
 
       const canSend = Boolean(resendKey && fromEmail);
       if (canSend) {
         const resend = new Resend(resendKey!);
-        const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
+        const from = fromEmail.includes("<")
+          ? fromEmail
+          : `Kimora Co <${fromEmail}>`;
 
         const internalSubject = `New wholesale application — ${businessName}`;
+
         const internalText =
           `New wholesale application received\n\n` +
           `Application ID: ${applicationId ?? "(unknown)"}\n` +
@@ -688,7 +880,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           `Phone: ${phoneDigits}\n` +
           `Website/IG: ${websiteOrInstagram || "(not provided)"}\n` +
           `City/State: ${city}, ${state}\n` +
-          `Business type: ${businessType}${businessType === "other" ? ` (${businessTypeOther})` : ""}\n` +
+          `Business type: ${businessType}${
+            businessType === "other" ? ` (${businessTypeOther})` : ""
+          }\n` +
           `Member count: ${memberCount}\n` +
           `Retail setup: ${retailSetup || "(not provided)"}\n` +
           `Interested: onShelf=${interestedOnShelf}, coachAffiliate=${interestedCoachAffiliate}, eventSponsorship=${interestedEventSponsorship}\n\n` +
@@ -697,20 +891,38 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         const internalHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">New wholesale application</h2>
-  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(safeString(applicationId ?? "(unknown)"))}</div>
-  <div style="margin:0 0 8px;"><b>Business:</b> ${escapeHtml(safeString(businessName))}</div>
-  <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(safeString(contactName))}</div>
+  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(
+    safeString(applicationId ?? "(unknown)"),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Business:</b> ${escapeHtml(
+    safeString(businessName),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(
+    safeString(contactName),
+  )}</div>
   <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(safeString(email))}</div>
-  <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(safeString(phoneDigits))}</div>
-  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(safeString(websiteOrInstagram || "(not provided)"))}</div>
-  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(safeString(city))}, ${escapeHtml(safeString(state))}</div>
-  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(safeString(businessType))}${
+  <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(
+    safeString(phoneDigits),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(
+    safeString(websiteOrInstagram || "(not provided)"),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(
+    safeString(city),
+  )}, ${escapeHtml(safeString(state))}</div>
+  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(
+    safeString(businessType),
+  )}${
           businessType === "other" && businessTypeOther
             ? ` (${escapeHtml(safeString(businessTypeOther))})`
             : ""
         }</div>
-  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(safeString(memberCount))}</div>
-  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(safeString(retailSetup || "(not provided)"))}</div>
+  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(
+    safeString(memberCount),
+  )}</div>
+  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(
+    safeString(retailSetup || "(not provided)"),
+  )}</div>
   <div style="margin:0 0 8px;"><b>Interested:</b>
     onShelf=${String(interestedOnShelf)},
     coachAffiliate=${String(interestedCoachAffiliate)},
@@ -732,7 +944,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Wholesale application received</h2>
   <p style="margin:0 0 12px;">
-    Thanks${contactName ? `, ${escapeHtml(safeString(contactName))}` : ""}! We received your wholesale application for <b>${escapeHtml(
+    Thanks${
+      contactName ? `, ${escapeHtml(safeString(contactName))}` : ""
+    }! We received your wholesale application for <b>${escapeHtml(
           safeString(businessName),
         )}</b>.
   </p>
@@ -753,7 +967,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             replyTo: email,
           } as any);
         } catch (e: any) {
-          console.error("[wholesale] internal email send failed:", safeErrSummary(e));
+          const s = safeErrSummary(e);
+          console.error("[wholesale] internal email send failed:", s);
         }
 
         try {
@@ -765,39 +980,67 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             html: applicantHtml,
           } as any);
         } catch (e: any) {
-          console.error("[wholesale] applicant email send failed:", safeErrSummary(e));
+          const s = safeErrSummary(e);
+          console.error("[wholesale] applicant email send failed:", s);
         }
       } else {
-        console.warn("[wholesale] Resend not configured; stored application without emailing.");
+        console.warn(
+          "[wholesale] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM). Stored application without emailing.",
+        );
       }
 
       return res.json({ ok: true, id: applicationId });
     } catch (err: any) {
-      console.error("POST /api/wholesale/apply error:", safeErrSummary(err));
-      return res.status(500).json({ ok: false, message: "Failed to submit wholesale application." });
+      const s = safeErrSummary(err);
+      console.error("POST /api/wholesale/apply error:", s);
+
+      const msg = String(err?.message || "");
+      if (
+        msg.includes("wholesale_phone_len_chk") ||
+        msg.includes("wholesale_member_count_chk") ||
+        msg.includes("violates check constraint") ||
+        msg.includes("violates not-null constraint")
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            "Please check required fields (phone + member count) and try again.",
+        });
+      }
+
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to submit wholesale application." });
     }
   });
 
   // -----------------------------
-  // Checkout session creation
+  // Checkout session creation (with shipping rules wired)
   // -----------------------------
   app.post("/api/checkout", async (req, res) => {
     try {
       const emailRaw = String(req.body?.email ?? "");
       const email = normalizeEmail(emailRaw);
 
-      const itemsRaw: any[] = Array.isArray(req.body?.items) ? req.body.items : [];
+      const itemsRaw: any[] = Array.isArray(req.body?.items)
+        ? req.body.items
+        : [];
       const items: CheckoutItem[] = itemsRaw
         .map((it: any) => {
           const flavor = String(it?.flavor ?? "").trim();
-          const type: CheckoutItem["type"] = it?.type === "subscribe" ? "subscribe" : "onetime";
+          const type: CheckoutItem["type"] =
+            it?.type === "subscribe" ? "subscribe" : "onetime";
           const frequency: CheckoutItem["frequency"] | undefined =
             type === "subscribe" &&
-            (it?.frequency === "2" || it?.frequency === "4" || it?.frequency === "6")
+            (it?.frequency === "2" ||
+              it?.frequency === "4" ||
+              it?.frequency === "6")
               ? it.frequency
               : undefined;
           const qRaw = Number(it?.quantity);
-          const quantity = Number.isFinite(qRaw) ? Math.max(1, Math.floor(qRaw)) : 1;
+          const quantity = Number.isFinite(qRaw)
+            ? Math.max(1, Math.floor(qRaw))
+            : 1;
           return { flavor, type, frequency, quantity };
         })
         .filter((it: CheckoutItem) => {
@@ -807,23 +1050,49 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           return true;
         });
 
-      if (!email || !isValidEmail(email)) return res.status(400).json({ message: "Valid email is required." });
-      if (!items.length) return res.status(400).json({ message: "Cart is empty." });
+      if (!email || !isValidEmail(email)) {
+        return res.status(400).json({ message: "Valid email is required." });
+      }
+      if (!items.length) {
+        return res.status(400).json({ message: "Cart is empty." });
+      }
 
       const hasSub = items.some((it: CheckoutItem) => it.type === "subscribe");
       const hasOne = items.some((it: CheckoutItem) => it.type === "onetime");
       if (hasSub && hasOne) {
-        return res.status(400).json({ message: "Subscriptions and one-time items must be checked out separately." });
+        return res.status(400).json({
+          message:
+            "Subscriptions and one-time items must be checked out separately.",
+        });
       }
 
       const siteUrl = getSiteUrl();
       const successUrl = `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${siteUrl}/checkout?canceled=1`;
 
-      const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
+      const mode: "payment" | "subscription" = hasSub
+        ? "subscription"
+        : "payment";
 
-      const line_items = items.map((it: CheckoutItem) => ({ price: getPriceId(it), quantity: it.quantity }));
+      const line_items = items.map((it: CheckoutItem) => ({
+        price: getPriceId(it),
+        quantity: it.quantity,
+      }));
 
+      // Decide shipping based on subtotal + mode
+      const currency = "usd";
+      const subtotalCents =
+        mode === "subscription"
+          ? 0
+          : await computeCartSubtotalCentsFromStripePrices(line_items);
+
+      const shipping_options = buildShippingOptions({
+        mode,
+        currency,
+        subtotalCents,
+      });
+
+      // IMPORTANT: Stripe allows only ONE of (customer, customer_email)
       const existingCustomerId = await findStripeCustomerIdByEmail(email);
 
       const sessionParams: any = {
@@ -831,27 +1100,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         line_items,
         success_url: successUrl,
         cancel_url: cancelUrl,
+        allow_promotion_codes: false,
 
-        // ✅ forces Stripe to ask for an address at minimum
-        billing_address_collection: "required",
-
-        // ✅ try to collect shipping (but Stripe will only show the shipping step in some configs)
+        // Collect shipping details on checkout.session.completed
         shipping_address_collection: { allowed_countries: ["US"] },
+        shipping_options,
 
         phone_number_collection: { enabled: true },
+
         automatic_tax: { enabled: true },
       };
 
-      // ✅ Strong nudge: provide shipping options if you have a rate set
-      const shippingRateId = String(process.env.STRIPE_SHIPPING_RATE_ID ?? "").trim();
-      if (shippingRateId) {
-        sessionParams.shipping_options = [{ shipping_rate: shippingRateId }];
-      }
-
-      // IMPORTANT: Stripe allows only ONE of (customer, customer_email)
       if (existingCustomerId) {
         sessionParams.customer = existingCustomerId;
-        sessionParams.customer_update = { address: "auto", name: "auto", shipping: "auto" };
+        sessionParams.customer_update = {
+          address: "auto",
+          name: "auto",
+          shipping: "auto",
+        };
       } else {
         sessionParams.customer_email = email;
       }
@@ -859,85 +1125,109 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const session = await stripe.checkout.sessions.create(sessionParams);
       return res.json({ url: session.url });
     } catch (err: any) {
-      console.error("POST /api/checkout error:", safeErrSummary(err));
-      const stripeMsg = err?.raw?.message || err?.message || "Failed to create checkout session.";
-      return res.status(500).json({ message: stripeMsg });
+      const s = safeErrSummary(err);
+      console.error("POST /api/checkout error:", s);
+
+      const stripeMsg =
+        err?.raw?.message ||
+        err?.message ||
+        "Failed to create checkout session.";
+
+      if (String(stripeMsg).startsWith("Missing env var:")) {
+        return res.status(500).json({ message: stripeMsg });
+      }
+
+      return res.status(500).json({
+        message: stripeMsg,
+        code: err?.code || err?.raw?.code || undefined,
+        type: err?.type || err?.raw?.type || undefined,
+      });
     }
   });
 
   // -----------------------------
-  // Checkout session fetch
+  // Checkout session fetch (OrderSuccess uses this)
   // -----------------------------
   app.get("/api/checkout/session", async (req, res) => {
     try {
       const sessionId = String(req.query?.session_id ?? "").trim();
-      if (!sessionId) return res.status(400).json({ message: "session_id is required" });
+      if (!sessionId) {
+        return res.status(400).json({ message: "session_id is required" });
+      }
 
       const session = await stripe.checkout.sessions.retrieve(sessionId);
 
       return res.json({
-        id: (session as any).id,
-        mode: (session as any).mode,
-        customer_email: (session as any).customer_details?.email ?? (session as any).customer_email ?? null,
-        payment_status: (session as any).payment_status ?? null,
-        subscription: (session as any).subscription ?? null,
+        id: session.id,
+        mode: session.mode,
+        customer_email:
+          session.customer_details?.email ?? session.customer_email ?? null,
+        payment_status: session.payment_status ?? null,
+        subscription: session.subscription ?? null,
       });
     } catch (err: any) {
-      console.error("GET /api/checkout/session error:", safeErrSummary(err));
+      const s = safeErrSummary(err);
+      console.error("GET /api/checkout/session error:", s);
       return res.status(500).json({ message: "Failed to load session" });
     }
   });
 
   // -----------------------------
-  // Stripe webhook (DB write + email)
+  // Stripe webhook (DB write + order confirmation email)
   // -----------------------------
   app.post("/api/stripe/webhook", async (req, res) => {
     try {
       const sig = req.headers["stripe-signature"];
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-      if (!sig || typeof sig !== "string") return res.status(400).send("Missing Stripe-Signature header");
-      if (!webhookSecret) return res.status(500).send("Missing STRIPE_WEBHOOK_SECRET");
+      if (!sig || typeof sig !== "string") {
+        return res.status(400).send("Missing Stripe-Signature header");
+      }
+      if (!webhookSecret) {
+        return res.status(500).send("Missing STRIPE_WEBHOOK_SECRET");
+      }
 
       const rawBody = (req as any).rawBody as Buffer | undefined;
-      if (!rawBody) return res.status(400).send("Missing rawBody for webhook verification");
+      if (!rawBody) {
+        return res
+          .status(400)
+          .send("Missing rawBody for webhook verification");
+      }
 
       const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
 
       if (event.type === "checkout.session.completed") {
-        const eventSession = event.data.object as any;
+        const session = event.data.object as any;
+        const stripeCustomerId =
+          await getStripeCustomerIdFromCheckoutSession(session);
 
-        // Always re-fetch session so we have the fullest object Stripe will provide
-        const session = await stripe.checkout.sessions.retrieve(String(eventSession.id));
-
-        const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(session);
-        const lineItems = await stripe.checkout.sessions.listLineItems((session as any).id, { limit: 100 });
-
-        const customerEmail =
-          (session as any).customer_details?.email ??
-          (session as any).customer_email ??
-          null;
-
-        // ✅ resolve shipping/billing from session and then payment intent/charge if needed
-        const resolvedAddr = await resolveAddress(session);
+        const lineItems = await stripe.checkout.sessions.listLineItems(
+          session.id,
+          { limit: 100 },
+        );
 
         const inserted = await db
           .insert(orders)
           .values({
-            stripeCheckoutSessionId: (session as any).id,
-            stripePaymentIntentId: (session as any).payment_intent ?? null,
-            stripeSubscriptionId: (session as any).subscription ?? null,
+            stripeCheckoutSessionId: session.id,
+            stripePaymentIntentId: session.payment_intent ?? null,
+            stripeSubscriptionId: session.subscription ?? null,
             stripeCustomerId,
-            customerEmail,
-            currency: (session as any).currency ?? "usd",
-            amountSubtotal: (session as any).amount_subtotal ?? null,
-            amountTotal: (session as any).amount_total ?? null,
-            isSubscription: (session as any).mode === "subscription",
-            status: (session as any).payment_status || "paid",
-            shippingName: resolvedAddr.name,
-            shippingAddress: resolvedAddr.address,
+            customerEmail:
+              session.customer_details?.email ?? session.customer_email ?? null,
+            currency: session.currency ?? "usd",
+            amountSubtotal: session.amount_subtotal ?? null,
+            amountTotal: session.amount_total ?? null,
+            isSubscription: session.mode === "subscription",
+            status: session.payment_status || "paid",
+
+            // These should now populate because we provide shipping_options + shipping_address_collection
+            shippingName: session.shipping_details?.name ?? null,
+            shippingAddress: session.shipping_details?.address ?? null,
           })
-          .onConflictDoNothing({ target: orders.stripeCheckoutSessionId })
+          .onConflictDoNothing({
+            target: orders.stripeCheckoutSessionId,
+          })
           .returning({ id: orders.id });
 
         let orderId = inserted?.[0]?.id;
@@ -946,20 +1236,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const existing = await db
             .select({ id: orders.id })
             .from(orders)
-            .where(eq(orders.stripeCheckoutSessionId, (session as any).id))
+            .where(eq(orders.stripeCheckoutSessionId, session.id))
             .limit(1);
 
           orderId = existing?.[0]?.id;
 
-          await db
-            .update(orders)
-            .set({
-              stripeCustomerId: stripeCustomerId ?? null,
-              customerEmail,
-              shippingName: resolvedAddr.name,
-              shippingAddress: resolvedAddr.address,
-            })
-            .where(eq(orders.stripeCheckoutSessionId, (session as any).id));
+          if (stripeCustomerId) {
+            await db
+              .update(orders)
+              .set({ stripeCustomerId })
+              .where(eq(orders.stripeCheckoutSessionId, session.id));
+          }
         }
 
         if (orderId) {
@@ -969,7 +1256,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
             const mapped = priceId
               ? mapPriceIdToItem(String(priceId))
-              : { flavor: "unknown", purchaseType: "onetime" as const, frequencyWeeks: null };
+              : {
+                  flavor: "unknown",
+                  purchaseType: "onetime" as const,
+                  frequencyWeeks: null,
+                };
 
             await db
               .insert(orderItems)
@@ -989,44 +1280,46 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         const wasNewInsert = Boolean(inserted?.length);
         if (wasNewInsert) {
-          // If we resolved an address from PI/charge, attach it so email template can use it too
-          (session as any).shipping_details = (session as any).shipping_details || {};
-          if (!(session as any).shipping_details?.address && resolvedAddr.address) {
-            (session as any).shipping_details.address = resolvedAddr.address;
-          }
-          if (!(session as any).shipping_details?.name && resolvedAddr.name) {
-            (session as any).shipping_details.name = resolvedAddr.name;
-          }
-
           await sendOrderConfirmationEmail({
             session,
             lineItems: lineItems.data,
-            isSubscription: (session as any).mode === "subscription" || Boolean((session as any).subscription),
+            isSubscription:
+              session.mode === "subscription" || Boolean(session.subscription),
           });
         }
       }
 
       return res.json({ received: true });
     } catch (err: any) {
-      console.error("Stripe webhook error:", safeErrSummary(err));
+      const s = safeErrSummary(err);
+      console.error("Stripe webhook error:", s);
       return res.status(400).send("Webhook Error");
     }
   });
 
-  // -----------------------------
-  // Portal: request
-  // -----------------------------
+  /**
+   * STEP 1: Request a magic link to manage subscription
+   * Body: { email }
+   */
   app.post("/api/customer-portal/request", async (req, res) => {
     const genericOk = () =>
-      res.json({ ok: true, message: "If that email is in our system, you’ll receive a link shortly." });
+      res.json({
+        ok: true,
+        message:
+          "If that email is in our system, you’ll receive a link shortly.",
+      });
 
     try {
       const emailRaw = String(req.body?.email ?? "");
       const email = normalizeEmail(emailRaw);
+
       if (!email || !isValidEmail(email)) return genericOk();
 
       const sessionSecret = process.env.SESSION_SECRET;
-      if (!sessionSecret) return res.status(500).json({ message: "Missing SESSION_SECRET" });
+      if (!sessionSecret) {
+        console.error("[portal] Missing SESSION_SECRET");
+        return res.status(500).json({ message: "Missing SESSION_SECRET" });
+      }
 
       const found = await db
         .select({ stripeCustomerId: orders.stripeCustomerId })
@@ -1039,16 +1332,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!stripeCustomerId) return genericOk();
 
       const siteUrl = getSiteUrl();
-      const token = signToken({ email, exp: Math.floor(Date.now() / 1000) + 15 * 60, v: 1 }, sessionSecret);
 
-      const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(token)}`;
+      const token = signToken(
+        { email, exp: Math.floor(Date.now() / 1000) + 15 * 60, v: 1 },
+        sessionSecret,
+      );
+
+      const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(
+        token,
+      )}`;
       const fallbackLink = `${siteUrl}/manage-subscription`;
 
       const resendKey = process.env.RESEND_API_KEY;
-      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail =
+        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       if (!resendKey || !fromEmail) return genericOk();
 
       const resend = new Resend(resendKey);
+
       const subject = "Manage your Kimora subscription";
       const text = `Manage your Kimora subscription
 
@@ -1079,34 +1380,50 @@ Need help? Reply to this email or contact alex@kimoraco.com
 </div>`;
 
       try {
-        const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
+        const from = fromEmail.includes("<")
+          ? fromEmail
+          : `Kimora Co <${fromEmail}>`;
         await resend.emails.send({ from, to: email, subject, text, html } as any);
       } catch (e: any) {
-        console.error("[portal] resend send failed:", safeErrSummary(e));
+        const s = safeErrSummary(e);
+        console.error("[portal] resend send failed:", s);
       }
 
       return genericOk();
     } catch (err: any) {
-      console.error("POST /api/customer-portal/request error:", safeErrSummary(err));
+      const s = safeErrSummary(err);
+      console.error("POST /api/customer-portal/request error:", s);
       return genericOk();
     }
   });
 
-  // -----------------------------
-  // Portal: exchange token for Stripe Billing Portal URL
-  // -----------------------------
+  /**
+   * STEP 2: Exchange token for a Stripe Billing Portal URL
+   * Query: ?token=...
+   * Returns: { ok: true, url }
+   */
   app.get("/api/customer-portal", async (req, res) => {
     try {
       const token = String((req.query as any)?.token ?? "").trim();
       const sessionSecret = String(process.env.SESSION_SECRET ?? "").trim();
-      if (!token || !sessionSecret) return res.status(400).json({ ok: false, message: "Missing token." });
+      if (!token || !sessionSecret) {
+        return res.status(400).json({ ok: false, message: "Missing token." });
+      }
 
       const payload = verifyToken<{ email?: string }>(token, sessionSecret);
       const email = normalizeEmail(String(payload?.email ?? ""));
-      if (!email || !isValidEmail(email)) return res.status(401).json({ ok: false, message: "Invalid or expired token." });
+      if (!email || !isValidEmail(email)) {
+        return res
+          .status(401)
+          .json({ ok: false, message: "Invalid or expired token." });
+      }
 
       const stripeCustomerId = await findStripeCustomerIdByEmail(email);
-      if (!stripeCustomerId) return res.status(404).json({ ok: false, message: "No customer found for that email." });
+      if (!stripeCustomerId) {
+        return res
+          .status(404)
+          .json({ ok: false, message: "No customer found for that email." });
+      }
 
       const siteUrl = getSiteUrl();
       const portal = await stripe.billingPortal.sessions.create({
@@ -1116,26 +1433,37 @@ Need help? Reply to this email or contact alex@kimoraco.com
 
       return res.json({ ok: true, url: portal.url });
     } catch (err: any) {
-      console.error("GET /api/customer-portal error:", safeErrSummary(err));
-      return res.status(500).json({ ok: false, message: "Failed to open subscription portal." });
+      const s = safeErrSummary(err);
+      console.error("GET /api/customer-portal error:", s);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to open subscription portal." });
     }
   });
 
+  // Optional helper (if your ManageSubscription page ever wants to validate token server-side)
   app.get("/api/customer-portal/verify", async (req, res) => {
     try {
       const token = String((req.query as any)?.token ?? "").trim();
       const sessionSecret = String(process.env.SESSION_SECRET ?? "").trim();
-      if (!token || !sessionSecret) return res.status(400).json({ ok: false, message: "Missing token." });
+      if (!token || !sessionSecret) {
+        return res.status(400).json({ ok: false, message: "Missing token." });
+      }
 
       const payload = verifyToken<{ email?: string }>(token, sessionSecret);
       if (!payload?.email || !isValidEmail(payload.email)) {
-        return res.status(401).json({ ok: false, message: "Invalid or expired token." });
+        return res
+          .status(401)
+          .json({ ok: false, message: "Invalid or expired token." });
       }
 
       return res.json({ ok: true, email: payload.email });
     } catch (err: any) {
-      console.error("GET /api/customer-portal/verify error:", safeErrSummary(err));
-      return res.status(500).json({ ok: false, message: "Failed to verify token." });
+      const s = safeErrSummary(err);
+      console.error("GET /api/customer-portal/verify error:", s);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to verify token." });
     }
   });
 

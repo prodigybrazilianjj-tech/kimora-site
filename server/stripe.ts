@@ -10,4 +10,5 @@ if (!key) {
   throw new Error("Missing STRIPE_SECRET_KEY env var");
 }
 
+// ✅ Do NOT set apiVersion here (your installed Stripe types expect "2025-12-15.clover")
 export const stripe = new Stripe(key);

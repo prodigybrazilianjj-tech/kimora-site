@@ -195,8 +195,7 @@ async function findStripeCustomerIdByEmail(
       email: normalized,
       limit: 1,
     });
-    const stripeCustomerId = list.data?.[0]?.id ?? null;
-    return stripeCustomerId;
+    return list.data?.[0]?.id ?? null;
   } catch (e) {
     console.warn("[checkout] Stripe customer lookup failed:", e);
     return null;
@@ -287,6 +286,65 @@ function addressToOneLine(addr: any): string {
   return parts.join(", ");
 }
 
+/**
+ * Pull shipping from:
+ * 1) session.shipping_details
+ * 2) payment_intent.latest_charge.shipping (if present)
+ *
+ * ✅ Important: Stripe typings differ by version/api, so we treat Stripe objects as `any` here.
+ */
+async function resolveShippingForSession(sessionId: string, sessionLike?: any) {
+  try {
+    // Step 1: Fetch full session (event payload may be partial)
+    const full: any = await stripe.checkout.sessions.retrieve(sessionId);
+
+    const shippingName =
+      full?.shipping_details?.name ??
+      (sessionLike as any)?.shipping_details?.name ??
+      null;
+
+    const shippingAddress =
+      full?.shipping_details?.address ??
+      (sessionLike as any)?.shipping_details?.address ??
+      null;
+
+    if (shippingName || shippingAddress) {
+      return { shippingName, shippingAddress };
+    }
+
+    // Step 2: Fallback to PaymentIntent -> latest_charge.shipping
+    const piId =
+      (typeof full?.payment_intent === "string" ? full.payment_intent : null) ||
+      (typeof (sessionLike as any)?.payment_intent === "string"
+        ? (sessionLike as any).payment_intent
+        : null);
+
+    if (piId) {
+      const pi: any = await stripe.paymentIntents.retrieve(piId, {
+        expand: ["latest_charge"],
+      } as any);
+
+      const ch: any = pi?.latest_charge ?? null;
+      const chShipping = ch?.shipping ?? null;
+
+      if (chShipping?.name || chShipping?.address) {
+        return {
+          shippingName: chShipping?.name ?? null,
+          shippingAddress: chShipping?.address ?? null,
+        };
+      }
+    }
+
+    return { shippingName: null, shippingAddress: null };
+  } catch (e) {
+    console.warn(
+      "[shipping] resolveShippingForSession failed:",
+      safeErrSummary(e),
+    );
+    return { shippingName: null, shippingAddress: null };
+  }
+}
+
 async function sendOrderConfirmationEmail(args: {
   session: any;
   lineItems: any[];
@@ -346,8 +404,7 @@ async function sendOrderConfirmationEmail(args: {
         };
 
     const unit = li?.price?.unit_amount ?? null;
-    const lineTotal =
-      unit !== null && unit !== undefined ? unit * qty : null;
+    const lineTotal = unit !== null && unit !== undefined ? unit * qty : null;
 
     return {
       qty,
@@ -391,9 +448,7 @@ async function sendOrderConfirmationEmail(args: {
     (amountSubtotal != null
       ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n`
       : "") +
-    (amountTotal != null
-      ? `Total: ${formatMoney(amountTotal, currency)}\n`
-      : "") +
+    (amountTotal != null ? `Total: ${formatMoney(amountTotal, currency)}\n` : "") +
     (shippingAddr
       ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(
           shippingAddr,
@@ -531,14 +586,11 @@ async function sendOrderConfirmationEmail(args: {
  * - One-time:
  *    - $5 flat under $50
  *    - FREE at $50+
- *
- * Stripe Checkout requires shipping_options to actually collect "shipping_details"
- * reliably on checkout.session.completed in many setups.
  */
 async function computeCartSubtotalCentsFromStripePrices(
   lineItems: Array<{ price: string; quantity: number }>,
 ): Promise<number> {
-  const cache = new Map<string, any>(); // <-- FIX: no Stripe namespace needed
+  const cache = new Map<string, any>();
   let subtotal = 0;
 
   for (const li of lineItems) {
@@ -568,7 +620,6 @@ function buildShippingOptions(params: {
 }): any[] {
   const currency = params.currency || "usd";
 
-  // Always free for subscriptions
   if (params.mode === "subscription") {
     return [
       {
@@ -637,10 +688,6 @@ function signToken(payload: object, secret: string) {
   return `${body}.${sig}`;
 }
 
-/**
- * Generic token verifier.
- * We still enforce exp if present (payload.exp).
- */
 function verifyToken<T>(token: string, secret: string): T | null {
   const parts = token.split(".");
   if (parts.length !== 2) return null;
@@ -1014,7 +1061,7 @@ export async function registerRoutes(
   });
 
   // -----------------------------
-  // Checkout session creation (with shipping rules wired)
+  // Checkout session creation (shipping rules wired)
   // -----------------------------
   app.post("/api/checkout", async (req, res) => {
     try {
@@ -1078,7 +1125,6 @@ export async function registerRoutes(
         quantity: it.quantity,
       }));
 
-      // Decide shipping based on subtotal + mode
       const currency = "usd";
       const subtotalCents =
         mode === "subscription"
@@ -1091,7 +1137,6 @@ export async function registerRoutes(
         subtotalCents,
       });
 
-      // IMPORTANT: Stripe allows only ONE of (customer, customer_email)
       const existingCustomerId = await findStripeCustomerIdByEmail(email);
 
       const sessionParams: any = {
@@ -1101,12 +1146,10 @@ export async function registerRoutes(
         cancel_url: cancelUrl,
         allow_promotion_codes: false,
 
-        // Collect shipping details on checkout.session.completed
         shipping_address_collection: { allowed_countries: ["US"] },
         shipping_options,
 
         phone_number_collection: { enabled: true },
-
         automatic_tax: { enabled: true },
       };
 
@@ -1122,7 +1165,7 @@ export async function registerRoutes(
       }
 
       const session = await stripe.checkout.sessions.create(sessionParams);
-      return res.json({ url: session.url });
+      return res.json({ url: (session as any).url });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("POST /api/checkout error:", s);
@@ -1154,7 +1197,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "session_id is required" });
       }
 
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      const session: any = await stripe.checkout.sessions.retrieve(sessionId);
 
       return res.json({
         id: session.id,
@@ -1197,6 +1240,13 @@ export async function registerRoutes(
 
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
+
+        // ✅ resolve shipping reliably (refetch session + fallback to charge)
+        const resolvedShipping = await resolveShippingForSession(
+          String(session.id),
+          session,
+        );
+
         const stripeCustomerId =
           await getStripeCustomerIdFromCheckoutSession(session);
 
@@ -1220,9 +1270,9 @@ export async function registerRoutes(
             isSubscription: session.mode === "subscription",
             status: session.payment_status || "paid",
 
-            // These should now populate because we provide shipping_options + shipping_address_collection
-            shippingName: session.shipping_details?.name ?? null,
-            shippingAddress: session.shipping_details?.address ?? null,
+            // ✅ use resolved shipping (not event payload shipping_details)
+            shippingName: resolvedShipping.shippingName ?? null,
+            shippingAddress: resolvedShipping.shippingAddress ?? null,
           })
           .onConflictDoNothing({
             target: orders.stripeCheckoutSessionId,
@@ -1233,12 +1283,39 @@ export async function registerRoutes(
 
         if (!orderId) {
           const existing = await db
-            .select({ id: orders.id })
+            .select({
+              id: orders.id,
+              shippingName: orders.shippingName,
+              shippingAddress: orders.shippingAddress,
+            })
             .from(orders)
             .where(eq(orders.stripeCheckoutSessionId, session.id))
             .limit(1);
 
           orderId = existing?.[0]?.id;
+
+          // ✅ backfill shipping if it was blank when first inserted
+          const hadName = Boolean(existing?.[0]?.shippingName);
+          const hadAddr = Boolean(existing?.[0]?.shippingAddress);
+
+          if (
+            (!hadName || !hadAddr) &&
+            (resolvedShipping.shippingName || resolvedShipping.shippingAddress)
+          ) {
+            await db
+              .update(orders)
+              .set({
+                shippingName:
+                  resolvedShipping.shippingName ??
+                  existing?.[0]?.shippingName ??
+                  null,
+                shippingAddress:
+                  resolvedShipping.shippingAddress ??
+                  existing?.[0]?.shippingAddress ??
+                  null,
+              })
+              .where(eq(orders.stripeCheckoutSessionId, session.id));
+          }
 
           if (stripeCustomerId) {
             await db
@@ -1398,8 +1475,6 @@ Need help? Reply to this email or contact alex@kimoraco.com
 
   /**
    * STEP 2: Exchange token for a Stripe Billing Portal URL
-   * Query: ?token=...
-   * Returns: { ok: true, url }
    */
   app.get("/api/customer-portal", async (req, res) => {
     try {
@@ -1430,7 +1505,7 @@ Need help? Reply to this email or contact alex@kimoraco.com
         return_url: `${siteUrl}/manage-subscription`,
       });
 
-      return res.json({ ok: true, url: portal.url });
+      return res.json({ ok: true, url: (portal as any).url });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/customer-portal error:", s);
@@ -1440,7 +1515,6 @@ Need help? Reply to this email or contact alex@kimoraco.com
     }
   });
 
-  // Optional helper (if your ManageSubscription page ever wants to validate token server-side)
   app.get("/api/customer-portal/verify", async (req, res) => {
     try {
       const token = String((req.query as any)?.token ?? "").trim();

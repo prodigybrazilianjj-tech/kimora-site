@@ -538,7 +538,7 @@ async function sendOrderConfirmationEmail(args: {
 async function computeCartSubtotalCentsFromStripePrices(
   lineItems: Array<{ price: string; quantity: number }>,
 ): Promise<number> {
-  const cache = new Map<string, Stripe.Price>();
+  const cache = new Map<string, any>(); // <-- FIX: no Stripe namespace needed
   let subtotal = 0;
 
   for (const li of lineItems) {
@@ -548,8 +548,7 @@ async function computeCartSubtotalCentsFromStripePrices(
 
     let price = cache.get(priceId);
     if (!price) {
-      // We only need unit_amount/currency; keep it simple.
-      price = (await stripe.prices.retrieve(priceId)) as any;
+      price = await stripe.prices.retrieve(priceId);
       cache.set(priceId, price);
     }
 
@@ -569,7 +568,7 @@ function buildShippingOptions(params: {
 }): any[] {
   const currency = params.currency || "usd";
 
-  // Always free for subscriptions (you requested this).
+  // Always free for subscriptions
   if (params.mode === "subscription") {
     return [
       {

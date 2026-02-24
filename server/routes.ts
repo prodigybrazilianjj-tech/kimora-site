@@ -20,11 +20,6 @@ function slugToEnvKey(slug: string) {
   return slug.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 
-/**
- * IMPORTANT:
- * Never use req.headers.origin for security/correctness.
- * For emails and Stripe return URLs we want a stable canonical base URL.
- */
 function getSiteUrl() {
   return (
     process.env.PUBLIC_SITE_URL ||
@@ -56,10 +51,6 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/**
- * IMPORTANT: never log raw DB errors that include SQL params (PII).
- * Summarize safely.
- */
 function safeErrSummary(err: any) {
   const message = String(err?.message || "unknown error");
   const code =
@@ -70,7 +61,6 @@ function safeErrSummary(err: any) {
     null;
 
   const shortMsg = message.length > 180 ? message.slice(0, 180) + "…" : message;
-
   return { code, message: shortMsg };
 }
 
@@ -133,13 +123,7 @@ function mapPriceIdToItem(priceId: string): {
   return { flavor: "unknown", purchaseType: "onetime", frequencyWeeks: null };
 }
 
-/**
- * Stripe customer id is sometimes missing from checkout.session.completed in subscription mode.
- * This helper backfills via the subscription if necessary.
- */
-async function getStripeCustomerIdFromCheckoutSession(
-  session: any,
-): Promise<string | null> {
+async function getStripeCustomerIdFromCheckoutSession(session: any): Promise<string | null> {
   let stripeCustomerId: string | null =
     typeof session.customer === "string"
       ? session.customer
@@ -170,9 +154,7 @@ async function getStripeCustomerIdFromCheckoutSession(
   return stripeCustomerId;
 }
 
-async function findStripeCustomerIdByEmail(
-  email: string,
-): Promise<string | null> {
+async function findStripeCustomerIdByEmail(email: string): Promise<string | null> {
   const normalized = normalizeEmail(email);
   if (!normalized || !isValidEmail(normalized)) return null;
 
@@ -191,19 +173,14 @@ async function findStripeCustomerIdByEmail(
   }
 
   try {
-    const list = await stripe.customers.list({
-      email: normalized,
-      limit: 1,
-    });
-    const stripeCustomerId = list.data?.[0]?.id ?? null;
-    return stripeCustomerId;
+    const list = await stripe.customers.list({ email: normalized, limit: 1 });
+    return list.data?.[0]?.id ?? null;
   } catch (e) {
     console.warn("[checkout] Stripe customer lookup failed:", e);
     return null;
   }
 }
 
-/** Simple validations to match your DB constraints */
 function isValidPhoneDigits(digits: string) {
   return /^\d{10,}$/.test(digits);
 }
@@ -255,18 +232,12 @@ function requireAdmin(req: any, res: any) {
   return null;
 }
 
-function formatMoney(
-  amountCents: number | null | undefined,
-  currency: string | null | undefined,
-) {
+function formatMoney(amountCents: number | null | undefined, currency: string | null | undefined) {
   if (amountCents === null || amountCents === undefined) return "";
   const ccy = String(currency || "usd").toUpperCase();
   const dollars = amountCents / 100;
   try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: ccy,
-    }).format(dollars);
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: ccy }).format(dollars);
   } catch {
     return `${ccy} ${dollars.toFixed(2)}`;
   }
@@ -274,62 +245,48 @@ function formatMoney(
 
 function addressToOneLine(addr: any): string {
   if (!addr) return "";
-  const parts = [
-    addr.line1,
-    addr.line2,
-    addr.city,
-    addr.state,
-    addr.postal_code,
-    addr.country,
-  ]
+  const parts = [addr.line1, addr.line2, addr.city, addr.state, addr.postal_code, addr.country]
     .map((x: any) => String(x || "").trim())
     .filter(Boolean);
   return parts.join(", ");
 }
 
-/**
- * Extract shipping from various Stripe objects (Checkout Session, PaymentIntent, Charge)
- */
-function extractShippingFromSession(session: any): { name: string | null; address: any | null } {
-  const sd = session?.shipping_details ?? null; // newer
-  if (sd?.address || sd?.name) {
-    return { name: sd?.name ?? null, address: sd?.address ?? null };
+function extractAddressFromSession(session: any): { name: string | null; address: any | null } {
+  // Preferred
+  if (session?.shipping_details?.address || session?.shipping_details?.name) {
+    return { name: session.shipping_details?.name ?? null, address: session.shipping_details?.address ?? null };
   }
-
-  const sOld = session?.shipping ?? null; // older
-  if (sOld?.address || sOld?.name) {
-    return { name: sOld?.name ?? null, address: sOld?.address ?? null };
+  // Older field
+  if (session?.shipping?.address || session?.shipping?.name) {
+    return { name: session.shipping?.name ?? null, address: session.shipping?.address ?? null };
   }
-
-  const cd = session?.customer_details ?? null;
-  if (cd?.address) {
-    return { name: cd?.name ?? null, address: cd?.address ?? null };
+  // Fallback: billing address (still useful for fulfillment if you allow it)
+  if (session?.customer_details?.address || session?.customer_details?.name) {
+    return { name: session.customer_details?.name ?? null, address: session.customer_details?.address ?? null };
   }
-
   return { name: null, address: null };
 }
 
-function extractShippingFromPaymentIntent(pi: any): { name: string | null; address: any | null } {
+function extractAddressFromPaymentIntent(pi: any): { name: string | null; address: any | null } {
   if (pi?.shipping?.address || pi?.shipping?.name) {
-    return { name: pi?.shipping?.name ?? null, address: pi?.shipping?.address ?? null };
+    return { name: pi.shipping?.name ?? null, address: pi.shipping?.address ?? null };
   }
 
   const ch = pi?.charges?.data?.[0] ?? null;
 
   if (ch?.shipping?.address || ch?.shipping?.name) {
-    return { name: ch?.shipping?.name ?? null, address: ch?.shipping?.address ?? null };
+    return { name: ch.shipping?.name ?? null, address: ch.shipping?.address ?? null };
   }
 
-  if (ch?.billing_details?.address) {
-    // fallback: at least store billing address if shipping isn't present
-    return { name: ch?.billing_details?.name ?? null, address: ch?.billing_details?.address ?? null };
+  if (ch?.billing_details?.address || ch?.billing_details?.name) {
+    return { name: ch.billing_details?.name ?? null, address: ch.billing_details?.address ?? null };
   }
 
   return { name: null, address: null };
 }
 
-async function resolveShippingForOrder(session: any): Promise<{ name: string | null; address: any | null }> {
-  const fromSession = extractShippingFromSession(session);
+async function resolveAddress(session: any): Promise<{ name: string | null; address: any | null }> {
+  const fromSession = extractAddressFromSession(session);
   if (fromSession.name || fromSession.address) return fromSession;
 
   const piId =
@@ -339,14 +296,11 @@ async function resolveShippingForOrder(session: any): Promise<{ name: string | n
 
   if (piId) {
     try {
-      const pi = await stripe.paymentIntents.retrieve(piId, {
-        expand: ["charges.data"],
-      } as any);
-
-      const fromPi = extractShippingFromPaymentIntent(pi);
+      const pi = await stripe.paymentIntents.retrieve(piId, { expand: ["charges.data"] } as any);
+      const fromPi = extractAddressFromPaymentIntent(pi);
       if (fromPi.name || fromPi.address) return fromPi;
     } catch (e) {
-      console.warn("[webhook] failed to retrieve payment intent for shipping:", safeErrSummary(e));
+      console.warn("[webhook] failed to retrieve payment intent for address:", safeErrSummary(e));
     }
   }
 
@@ -359,13 +313,9 @@ async function sendOrderConfirmationEmail(args: {
   isSubscription: boolean;
 }) {
   const resendKey = String(process.env.RESEND_API_KEY || "").trim();
-  const fromEmail = String(
-    process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "",
-  ).trim();
+  const fromEmail = String(process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "").trim();
   if (!resendKey || !fromEmail) {
-    console.warn(
-      "[order-email] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM).",
-    );
+    console.warn("[order-email] Resend not configured.");
     return;
   }
 
@@ -376,11 +326,7 @@ async function sendOrderConfirmationEmail(args: {
 
   const email =
     normalizeEmail(
-      String(
-        args.session?.customer_details?.email ??
-          args.session?.customer_email ??
-          "",
-      ),
+      String(args.session?.customer_details?.email ?? args.session?.customer_email ?? ""),
     ) || "";
 
   if (!email || !isValidEmail(email)) {
@@ -413,23 +359,12 @@ async function sendOrderConfirmationEmail(args: {
     const priceId = li?.price?.id ?? null;
     const mapped = priceId
       ? mapPriceIdToItem(String(priceId))
-      : {
-          flavor: "unknown",
-          purchaseType: args.isSubscription ? "subscribe" : "onetime",
-          frequencyWeeks: null,
-        };
+      : { flavor: "unknown", purchaseType: args.isSubscription ? "subscribe" : "onetime", frequencyWeeks: null };
 
     const unit = li?.price?.unit_amount ?? null;
-    const lineTotal = unit !== null && unit !== undefined ? unit * qty : null;
+    const lineTotal = unit != null ? unit * qty : null;
 
-    return {
-      qty,
-      flavor: mapped.flavor,
-      purchaseType: mapped.purchaseType,
-      frequencyWeeks: mapped.frequencyWeeks,
-      unitAmount: unit,
-      lineTotal,
-    };
+    return { qty, flavor: mapped.flavor, purchaseType: mapped.purchaseType, frequencyWeeks: mapped.frequencyWeeks, unitAmount: unit, lineTotal };
   });
 
   const subject = args.isSubscription
@@ -462,54 +397,18 @@ async function sendOrderConfirmationEmail(args: {
     (amountSubtotal != null ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n` : "") +
     (amountTotal != null ? `Total: ${formatMoney(amountTotal, currency)}\n` : "") +
     (shippingAddr
-      ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(shippingAddr)}\n`
+      ? `\nAddress:\n${shippingName || "(name)"}\n${addressToOneLine(shippingAddr)}\n`
       : "") +
     (args.isSubscription ? `\nManage your subscription anytime:\n${manageLink}\n` : "") +
     `\nNeed help? Reply to this email or contact ${supportEmail}.\n\n` +
     `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
-
-  const itemsHtml = lines
-    .map((l: any) => {
-      const flavor = escapeHtml(
-        String(l.flavor || "")
-          .split("-")
-          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" "),
-      );
-      const cadence =
-        l.purchaseType === "subscribe" && l.frequencyWeeks
-          ? ` <span style="color:#666;">(Subscription — every ${l.frequencyWeeks} weeks)</span>`
-          : "";
-      const money =
-        l.unitAmount != null
-          ? ` <span style="color:#666;">@ ${escapeHtml(formatMoney(l.unitAmount, currency))}</span>`
-          : "";
-      const total =
-        l.lineTotal != null
-          ? ` <span style="color:#111;font-weight:600;">${escapeHtml(formatMoney(l.lineTotal, currency))}</span>`
-          : "";
-      return `<li style="margin:6px 0;">${flavor} <b>x${l.qty}</b>${cadence}${money}${total ? ` — ${total}` : ""}</li>`;
-    })
-    .join("");
 
   const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Order confirmed 🎉</h2>
   <p style="margin:0 0 14px;">
     Thanks${shippingName ? `, <b>${escapeHtml(shippingName)}</b>` : ""}. Your Kimora order is confirmed.
   </p>
-
-  ${
-    orderNumber
-      ? `<div style="margin:0 0 12px;color:#444;"><b>Order:</b> ${escapeHtml(orderNumber)}</div>`
-      : ""
-  }
-
-  ${
-    itemsHtml
-      ? `<div style="margin:0 0 10px;"><b>Items</b></div>
-  <ul style="margin:0 0 14px;padding-left:18px;">${itemsHtml}</ul>`
-      : ""
-  }
+  ${orderNumber ? `<div style="margin:0 0 12px;color:#444;"><b>Order:</b> ${escapeHtml(orderNumber)}</div>` : ""}
 
   <div style="margin:0 0 12px;">
     ${amountSubtotal != null ? `<div><b>Subtotal:</b> ${escapeHtml(formatMoney(amountSubtotal, currency))}</div>` : ""}
@@ -519,7 +418,7 @@ async function sendOrderConfirmationEmail(args: {
   ${
     shippingAddr
       ? `<div style="margin:0 0 14px;">
-          <div><b>Shipping to</b></div>
+          <div><b>Address</b></div>
           <div style="color:#444;">${escapeHtml(shippingName || "(name)")}</div>
           <div style="color:#444;">${escapeHtml(addressToOneLine(shippingAddr))}</div>
         </div>`
@@ -540,33 +439,17 @@ async function sendOrderConfirmationEmail(args: {
   }
 
   <div style="margin:16px 0 0;font-size:12px;color:#666;">
-    Need help? Reply to this email or contact
-    <a href="mailto:${supportEmail}">${supportEmail}</a>.
-  </div>
-
-  <div style="margin:14px 0 0;font-size:12px;letter-spacing:0.08em;color:#999;text-transform:uppercase;">
-    OUT-TRAIN. OUT-SMART. OUT-LAST.
+    Need help? Reply to this email or contact <a href="mailto:${supportEmail}">${supportEmail}</a>.
   </div>
 </div>`;
 
   try {
-    await resend.emails.send({
-      from,
-      to: email,
-      subject,
-      text,
-      html,
-      replyTo: supportEmail,
-    } as any);
+    await resend.emails.send({ from, to: email, subject, text, html, replyTo: supportEmail } as any);
   } catch (e: any) {
-    const s = safeErrSummary(e);
-    console.error("[order-email] send failed:", s);
+    console.error("[order-email] send failed:", safeErrSummary(e));
   }
 }
 
-/**
- * Magic link token (HMAC signed). No DB changes.
- */
 function base64url(input: string) {
   return Buffer.from(input).toString("base64url");
 }
@@ -585,7 +468,6 @@ function verifyToken<T>(token: string, secret: string): T | null {
 
   const [body, sig] = parts;
   const expected = crypto.createHmac("sha256", secret).update(body).digest("base64url");
-
   if (sig.length !== expected.length) return null;
 
   const ok = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
@@ -605,6 +487,55 @@ function verifyToken<T>(token: string, secret: string): T | null {
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
+  // ✅ Admin debug: inspect Stripe Checkout Session + PaymentIntent to see what Stripe is actually returning
+  app.get("/api/admin/stripe/session", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const sessionId = String(req.query?.session_id ?? "").trim();
+      if (!sessionId) return res.status(400).json({ ok: false, message: "session_id is required" });
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      const piId =
+        typeof (session as any).payment_intent === "string"
+          ? (session as any).payment_intent
+          : (session as any).payment_intent?.id;
+
+      let paymentIntent: any = null;
+      if (piId) {
+        paymentIntent = await stripe.paymentIntents.retrieve(piId, { expand: ["charges.data"] } as any);
+      }
+
+      const charge = paymentIntent?.charges?.data?.[0] ?? null;
+
+      return res.json({
+        ok: true,
+        session: {
+          id: (session as any).id,
+          mode: (session as any).mode,
+          customer_email: (session as any).customer_details?.email ?? (session as any).customer_email ?? null,
+          shipping_details: (session as any).shipping_details ?? null,
+          shipping: (session as any).shipping ?? null,
+          customer_details_address: (session as any).customer_details?.address ?? null,
+          customer_details_name: (session as any).customer_details?.name ?? null,
+        },
+        payment_intent: paymentIntent
+          ? {
+              id: paymentIntent.id,
+              shipping: paymentIntent.shipping ?? null,
+              billing_details: charge?.billing_details ?? null,
+              charge_shipping: charge?.shipping ?? null,
+            }
+          : null,
+      });
+    } catch (err: any) {
+      console.error("GET /api/admin/stripe/session error:", safeErrSummary(err));
+      return res.status(500).json({ ok: false, message: "Failed to load Stripe session" });
+    }
+  });
+
   // -----------------------------
   // Admin: wholesale applications
   // -----------------------------
@@ -621,8 +552,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       return res.json({ ok: true, rows });
     } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("GET /api/admin/wholesale-applications error:", s);
+      console.error("GET /api/admin/wholesale-applications error:", safeErrSummary(err));
       return res.status(500).json({ ok: false, message: "Failed to load applications." });
     }
   });
@@ -634,13 +564,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const id = String(req.params.id || "").trim();
       const status = String(req.body?.status || "").trim();
-
       const allowed = new Set(["new", "reviewing", "approved", "rejected", "closed"]);
 
       if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
-      if (!allowed.has(status)) {
-        return res.status(400).json({ ok: false, message: "Invalid status." });
-      }
+      if (!allowed.has(status)) return res.status(400).json({ ok: false, message: "Invalid status." });
 
       const updated = await db
         .update(wholesaleApplications)
@@ -648,14 +575,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         .where(eq(wholesaleApplications.id, id))
         .returning({ id: wholesaleApplications.id });
 
-      if (!updated?.length) {
-        return res.status(404).json({ ok: false, message: "Not found." });
-      }
-
+      if (!updated?.length) return res.status(404).json({ ok: false, message: "Not found." });
       return res.json({ ok: true });
     } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("PATCH /api/admin/wholesale-applications/:id error:", s);
+      console.error("PATCH /api/admin/wholesale-applications/:id error:", safeErrSummary(err));
       return res.status(500).json({ ok: false, message: "Failed to update status." });
     }
   });
@@ -756,7 +679,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
 
         const internalSubject = `New wholesale application — ${businessName}`;
-
         const internalText =
           `New wholesale application received\n\n` +
           `Application ID: ${applicationId ?? "(unknown)"}\n` +
@@ -831,8 +753,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             replyTo: email,
           } as any);
         } catch (e: any) {
-          const s = safeErrSummary(e);
-          console.error("[wholesale] internal email send failed:", s);
+          console.error("[wholesale] internal email send failed:", safeErrSummary(e));
         }
 
         try {
@@ -844,33 +765,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             html: applicantHtml,
           } as any);
         } catch (e: any) {
-          const s = safeErrSummary(e);
-          console.error("[wholesale] applicant email send failed:", s);
+          console.error("[wholesale] applicant email send failed:", safeErrSummary(e));
         }
       } else {
-        console.warn(
-          "[wholesale] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM). Stored application without emailing.",
-        );
+        console.warn("[wholesale] Resend not configured; stored application without emailing.");
       }
 
       return res.json({ ok: true, id: applicationId });
     } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("POST /api/wholesale/apply error:", s);
-
-      const msg = String(err?.message || "");
-      if (
-        msg.includes("wholesale_phone_len_chk") ||
-        msg.includes("wholesale_member_count_chk") ||
-        msg.includes("violates check constraint") ||
-        msg.includes("violates not-null constraint")
-      ) {
-        return res.status(400).json({
-          ok: false,
-          message: "Please check required fields (phone + member count) and try again.",
-        });
-      }
-
+      console.error("POST /api/wholesale/apply error:", safeErrSummary(err));
       return res.status(500).json({ ok: false, message: "Failed to submit wholesale application." });
     }
   });
@@ -904,19 +807,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           return true;
         });
 
-      if (!email || !isValidEmail(email)) {
-        return res.status(400).json({ message: "Valid email is required." });
-      }
-      if (!items.length) {
-        return res.status(400).json({ message: "Cart is empty." });
-      }
+      if (!email || !isValidEmail(email)) return res.status(400).json({ message: "Valid email is required." });
+      if (!items.length) return res.status(400).json({ message: "Cart is empty." });
 
       const hasSub = items.some((it: CheckoutItem) => it.type === "subscribe");
       const hasOne = items.some((it: CheckoutItem) => it.type === "onetime");
       if (hasSub && hasOne) {
-        return res.status(400).json({
-          message: "Subscriptions and one-time items must be checked out separately.",
-        });
+        return res.status(400).json({ message: "Subscriptions and one-time items must be checked out separately." });
       }
 
       const siteUrl = getSiteUrl();
@@ -925,10 +822,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
 
-      const line_items = items.map((it: CheckoutItem) => ({
-        price: getPriceId(it),
-        quantity: it.quantity,
-      }));
+      const line_items = items.map((it: CheckoutItem) => ({ price: getPriceId(it), quantity: it.quantity }));
 
       const existingCustomerId = await findStripeCustomerIdByEmail(email);
 
@@ -937,20 +831,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         line_items,
         success_url: successUrl,
         cancel_url: cancelUrl,
-        allow_promotion_codes: false,
 
-        // ✅ Make sure we at least collect a real address
+        // ✅ forces Stripe to ask for an address at minimum
         billing_address_collection: "required",
 
-        // ✅ This will be honored once we provide shipping_options (see below)
+        // ✅ try to collect shipping (but Stripe will only show the shipping step in some configs)
         shipping_address_collection: { allowed_countries: ["US"] },
 
         phone_number_collection: { enabled: true },
         automatic_tax: { enabled: true },
       };
 
-      // ✅ KEY FIX: Provide shipping options so Stripe actually shows shipping step + records shipping_details
-      // Set STRIPE_SHIPPING_RATE_ID=shr_... in Render.
+      // ✅ Strong nudge: provide shipping options if you have a rate set
       const shippingRateId = String(process.env.STRIPE_SHIPPING_RATE_ID ?? "").trim();
       if (shippingRateId) {
         sessionParams.shipping_options = [{ shipping_rate: shippingRateId }];
@@ -959,38 +851,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       // IMPORTANT: Stripe allows only ONE of (customer, customer_email)
       if (existingCustomerId) {
         sessionParams.customer = existingCustomerId;
-        sessionParams.customer_update = {
-          address: "auto",
-          name: "auto",
-          shipping: "auto",
-        };
+        sessionParams.customer_update = { address: "auto", name: "auto", shipping: "auto" };
       } else {
         sessionParams.customer_email = email;
       }
 
       const session = await stripe.checkout.sessions.create(sessionParams);
-
       return res.json({ url: session.url });
     } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("POST /api/checkout error:", s);
-
+      console.error("POST /api/checkout error:", safeErrSummary(err));
       const stripeMsg = err?.raw?.message || err?.message || "Failed to create checkout session.";
-
-      if (String(stripeMsg).startsWith("Missing env var:")) {
-        return res.status(500).json({ message: stripeMsg });
-      }
-
-      return res.status(500).json({
-        message: stripeMsg,
-        code: err?.code || err?.raw?.code || undefined,
-        type: err?.type || err?.raw?.type || undefined,
-      });
+      return res.status(500).json({ message: stripeMsg });
     }
   });
 
   // -----------------------------
-  // Checkout session fetch (OrderSuccess uses this)
+  // Checkout session fetch
   // -----------------------------
   app.get("/api/checkout/session", async (req, res) => {
     try {
@@ -1007,14 +883,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         subscription: (session as any).subscription ?? null,
       });
     } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("GET /api/checkout/session error:", s);
+      console.error("GET /api/checkout/session error:", safeErrSummary(err));
       return res.status(500).json({ message: "Failed to load session" });
     }
   });
 
   // -----------------------------
-  // Stripe webhook (DB write + order confirmation email)
+  // Stripe webhook (DB write + email)
   // -----------------------------
   app.post("/api/stripe/webhook", async (req, res) => {
     try {
@@ -1032,35 +907,35 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (event.type === "checkout.session.completed") {
         const eventSession = event.data.object as any;
 
-        // Re-fetch full session
-        const fullSession = await stripe.checkout.sessions.retrieve(String(eventSession.id));
+        // Always re-fetch session so we have the fullest object Stripe will provide
+        const session = await stripe.checkout.sessions.retrieve(String(eventSession.id));
 
-        const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(fullSession);
-
-        const lineItems = await stripe.checkout.sessions.listLineItems((fullSession as any).id, { limit: 100 });
+        const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(session);
+        const lineItems = await stripe.checkout.sessions.listLineItems((session as any).id, { limit: 100 });
 
         const customerEmail =
-          (fullSession as any).customer_details?.email ??
-          (fullSession as any).customer_email ??
+          (session as any).customer_details?.email ??
+          (session as any).customer_email ??
           null;
 
-        const resolvedShipping = await resolveShippingForOrder(fullSession);
+        // ✅ resolve shipping/billing from session and then payment intent/charge if needed
+        const resolvedAddr = await resolveAddress(session);
 
         const inserted = await db
           .insert(orders)
           .values({
-            stripeCheckoutSessionId: (fullSession as any).id,
-            stripePaymentIntentId: (fullSession as any).payment_intent ?? null,
-            stripeSubscriptionId: (fullSession as any).subscription ?? null,
+            stripeCheckoutSessionId: (session as any).id,
+            stripePaymentIntentId: (session as any).payment_intent ?? null,
+            stripeSubscriptionId: (session as any).subscription ?? null,
             stripeCustomerId,
             customerEmail,
-            currency: (fullSession as any).currency ?? "usd",
-            amountSubtotal: (fullSession as any).amount_subtotal ?? null,
-            amountTotal: (fullSession as any).amount_total ?? null,
-            isSubscription: (fullSession as any).mode === "subscription",
-            status: (fullSession as any).payment_status || "paid",
-            shippingName: resolvedShipping.name,
-            shippingAddress: resolvedShipping.address,
+            currency: (session as any).currency ?? "usd",
+            amountSubtotal: (session as any).amount_subtotal ?? null,
+            amountTotal: (session as any).amount_total ?? null,
+            isSubscription: (session as any).mode === "subscription",
+            status: (session as any).payment_status || "paid",
+            shippingName: resolvedAddr.name,
+            shippingAddress: resolvedAddr.address,
           })
           .onConflictDoNothing({ target: orders.stripeCheckoutSessionId })
           .returning({ id: orders.id });
@@ -1071,7 +946,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const existing = await db
             .select({ id: orders.id })
             .from(orders)
-            .where(eq(orders.stripeCheckoutSessionId, (fullSession as any).id))
+            .where(eq(orders.stripeCheckoutSessionId, (session as any).id))
             .limit(1);
 
           orderId = existing?.[0]?.id;
@@ -1081,10 +956,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             .set({
               stripeCustomerId: stripeCustomerId ?? null,
               customerEmail,
-              shippingName: resolvedShipping.name,
-              shippingAddress: resolvedShipping.address,
+              shippingName: resolvedAddr.name,
+              shippingAddress: resolvedAddr.address,
             })
-            .where(eq(orders.stripeCheckoutSessionId, (fullSession as any).id));
+            .where(eq(orders.stripeCheckoutSessionId, (session as any).id));
         }
 
         if (orderId) {
@@ -1114,54 +989,44 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         const wasNewInsert = Boolean(inserted?.length);
         if (wasNewInsert) {
-          // attach resolved shipping into the session object used by email rendering
-          (fullSession as any).shipping_details = (fullSession as any).shipping_details || {};
-          if (!(fullSession as any).shipping_details?.address && resolvedShipping.address) {
-            (fullSession as any).shipping_details.address = resolvedShipping.address;
+          // If we resolved an address from PI/charge, attach it so email template can use it too
+          (session as any).shipping_details = (session as any).shipping_details || {};
+          if (!(session as any).shipping_details?.address && resolvedAddr.address) {
+            (session as any).shipping_details.address = resolvedAddr.address;
           }
-          if (!(fullSession as any).shipping_details?.name && resolvedShipping.name) {
-            (fullSession as any).shipping_details.name = resolvedShipping.name;
+          if (!(session as any).shipping_details?.name && resolvedAddr.name) {
+            (session as any).shipping_details.name = resolvedAddr.name;
           }
 
           await sendOrderConfirmationEmail({
-            session: fullSession,
+            session,
             lineItems: lineItems.data,
-            isSubscription:
-              (fullSession as any).mode === "subscription" || Boolean((fullSession as any).subscription),
+            isSubscription: (session as any).mode === "subscription" || Boolean((session as any).subscription),
           });
         }
       }
 
       return res.json({ received: true });
     } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("Stripe webhook error:", s);
+      console.error("Stripe webhook error:", safeErrSummary(err));
       return res.status(400).send("Webhook Error");
     }
   });
 
-  /**
-   * STEP 1: Request a magic link to manage subscription
-   * Body: { email }
-   */
+  // -----------------------------
+  // Portal: request
+  // -----------------------------
   app.post("/api/customer-portal/request", async (req, res) => {
     const genericOk = () =>
-      res.json({
-        ok: true,
-        message: "If that email is in our system, you’ll receive a link shortly.",
-      });
+      res.json({ ok: true, message: "If that email is in our system, you’ll receive a link shortly." });
 
     try {
       const emailRaw = String(req.body?.email ?? "");
       const email = normalizeEmail(emailRaw);
-
       if (!email || !isValidEmail(email)) return genericOk();
 
       const sessionSecret = process.env.SESSION_SECRET;
-      if (!sessionSecret) {
-        console.error("[portal] Missing SESSION_SECRET");
-        return res.status(500).json({ message: "Missing SESSION_SECRET" });
-      }
+      if (!sessionSecret) return res.status(500).json({ message: "Missing SESSION_SECRET" });
 
       const found = await db
         .select({ stripeCustomerId: orders.stripeCustomerId })
@@ -1174,11 +1039,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!stripeCustomerId) return genericOk();
 
       const siteUrl = getSiteUrl();
-
-      const token = signToken(
-        { email, exp: Math.floor(Date.now() / 1000) + 15 * 60, v: 1 },
-        sessionSecret,
-      );
+      const token = signToken({ email, exp: Math.floor(Date.now() / 1000) + 15 * 60, v: 1 }, sessionSecret);
 
       const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(token)}`;
       const fallbackLink = `${siteUrl}/manage-subscription`;
@@ -1188,7 +1049,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!resendKey || !fromEmail) return genericOk();
 
       const resend = new Resend(resendKey);
-
       const subject = "Manage your Kimora subscription";
       const text = `Manage your Kimora subscription
 
@@ -1222,18 +1082,19 @@ Need help? Reply to this email or contact alex@kimoraco.com
         const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
         await resend.emails.send({ from, to: email, subject, text, html } as any);
       } catch (e: any) {
-        const ss = safeErrSummary(e);
-        console.error("[portal] resend send failed:", ss);
+        console.error("[portal] resend send failed:", safeErrSummary(e));
       }
 
       return genericOk();
     } catch (err: any) {
-      const ss = safeErrSummary(err);
-      console.error("POST /api/customer-portal/request error:", ss);
+      console.error("POST /api/customer-portal/request error:", safeErrSummary(err));
       return genericOk();
     }
   });
 
+  // -----------------------------
+  // Portal: exchange token for Stripe Billing Portal URL
+  // -----------------------------
   app.get("/api/customer-portal", async (req, res) => {
     try {
       const token = String((req.query as any)?.token ?? "").trim();
@@ -1255,8 +1116,7 @@ Need help? Reply to this email or contact alex@kimoraco.com
 
       return res.json({ ok: true, url: portal.url });
     } catch (err: any) {
-      const ss = safeErrSummary(err);
-      console.error("GET /api/customer-portal error:", ss);
+      console.error("GET /api/customer-portal error:", safeErrSummary(err));
       return res.status(500).json({ ok: false, message: "Failed to open subscription portal." });
     }
   });
@@ -1268,12 +1128,13 @@ Need help? Reply to this email or contact alex@kimoraco.com
       if (!token || !sessionSecret) return res.status(400).json({ ok: false, message: "Missing token." });
 
       const payload = verifyToken<{ email?: string }>(token, sessionSecret);
-      if (!payload?.email || !isValidEmail(payload.email)) return res.status(401).json({ ok: false, message: "Invalid or expired token." });
+      if (!payload?.email || !isValidEmail(payload.email)) {
+        return res.status(401).json({ ok: false, message: "Invalid or expired token." });
+      }
 
       return res.json({ ok: true, email: payload.email });
     } catch (err: any) {
-      const ss = safeErrSummary(err);
-      console.error("GET /api/customer-portal/verify error:", ss);
+      console.error("GET /api/customer-portal/verify error:", safeErrSummary(err));
       return res.status(500).json({ ok: false, message: "Failed to verify token." });
     }
   });

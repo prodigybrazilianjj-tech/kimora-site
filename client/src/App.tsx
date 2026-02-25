@@ -11,7 +11,7 @@ import FAQ from "@/pages/FAQ";
 import Shop from "@/pages/Shop";
 import Product from "@/pages/Product";
 import Wholesale from "@/pages/Wholesale";
-import WholesaleApply from "@/pages/Wholesaleapply"; // ✅ keep your filename match
+import WholesaleApply from "@/pages/Wholesaleapply";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import OrderSuccess from "@/pages/OrderSuccess";
@@ -21,7 +21,8 @@ import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import Refunds from "@/pages/Refunds";
 
-import AdminDashboard from "@/pages/AdminDashboard";
+// ✅ IMPORTANT: use RELATIVE import (guaranteed to resolve)
+import AdminDashboard from "./pages/AdminDashboard";
 
 import NotFound from "@/pages/not-found";
 
@@ -52,7 +53,7 @@ function Router() {
         <Route path="/shop" component={Shop} />
         <Route path="/product" component={Product} />
 
-        {/* Admin */}
+        {/* ✅ Admin */}
         <Route path="/admin" component={AdminDashboard} />
 
         {/* ✅ Put the more specific route BEFORE /wholesale */}

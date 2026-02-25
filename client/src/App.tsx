@@ -1,3 +1,4 @@
+// client/src/App.tsx
 import { useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -10,7 +11,7 @@ import FAQ from "@/pages/FAQ";
 import Shop from "@/pages/Shop";
 import Product from "@/pages/Product";
 import Wholesale from "@/pages/Wholesale";
-import WholesaleApply from "@/pages/Wholesaleapply"; // ✅ add this import (match your filename)
+import WholesaleApply from "@/pages/Wholesaleapply"; // ✅ keep your filename match
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import OrderSuccess from "@/pages/OrderSuccess";
@@ -19,6 +20,8 @@ import ManageSubscription from "@/pages/ManageSubscription";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import Refunds from "@/pages/Refunds";
+
+import AdminDashboard from "@/pages/AdminDashboard";
 
 import NotFound from "@/pages/not-found";
 
@@ -31,9 +34,7 @@ function ScrollToTop() {
   const [location] = useLocation();
 
   useEffect(() => {
-    // If navigating to a hash route like "/#flavors", don't fight the hash scroller
     if (typeof window !== "undefined" && window.location.hash) return;
-
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [location]);
 
@@ -50,6 +51,9 @@ function Router() {
         <Route path="/faq" component={FAQ} />
         <Route path="/shop" component={Shop} />
         <Route path="/product" component={Product} />
+
+        {/* Admin */}
+        <Route path="/admin" component={AdminDashboard} />
 
         {/* ✅ Put the more specific route BEFORE /wholesale */}
         <Route path="/wholesale/apply" component={WholesaleApply} />

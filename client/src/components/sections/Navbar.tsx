@@ -42,7 +42,9 @@ function clearHashNoJump() {
 
 function scrollToTop() {
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+  requestAnimationFrame(() =>
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" }),
+  );
 }
 
 export function Navbar() {
@@ -171,6 +173,14 @@ export function Navbar() {
         action: () => {
           closeMobile();
           setLocation("/wholesale");
+        },
+      },
+      // Optional link (API still protected by ADMIN_DASHBOARD_TOKEN)
+      {
+        name: "Admin",
+        action: () => {
+          closeMobile();
+          setLocation("/admin");
         },
       },
     ],

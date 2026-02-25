@@ -721,6 +721,109 @@ export async function registerRoutes(
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
   // -----------------------------
+  // Admin: Orders
+  // -----------------------------
+  app.get("/api/admin/orders", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const limitRaw = String(req.query?.limit ?? "").trim();
+      const limit = Math.min(
+        500,
+        Math.max(1, Number.isFinite(Number(limitRaw)) ? Math.floor(Number(limitRaw)) : 50),
+      );
+
+      const rows = await db
+        .select()
+        .from(orders)
+        .orderBy(desc(orders.createdAt))
+        .limit(limit);
+
+      const ids = rows.map((r: any) => r.id).filter(Boolean);
+      const itemsByOrderId = new Map<string, any[]>();
+
+      if (ids.length) {
+        // Get items for these orders
+        const items = await db
+          .select()
+          .from(orderItems)
+          // drizzle doesn't support "where in" without helpers in some setups,
+          // so we group by order by querying per order if needed.
+          // But usually Drizzle supports `inArray`. If you have it, replace this block.
+          .orderBy(desc(orderItems.createdAt));
+
+        // Filter in-memory safely (small sizes since limit <= 500)
+        for (const it of items) {
+          if (!ids.includes((it as any).orderId)) continue;
+          const k = String((it as any).orderId);
+          const list = itemsByOrderId.get(k) || [];
+          list.push(it);
+          itemsByOrderId.set(k, list);
+        }
+      }
+
+      const out = rows.map((o: any) => ({
+        ...o,
+        items: itemsByOrderId.get(String(o.id)) || [],
+      }));
+
+      return res.json({ ok: true, rows: out });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("GET /api/admin/orders error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to load orders." });
+    }
+  });
+
+  app.get("/api/admin/orders/:id", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+
+      const row = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, id))
+        .limit(1);
+
+      if (!row?.length) return res.status(404).json({ ok: false, message: "Not found." });
+
+      return res.json({ ok: true, order: row[0] });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("GET /api/admin/orders/:id error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to load order." });
+    }
+  });
+
+  app.get("/api/admin/orders/:id/items", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+
+      const items = await db
+        .select()
+        .from(orderItems)
+        .where(eq(orderItems.orderId, id))
+        .orderBy(desc(orderItems.createdAt))
+        .limit(500);
+
+      return res.json({ ok: true, rows: items });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("GET /api/admin/orders/:id/items error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to load order items." });
+    }
+  });
+
+  // -----------------------------
   // Admin: wholesale applications
   // -----------------------------
   app.get("/api/admin/wholesale-applications", async (req, res) => {

@@ -6,26 +6,35 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
 
-function getNavHeight() {
-  const nav = document.querySelector("nav");
-  return nav instanceof HTMLElement ? nav.offsetHeight : 0;
-}
-
 function scrollToSelector(selector: string) {
   const el = document.querySelector(selector);
-  if (!(el instanceof HTMLElement)) return;
+  if (!(el instanceof HTMLElement)) return false;
 
-  const navHeight = getNavHeight();
-  const top = window.scrollY + el.getBoundingClientRect().top - navHeight;
-
-  window.scrollTo({ top: Math.max(0, top), left: 0, behavior: "auto" });
+  // ✅ Use native scroll + rely on CSS scroll-margin-top (scroll-mt-*)
+  el.scrollIntoView({ behavior: "auto", block: "start" });
 
   // One extra frame helps when fonts/layout settle (prevents “jump then settle”)
   requestAnimationFrame(() => {
-    const navH2 = getNavHeight();
-    const top2 = window.scrollY + el.getBoundingClientRect().top - navH2;
-    window.scrollTo({ top: Math.max(0, top2), left: 0, behavior: "auto" });
+    el.scrollIntoView({ behavior: "auto", block: "start" });
   });
+
+  return true;
+}
+
+function scrollToSelectorWithRetry(selector: string, attempts = 24) {
+  let tries = 0;
+
+  const tick = () => {
+    const ok = scrollToSelector(selector);
+    if (ok) return;
+
+    tries += 1;
+    if (tries >= attempts) return;
+
+    requestAnimationFrame(tick);
+  };
+
+  tick();
 }
 
 function setHashNoJump(hash: string) {
@@ -91,10 +100,8 @@ export function Navbar() {
 
     pendingSelectorRef.current = null;
 
-    // Wait one tick so the home sections exist in the DOM
-    window.setTimeout(() => {
-      scrollToSelector(selector);
-    }, 0);
+    // ✅ Retry a few frames so Home can mount and the anchor exists
+    scrollToSelectorWithRetry(selector);
   }, [isHome]);
 
   function closeMobile() {
@@ -136,9 +143,9 @@ export function Navbar() {
       return;
     }
 
-    // Home page: set hash without browser jump, then do our offset scroll
+    // Home page: set hash without browser jump, then scroll
     setHashNoJump(normalizedHash);
-    scrollToSelector(selector);
+    scrollToSelectorWithRetry(selector);
   }
 
   // Optional: if the user hits Back/Forward and hash changes, handle it without flicker.
@@ -148,7 +155,7 @@ export function Navbar() {
     const onPopState = () => {
       const hash = window.location.hash;
       if (!hash) return;
-      scrollToSelector(hash);
+      scrollToSelectorWithRetry(hash);
     };
 
     window.addEventListener("popstate", onPopState);
@@ -175,7 +182,6 @@ export function Navbar() {
           setLocation("/wholesale");
         },
       },
-      // Optional link (API still protected by ADMIN_DASHBOARD_TOKEN)
       {
         name: "Admin",
         action: () => {

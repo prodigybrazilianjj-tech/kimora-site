@@ -181,13 +181,7 @@ export function Navbar() {
           setLocation("/wholesale");
         },
       },
-      {
-        name: "Admin",
-        action: () => {
-          closeMobile();
-          setLocation("/admin");
-        },
-      },
+      
     ],
     [isHome, location],
   );

@@ -21,7 +21,7 @@ function scrollToSelector(selector: string) {
   return true;
 }
 
-function scrollToSelectorWithRetry(selector: string, attempts = 24) {
+function scrollToSelectorWithRetry(selector: string, attempts = 36) {
   let tries = 0;
 
   const tick = () => {
@@ -130,15 +130,14 @@ export function Navbar() {
     const selector = normalizedHash;
 
     if (!isHome) {
+      // ✅ CRITICAL FIX:
+      // Set the hash BEFORE navigating home so App's ScrollToTop sees window.location.hash
+      // and does NOT scroll to the top on route change.
+      setHashNoJump(normalizedHash);
+
       // Navigate home, then scroll once content is mounted
       pendingSelectorRef.current = selector;
-
       setLocation("/");
-
-      // Keep URL in sync without triggering native anchor jump
-      window.setTimeout(() => {
-        setHashNoJump(normalizedHash);
-      }, 0);
 
       return;
     }
@@ -261,7 +260,10 @@ export function Navbar() {
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="right" className="bg-background border-l border-border">
+            <SheetContent
+              side="right"
+              className="bg-background border-l border-border"
+            >
               <div className="flex flex-col gap-6 mt-10">
                 <button
                   onClick={goHomeTop}

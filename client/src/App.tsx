@@ -21,13 +21,12 @@ import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import Refunds from "@/pages/Refunds";
 
-// ✅ IMPORTANT: use RELATIVE import (guaranteed to resolve)
-import AdminDashboard from "./pages/AdminDashboard";
+import AdminDashboard from "@/pages/AdminDashboard";
 
 import NotFound from "@/pages/not-found";
 
 /**
- * ✅ Scroll to top on route change (Wouter doesn't do this by default)
+ * Scroll to top on route change (Wouter doesn't do this by default)
  * - If there's a hash (#something), we let the page-level hash logic handle it.
  * - Otherwise we scroll to the top.
  */
@@ -53,10 +52,10 @@ function Router() {
         <Route path="/shop" component={Shop} />
         <Route path="/product" component={Product} />
 
-        {/* ✅ Admin */}
+        {/* Admin */}
         <Route path="/admin" component={AdminDashboard} />
 
-        {/* ✅ Put the more specific route BEFORE /wholesale */}
+        {/* Put the more specific route BEFORE /wholesale */}
         <Route path="/wholesale/apply" component={WholesaleApply} />
         <Route path="/wholesale" component={Wholesale} />
 

@@ -1,7 +1,7 @@
 // server/routes.ts
 import type { Express } from "express";
 import type { Server } from "http";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql, and, or } from "drizzle-orm";
 import crypto from "crypto";
 import { Resend } from "resend";
 
@@ -448,7 +448,9 @@ async function sendOrderConfirmationEmail(args: {
     (amountSubtotal != null
       ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n`
       : "") +
-    (amountTotal != null ? `Total: ${formatMoney(amountTotal, currency)}\n` : "") +
+    (amountTotal != null
+      ? `Total: ${formatMoney(amountTotal, currency)}\n`
+      : "") +
     (shippingAddr
       ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(
           shippingAddr,
@@ -714,114 +716,30 @@ function verifyToken<T>(token: string, secret: string): T | null {
   }
 }
 
+function parseBool(s: any): boolean | null {
+  if (s === null || s === undefined) return null;
+  const v = String(s).trim().toLowerCase();
+  if (v === "true" || v === "1" || v === "yes") return true;
+  if (v === "false" || v === "0" || v === "no") return false;
+  return null;
+}
+
+function pickOrderSearchWhere(q: string) {
+  const needle = `%${q}%`;
+  return or(
+    sql`${orders.customerEmail} ILIKE ${needle}`,
+    sql`${orders.stripeCheckoutSessionId} ILIKE ${needle}`,
+    sql`${orders.stripePaymentIntentId} ILIKE ${needle}`,
+    sql`${orders.stripeSubscriptionId} ILIKE ${needle}`,
+    sql`${orders.shippingName} ILIKE ${needle}`,
+  );
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
-
-  // -----------------------------
-  // Admin: Orders
-  // -----------------------------
-  app.get("/api/admin/orders", async (req, res) => {
-    const denied = requireAdmin(req, res);
-    if (denied) return;
-
-    try {
-      const limitRaw = String(req.query?.limit ?? "").trim();
-      const limit = Math.min(
-        500,
-        Math.max(1, Number.isFinite(Number(limitRaw)) ? Math.floor(Number(limitRaw)) : 50),
-      );
-
-      const rows = await db
-        .select()
-        .from(orders)
-        .orderBy(desc(orders.createdAt))
-        .limit(limit);
-
-      const ids = rows.map((r: any) => r.id).filter(Boolean);
-      const itemsByOrderId = new Map<string, any[]>();
-
-      if (ids.length) {
-        // Get items for these orders
-        const items = await db
-          .select()
-          .from(orderItems)
-          // drizzle doesn't support "where in" without helpers in some setups,
-          // so we group by order by querying per order if needed.
-          // But usually Drizzle supports `inArray`. If you have it, replace this block.
-          .orderBy(desc(orderItems.createdAt));
-
-        // Filter in-memory safely (small sizes since limit <= 500)
-        for (const it of items) {
-          if (!ids.includes((it as any).orderId)) continue;
-          const k = String((it as any).orderId);
-          const list = itemsByOrderId.get(k) || [];
-          list.push(it);
-          itemsByOrderId.set(k, list);
-        }
-      }
-
-      const out = rows.map((o: any) => ({
-        ...o,
-        items: itemsByOrderId.get(String(o.id)) || [],
-      }));
-
-      return res.json({ ok: true, rows: out });
-    } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("GET /api/admin/orders error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to load orders." });
-    }
-  });
-
-  app.get("/api/admin/orders/:id", async (req, res) => {
-    const denied = requireAdmin(req, res);
-    if (denied) return;
-
-    try {
-      const id = String(req.params.id || "").trim();
-      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
-
-      const row = await db
-        .select()
-        .from(orders)
-        .where(eq(orders.id, id))
-        .limit(1);
-
-      if (!row?.length) return res.status(404).json({ ok: false, message: "Not found." });
-
-      return res.json({ ok: true, order: row[0] });
-    } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("GET /api/admin/orders/:id error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to load order." });
-    }
-  });
-
-  app.get("/api/admin/orders/:id/items", async (req, res) => {
-    const denied = requireAdmin(req, res);
-    if (denied) return;
-
-    try {
-      const id = String(req.params.id || "").trim();
-      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
-
-      const items = await db
-        .select()
-        .from(orderItems)
-        .where(eq(orderItems.orderId, id))
-        .orderBy(desc(orderItems.createdAt))
-        .limit(500);
-
-      return res.json({ ok: true, rows: items });
-    } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("GET /api/admin/orders/:id/items error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to load order items." });
-    }
-  });
 
   // -----------------------------
   // Admin: wholesale applications
@@ -886,6 +804,155 @@ export async function registerRoutes(
       return res
         .status(500)
         .json({ ok: false, message: "Failed to update status." });
+    }
+  });
+
+  // -----------------------------
+  // Admin: orders + revenue
+  // -----------------------------
+  app.get("/api/admin/summary", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const rows = await db
+        .select({
+          id: orders.id,
+          status: orders.status,
+          amountTotal: orders.amountTotal,
+          isSubscription: orders.isSubscription,
+        })
+        .from(orders)
+        .orderBy(desc(orders.createdAt))
+        .limit(5000);
+
+      const paid = rows.filter(
+        (r) => String(r.status || "").toLowerCase() === "paid",
+      );
+      const refunded = rows.filter(
+        (r) => String(r.status || "").toLowerCase() === "refunded",
+      );
+
+      const totalRevenueCents = paid.reduce(
+        (acc, r) => acc + (r.amountTotal ?? 0),
+        0,
+      );
+
+      const aovCents = paid.length
+        ? Math.round(totalRevenueCents / paid.length)
+        : 0;
+
+      const subscriptionOrders = rows.filter((r) => Boolean(r.isSubscription))
+        .length;
+      const onetimeOrders = rows.length - subscriptionOrders;
+
+      return res.json({
+        ok: true,
+        summary: {
+          totalOrders: rows.length,
+          totalRevenueCents,
+          aovCents,
+          paidOrders: paid.length,
+          refundedOrders: refunded.length,
+          subscriptionOrders,
+          onetimeOrders,
+        },
+      });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("GET /api/admin/summary error:", s);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to load summary." });
+    }
+  });
+
+  app.get("/api/admin/orders", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const q = safeString(req.query?.q, 200).trim();
+      const status = safeString(req.query?.status, 32).trim(); // paid/refunded/etc
+      const mode = safeString(req.query?.mode, 32).trim(); // payment/subscription
+
+      const whereParts: any[] = [];
+
+      if (q) whereParts.push(pickOrderSearchWhere(q));
+      if (status) whereParts.push(eq(orders.status, status));
+
+      if (mode === "subscription") whereParts.push(eq(orders.isSubscription, true));
+      if (mode === "payment") whereParts.push(eq(orders.isSubscription, false));
+
+      const where =
+        whereParts.length === 0 ? undefined : and(...whereParts);
+
+      const rows = await db
+        .select({
+          id: orders.id,
+          createdAt: orders.createdAt,
+          customerEmail: orders.customerEmail,
+          status: orders.status,
+          currency: orders.currency,
+          amountSubtotal: orders.amountSubtotal,
+          amountTotal: orders.amountTotal,
+          isSubscription: orders.isSubscription,
+
+          stripeCheckoutSessionId: orders.stripeCheckoutSessionId,
+          stripePaymentIntentId: orders.stripePaymentIntentId,
+          stripeSubscriptionId: orders.stripeSubscriptionId,
+          stripeCustomerId: orders.stripeCustomerId,
+
+          shippingName: orders.shippingName,
+          shippingAddress: orders.shippingAddress,
+        })
+        .from(orders)
+        .where(where as any)
+        .orderBy(desc(orders.createdAt))
+        .limit(500);
+
+      return res.json({ ok: true, rows });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("GET /api/admin/orders error:", s);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to load orders." });
+    }
+  });
+
+  app.get("/api/admin/orders/:id", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+
+      const order = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, id))
+        .limit(1);
+
+      if (!order?.length) {
+        return res.status(404).json({ ok: false, message: "Not found." });
+      }
+
+      const items = await db
+        .select()
+        .from(orderItems)
+        .where(eq(orderItems.orderId, id))
+        .orderBy(desc(orderItems.createdAt))
+        .limit(200);
+
+      return res.json({ ok: true, order: order[0], items });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("GET /api/admin/orders/:id error:", s);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to load order." });
     }
   });
 

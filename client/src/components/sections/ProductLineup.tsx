@@ -29,8 +29,8 @@ export function ProductLineup() {
   return (
     <>
       {/* ✅ OFFSET ANCHOR */}
-      {/* Navbar uses hash "#flavors" and scrolls to "#flavors-anchor" */}
-      <div id="flavors-anchor" className="h-[140px] md:h-[160px]" />
+      {/* Navbar uses hash "#flavors" and scrolls to "#flavors" (with nav height offset) */}
+      <div id="flavors" className="h-[140px] md:h-[160px]" />
 
       <section className="py-12 md:py-16 bg-background relative overflow-hidden">
         <div className="container px-4 mx-auto">

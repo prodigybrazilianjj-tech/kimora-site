@@ -735,6 +735,16 @@ function pickOrderSearchWhere(q: string) {
   );
 }
 
+const ALLOWED_FULFILLMENT = new Set([
+  "unfulfilled",
+  "allocated",
+  "packed",
+  "shipped",
+  "delivered",
+  "canceled",
+  "backordered",
+]);
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
@@ -884,8 +894,7 @@ export async function registerRoutes(
       if (mode === "subscription") whereParts.push(eq(orders.isSubscription, true));
       if (mode === "payment") whereParts.push(eq(orders.isSubscription, false));
 
-      const where =
-        whereParts.length === 0 ? undefined : and(...whereParts);
+      const where = whereParts.length === 0 ? undefined : and(...whereParts);
 
       const rows = await db
         .select({
@@ -953,6 +962,57 @@ export async function registerRoutes(
       return res
         .status(500)
         .json({ ok: false, message: "Failed to load order." });
+    }
+  });
+
+  // ✅ Admin: per-item fulfillment update
+  app.patch("/api/admin/order-items/:id/fulfillment", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+
+      const status = String(req.body?.fulfillmentStatus ?? "").trim().toLowerCase();
+      const carrier = safeString(req.body?.carrier, 80) || null;
+      const trackingNumber = safeString(req.body?.trackingNumber, 120) || null;
+
+      if (!status || !ALLOWED_FULFILLMENT.has(status)) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            "Invalid fulfillmentStatus. Allowed: unfulfilled, allocated, packed, shipped, delivered, canceled, backordered",
+        });
+      }
+
+      const now = new Date();
+
+      const set: any = {
+        fulfillmentStatus: status,
+        carrier,
+        trackingNumber,
+      };
+
+      // auto timestamps
+      if (status === "shipped") set.shippedAt = now;
+      if (status === "delivered") set.deliveredAt = now;
+
+      const updated = await db
+        .update(orderItems)
+        .set(set)
+        .where(eq(orderItems.id, id))
+        .returning({ id: orderItems.id });
+
+      if (!updated?.length) {
+        return res.status(404).json({ ok: false, message: "Not found." });
+      }
+
+      return res.json({ ok: true });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("PATCH /api/admin/order-items/:id/fulfillment error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to update item." });
     }
   });
 
@@ -1519,6 +1579,13 @@ export async function registerRoutes(
                 frequencyWeeks: mapped.frequencyWeeks,
                 quantity: qty,
                 unitAmount: li.price?.unit_amount ?? null,
+
+                // ✅ new items start unfulfilled
+                fulfillmentStatus: "unfulfilled",
+                carrier: null,
+                trackingNumber: null,
+                shippedAt: null,
+                deliveredAt: null,
               })
               .onConflictDoNothing();
           }

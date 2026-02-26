@@ -50,6 +50,33 @@ type Summary = {
   onetimeOrders: number;
 };
 
+type FulfillmentStatus =
+  | "unfulfilled"
+  | "allocated"
+  | "packed"
+  | "shipped"
+  | "delivered"
+  | "canceled"
+  | "backordered";
+
+type OrderItemRow = {
+  id: string;
+  orderId: string;
+  flavor: string;
+  purchaseType: string;
+  frequencyWeeks?: number | null;
+  quantity: number;
+  unitAmount?: number | null;
+
+  fulfillmentStatus?: FulfillmentStatus | string;
+  carrier?: string | null;
+  trackingNumber?: string | null;
+  shippedAt?: string | null;
+  deliveredAt?: string | null;
+
+  createdAt?: string;
+};
+
 function money(cents?: number | null, currency?: string | null) {
   if (cents == null) return "—";
   const ccy = (currency || "usd").toUpperCase();
@@ -121,6 +148,16 @@ async function api<T>(
 
 type TabKey = "overview" | "orders" | "wholesale";
 
+const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
+  "unfulfilled",
+  "allocated",
+  "packed",
+  "shipped",
+  "delivered",
+  "backordered",
+  "canceled",
+];
+
 export default function AdminDashboard() {
   const { toast } = useToast();
 
@@ -140,11 +177,19 @@ export default function AdminDashboard() {
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(
     null,
   );
-  const [selectedOrderItems, setSelectedOrderItems] = useState<any[] | null>(
-    null,
+  const [selectedOrderItems, setSelectedOrderItems] = useState<OrderItemRow[]>(
+    [],
   );
   const [orderDetailLoading, setOrderDetailLoading] = useState(false);
   const [orderDetailError, setOrderDetailError] = useState<string | null>(null);
+
+  // Local edits for item fulfillment (so inputs don't fight server state)
+  const [itemEdits, setItemEdits] = useState<
+    Record<
+      string,
+      { fulfillmentStatus: FulfillmentStatus; carrier: string; trackingNumber: string }
+    >
+  >({});
 
   const [wholesale, setWholesale] = useState<WholesaleRow[]>([]);
   const [wholesaleLoading, setWholesaleLoading] = useState(false);
@@ -176,8 +221,9 @@ export default function AdminDashboard() {
     setWholesale([]);
     setSelectedOrderId(null);
     setSelectedOrderDetail(null);
-    setSelectedOrderItems(null);
+    setSelectedOrderItems([]);
     setOrderDetailError(null);
+    setItemEdits({});
   }
 
   async function loadSummary() {
@@ -226,20 +272,36 @@ export default function AdminDashboard() {
 
     setSelectedOrderId(id);
     setSelectedOrderDetail(null);
-    setSelectedOrderItems(null);
+    setSelectedOrderItems([]);
     setOrderDetailError(null);
     setOrderDetailLoading(true);
+    setItemEdits({});
 
     toast({ title: "Loading order…", description: id });
 
     try {
-      const data = await api<{ ok: true; order: any; items: any[] }>(
+      const data = await api<{ ok: true; order: any; items: OrderItemRow[] }>(
         `/api/admin/orders/${id}`,
         savedToken,
       );
 
       setSelectedOrderDetail(data.order);
-      setSelectedOrderItems(data.items || []);
+      const items = (data.items || []) as OrderItemRow[];
+      setSelectedOrderItems(items);
+
+      // seed edit state
+      const seeded: typeof itemEdits = {};
+      for (const it of items) {
+        const status = (it.fulfillmentStatus || "unfulfilled") as FulfillmentStatus;
+        seeded[it.id] = {
+          fulfillmentStatus: FULFILLMENT_STATUSES.includes(status)
+            ? status
+            : "unfulfilled",
+          carrier: String(it.carrier || ""),
+          trackingNumber: String(it.trackingNumber || ""),
+        };
+      }
+      setItemEdits(seeded);
     } catch (e: any) {
       const msg = String(e?.message || "Failed to load order.");
       setOrderDetailError(msg);
@@ -252,9 +314,10 @@ export default function AdminDashboard() {
   function closeOrder() {
     setSelectedOrderId(null);
     setSelectedOrderDetail(null);
-    setSelectedOrderItems(null);
+    setSelectedOrderItems([]);
     setOrderDetailError(null);
     setOrderDetailLoading(false);
+    setItemEdits({});
   }
 
   async function updateWholesaleStatus(
@@ -273,6 +336,33 @@ export default function AdminDashboard() {
     );
 
     await loadWholesale();
+  }
+
+  async function saveItemFulfillment(itemId: string) {
+    if (!savedToken) return;
+
+    const edit = itemEdits[itemId];
+    if (!edit) return;
+
+    await api<{ ok: true }>(
+      `/api/admin/order-items/${itemId}/fulfillment`,
+      savedToken,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          fulfillmentStatus: edit.fulfillmentStatus,
+          carrier: edit.carrier || null,
+          trackingNumber: edit.trackingNumber || null,
+        }),
+      },
+    );
+
+    toast({ title: "Saved item", description: `Item ${itemId}` });
+
+    // reload order detail so timestamps (shippedAt/deliveredAt) are reflected
+    if (selectedOrderId) {
+      await openOrder(selectedOrderId);
+    }
   }
 
   useEffect(() => {
@@ -316,7 +406,9 @@ export default function AdminDashboard() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground mt-2">Orders • Revenue • Wholesale</p>
+            <p className="text-muted-foreground mt-2">
+              Orders • Revenue • Wholesale
+            </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -329,7 +421,12 @@ export default function AdminDashboard() {
             <Button type="button" onClick={saveToken} className="h-10">
               Save token
             </Button>
-            <Button type="button" variant="outline" onClick={clearToken} className="h-10">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={clearToken}
+              className="h-10"
+            >
               Clear
             </Button>
           </div>
@@ -339,7 +436,8 @@ export default function AdminDashboard() {
           <div className="mt-8 rounded-lg border border-border p-5">
             <div className="font-semibold">Token required</div>
             <p className="text-sm text-muted-foreground mt-1">
-              Set ADMIN_DASHBOARD_TOKEN in Render, then paste it here and click Save token.
+              Set ADMIN_DASHBOARD_TOKEN in Render, then paste it here and click
+              Save token.
             </p>
           </div>
         )}
@@ -384,7 +482,7 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* ------------------- OVERVIEW ------------------- */}
+        {/* OVERVIEW */}
         {tab === "overview" && (
           <div className="mt-6 grid gap-4">
             <div className="grid md:grid-cols-4 gap-4">
@@ -419,16 +517,10 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-
-            {!summary && canAuth && (
-              <div className="text-sm text-muted-foreground">
-                No summary loaded yet — click “Refresh overview”.
-              </div>
-            )}
           </div>
         )}
 
-        {/* ------------------- ORDERS ------------------- */}
+        {/* ORDERS */}
         {tab === "orders" && (
           <div className="mt-6 grid gap-4">
             {(selectedOrderId || orderDetailLoading || orderDetailError) && (
@@ -453,61 +545,195 @@ export default function AdminDashboard() {
                         Refresh detail
                       </Button>
                     )}
-                    <Button type="button" variant="outline" className="h-9" onClick={closeOrder}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9"
+                      onClick={closeOrder}
+                    >
                       Close
                     </Button>
                   </div>
                 </div>
 
                 {orderDetailLoading && (
-                  <div className="mt-3 text-sm text-muted-foreground">Loading order…</div>
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    Loading order…
+                  </div>
                 )}
 
-                {orderDetailError && <div className="mt-3 text-sm text-red-400">{orderDetailError}</div>}
+                {orderDetailError && (
+                  <div className="mt-3 text-sm text-red-400">{orderDetailError}</div>
+                )}
 
                 {selectedOrderDetail && (
                   <div className="mt-4 grid md:grid-cols-3 gap-4">
                     <div className="rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Created</div>
-                      <div className="font-medium mt-1">{fmtDate(selectedOrderDetail.createdAt)}</div>
+                      <div className="font-medium mt-1">
+                        {fmtDate(selectedOrderDetail.createdAt)}
+                      </div>
                     </div>
 
                     <div className="rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Customer</div>
-                      <div className="font-medium mt-1">{selectedOrderDetail.customerEmail || "—"}</div>
+                      <div className="font-medium mt-1">
+                        {selectedOrderDetail.customerEmail || "—"}
+                      </div>
                     </div>
 
                     <div className="rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Total</div>
                       <div className="font-medium mt-1">
-                        {money(selectedOrderDetail.amountTotal, selectedOrderDetail.currency)}
+                        {money(
+                          selectedOrderDetail.amountTotal,
+                          selectedOrderDetail.currency,
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         Status: {selectedOrderDetail.status || "—"} •{" "}
-                        {selectedOrderDetail.isSubscription ? "Subscription" : "One-time"}
+                        {selectedOrderDetail.isSubscription
+                          ? "Subscription"
+                          : "One-time"}
                       </div>
                     </div>
 
                     <div className="md:col-span-3 rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Shipping</div>
-                      <div className="font-medium mt-1">{selectedOrderDetail.shippingName || "—"}</div>
+                      <div className="font-medium mt-1">
+                        {selectedOrderDetail.shippingName || "—"}
+                      </div>
                       <div className="text-sm text-muted-foreground mt-1">
                         {oneLineAddress(selectedOrderDetail.shippingAddress)}
                       </div>
                     </div>
 
+                    {/* ✅ Fulfillment per item */}
                     <div className="md:col-span-3 rounded-md border border-border p-3">
-                      <div className="text-xs text-muted-foreground">Order JSON</div>
-                      <pre className="mt-2 text-xs overflow-auto whitespace-pre-wrap">
-                        {JSON.stringify(selectedOrderDetail, null, 2)}
-                      </pre>
-                    </div>
+                      <div className="text-xs text-muted-foreground">Items</div>
 
-                    <div className="md:col-span-3 rounded-md border border-border p-3">
-                      <div className="text-xs text-muted-foreground">Items JSON</div>
-                      <pre className="mt-2 text-xs overflow-auto whitespace-pre-wrap">
-                        {JSON.stringify(selectedOrderItems || [], null, 2)}
-                      </pre>
+                      <div className="mt-3 overflow-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted/40">
+                            <tr>
+                              <th className="p-2 text-left">Item</th>
+                              <th className="p-2 text-left">Qty</th>
+                              <th className="p-2 text-left">Fulfillment</th>
+                              <th className="p-2 text-left">Carrier</th>
+                              <th className="p-2 text-left">Tracking</th>
+                              <th className="p-2 text-left">Shipped</th>
+                              <th className="p-2 text-left">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedOrderItems.map((it) => {
+                              const edit = itemEdits[it.id] || {
+                                fulfillmentStatus: "unfulfilled" as FulfillmentStatus,
+                                carrier: "",
+                                trackingNumber: "",
+                              };
+
+                              const label =
+                                it.flavor ||
+                                `${it.purchaseType}${it.frequencyWeeks ? ` (${it.frequencyWeeks}w)` : ""}`;
+
+                              return (
+                                <tr key={it.id} className="border-t border-border">
+                                  <td className="p-2">
+                                    <div className="font-medium">{label}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {it.purchaseType}
+                                      {it.frequencyWeeks ? ` • every ${it.frequencyWeeks}w` : ""}
+                                    </div>
+                                  </td>
+
+                                  <td className="p-2">{it.quantity}</td>
+
+                                  <td className="p-2">
+                                    <select
+                                      value={edit.fulfillmentStatus}
+                                      onChange={(e) =>
+                                        setItemEdits((prev) => ({
+                                          ...prev,
+                                          [it.id]: {
+                                            ...edit,
+                                            fulfillmentStatus: e.target.value as FulfillmentStatus,
+                                          },
+                                        }))
+                                      }
+                                      className="h-8 rounded-md border border-border bg-background px-2 text-sm"
+                                    >
+                                      {FULFILLMENT_STATUSES.map((s) => (
+                                        <option key={s} value={s}>
+                                          {s}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+
+                                  <td className="p-2">
+                                    <input
+                                      value={edit.carrier}
+                                      onChange={(e) =>
+                                        setItemEdits((prev) => ({
+                                          ...prev,
+                                          [it.id]: { ...edit, carrier: e.target.value },
+                                        }))
+                                      }
+                                      placeholder="USPS / UPS / FedEx"
+                                      className="h-8 w-[140px] rounded-md border border-border bg-background px-2 text-sm"
+                                    />
+                                  </td>
+
+                                  <td className="p-2">
+                                    <input
+                                      value={edit.trackingNumber}
+                                      onChange={(e) =>
+                                        setItemEdits((prev) => ({
+                                          ...prev,
+                                          [it.id]: {
+                                            ...edit,
+                                            trackingNumber: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                      placeholder="Tracking #"
+                                      className="h-8 w-[200px] rounded-md border border-border bg-background px-2 text-sm"
+                                    />
+                                  </td>
+
+                                  <td className="p-2 text-muted-foreground">
+                                    {it.shippedAt ? fmtDate(it.shippedAt) : "—"}
+                                  </td>
+
+                                  <td className="p-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="h-8"
+                                      onClick={() => saveItemFulfillment(it.id)}
+                                    >
+                                      Save
+                                    </Button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+
+                            {!selectedOrderItems.length && (
+                              <tr>
+                                <td className="p-3 text-muted-foreground" colSpan={7}>
+                                  No items found for this order.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="text-xs text-muted-foreground mt-2">
+                        Tip: setting an item to <code>shipped</code> automatically stamps shippedAt.
+                      </div>
                     </div>
                   </div>
                 )}
@@ -549,6 +775,7 @@ export default function AdminDashboard() {
                   Apply
                 </Button>
               </div>
+
               {ordersLoading && (
                 <div className="mt-3 text-sm text-muted-foreground">Loading…</div>
               )}
@@ -576,7 +803,9 @@ export default function AdminDashboard() {
                       <tr key={o.id} className="border-t border-border">
                         <td className="p-3">{fmtDate(o.createdAt)}</td>
                         <td className="p-3">{o.customerEmail || "—"}</td>
-                        <td className="p-3">{o.isSubscription ? "Subscription" : "One-time"}</td>
+                        <td className="p-3">
+                          {o.isSubscription ? "Subscription" : "One-time"}
+                        </td>
                         <td className="p-3">{o.status || "—"}</td>
                         <td className="p-3">{money(o.amountTotal, o.currency)}</td>
                         <td className="p-3">
@@ -589,7 +818,6 @@ export default function AdminDashboard() {
                               e.stopPropagation();
                               openOrder(o.id);
                             }}
-                            disabled={orderDetailLoading && selectedOrderId === o.id}
                           >
                             View
                           </Button>
@@ -611,7 +839,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ------------------- WHOLESALE ------------------- */}
+        {/* WHOLESALE */}
         {tab === "wholesale" && (
           <div className="mt-6 grid gap-4">
             <div className="rounded-lg border border-border p-4">

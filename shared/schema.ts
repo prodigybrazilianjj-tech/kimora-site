@@ -98,12 +98,21 @@ export const orderItems = pgTable(
 
     unitAmount: integer("unit_amount"),
 
+    // ✅ Fulfillment tracking (per-item)
+    fulfillmentStatus: text("fulfillment_status").notNull().default("unfulfilled"),
+    carrier: text("carrier"),
+    trackingNumber: text("tracking_number"),
+    shippedAt: timestamp("shipped_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (t) => ({
     orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
+
+    fulfillmentStatusIdx: index("order_items_fulfillment_status_idx").on(t.fulfillmentStatus),
 
     // Fallback uniqueness: one price per order (if priceId exists)
     orderPriceUnique: uniqueIndex("order_items_order_price_unique").on(

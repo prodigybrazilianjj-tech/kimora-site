@@ -230,10 +230,7 @@ export default function AdminDashboard() {
     setOrderDetailError(null);
     setOrderDetailLoading(true);
 
-    toast({
-      title: "Loading order…",
-      description: id,
-    });
+    toast({ title: "Loading order…", description: id });
 
     try {
       const data = await api<{ ok: true; order: any; items: any[] }>(
@@ -246,10 +243,7 @@ export default function AdminDashboard() {
     } catch (e: any) {
       const msg = String(e?.message || "Failed to load order.");
       setOrderDetailError(msg);
-      toast({
-        title: "Order load failed",
-        description: msg,
-      });
+      toast({ title: "Order load failed", description: msg });
     } finally {
       setOrderDetailLoading(false);
     }
@@ -283,6 +277,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!savedToken) return;
+
     loadSummary().catch(() => {});
     loadOrders().catch(() => {});
     loadWholesale().catch(() => {});
@@ -389,9 +384,53 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        {/* ------------------- OVERVIEW ------------------- */}
+        {tab === "overview" && (
+          <div className="mt-6 grid gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Total revenue</div>
+                <div className="text-2xl font-bold mt-1">
+                  {summary ? money(summary.totalRevenueCents, "usd") : "—"}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Total orders</div>
+                <div className="text-2xl font-bold mt-1">
+                  {summary ? summary.totalOrders : "—"}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Avg order value</div>
+                <div className="text-2xl font-bold mt-1">
+                  {summary ? money(summary.aovCents, "usd") : "—"}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Paid vs Refunded</div>
+                <div className="text-lg font-semibold mt-2">
+                  {summary ? `${summary.paidOrders} paid` : "—"}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {summary ? `${summary.refundedOrders} refunded` : ""}
+                </div>
+              </div>
+            </div>
+
+            {!summary && canAuth && (
+              <div className="text-sm text-muted-foreground">
+                No summary loaded yet — click “Refresh overview”.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ------------------- ORDERS ------------------- */}
         {tab === "orders" && (
           <div className="mt-6 grid gap-4">
-            {/* Details panel */}
             {(selectedOrderId || orderDetailLoading || orderDetailError) && (
               <div className="rounded-lg border border-border p-4">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -424,24 +463,18 @@ export default function AdminDashboard() {
                   <div className="mt-3 text-sm text-muted-foreground">Loading order…</div>
                 )}
 
-                {orderDetailError && (
-                  <div className="mt-3 text-sm text-red-400">{orderDetailError}</div>
-                )}
+                {orderDetailError && <div className="mt-3 text-sm text-red-400">{orderDetailError}</div>}
 
                 {selectedOrderDetail && (
                   <div className="mt-4 grid md:grid-cols-3 gap-4">
                     <div className="rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Created</div>
-                      <div className="font-medium mt-1">
-                        {fmtDate(selectedOrderDetail.createdAt)}
-                      </div>
+                      <div className="font-medium mt-1">{fmtDate(selectedOrderDetail.createdAt)}</div>
                     </div>
 
                     <div className="rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Customer</div>
-                      <div className="font-medium mt-1">
-                        {selectedOrderDetail.customerEmail || "—"}
-                      </div>
+                      <div className="font-medium mt-1">{selectedOrderDetail.customerEmail || "—"}</div>
                     </div>
 
                     <div className="rounded-md border border-border p-3">
@@ -457,9 +490,7 @@ export default function AdminDashboard() {
 
                     <div className="md:col-span-3 rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Shipping</div>
-                      <div className="font-medium mt-1">
-                        {selectedOrderDetail.shippingName || "—"}
-                      </div>
+                      <div className="font-medium mt-1">{selectedOrderDetail.shippingName || "—"}</div>
                       <div className="text-sm text-muted-foreground mt-1">
                         {oneLineAddress(selectedOrderDetail.shippingAddress)}
                       </div>
@@ -483,7 +514,46 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Orders table */}
+            <div className="rounded-lg border border-border p-4">
+              <div className="flex gap-3 flex-wrap items-end">
+                <div className="flex-1 min-w-[220px]">
+                  <input
+                    value={orderQ}
+                    onChange={(e) => setOrderQ(e.target.value)}
+                    placeholder="Search orders..."
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  />
+                </div>
+
+                <select
+                  value={orderStatus}
+                  onChange={(e) => setOrderStatus(e.target.value)}
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                >
+                  <option value="">All</option>
+                  <option value="paid">paid</option>
+                  <option value="refunded">refunded</option>
+                </select>
+
+                <select
+                  value={orderMode}
+                  onChange={(e) => setOrderMode(e.target.value)}
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                >
+                  <option value="">All</option>
+                  <option value="payment">One-time</option>
+                  <option value="subscription">Subscription</option>
+                </select>
+
+                <Button type="button" onClick={loadOrders} className="h-10">
+                  Apply
+                </Button>
+              </div>
+              {ordersLoading && (
+                <div className="mt-3 text-sm text-muted-foreground">Loading…</div>
+              )}
+            </div>
+
             <div className="rounded-lg border border-border overflow-hidden">
               <div className="p-4 border-b border-border">
                 <div className="font-semibold">Orders ({orders.length})</div>
@@ -506,9 +576,7 @@ export default function AdminDashboard() {
                       <tr key={o.id} className="border-t border-border">
                         <td className="p-3">{fmtDate(o.createdAt)}</td>
                         <td className="p-3">{o.customerEmail || "—"}</td>
-                        <td className="p-3">
-                          {o.isSubscription ? "Subscription" : "One-time"}
-                        </td>
+                        <td className="p-3">{o.isSubscription ? "Subscription" : "One-time"}</td>
                         <td className="p-3">{o.status || "—"}</td>
                         <td className="p-3">{money(o.amountTotal, o.currency)}</td>
                         <td className="p-3">
@@ -543,10 +611,99 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Keep your existing Overview + Wholesale tabs exactly as before */}
-        {tab !== "orders" && (
-          <div className="mt-6 text-sm text-muted-foreground">
-            Switch to the Orders tab to view orders.
+        {/* ------------------- WHOLESALE ------------------- */}
+        {tab === "wholesale" && (
+          <div className="mt-6 grid gap-4">
+            <div className="rounded-lg border border-border p-4">
+              <div className="flex gap-3 flex-wrap items-end">
+                <div className="flex-1 min-w-[220px]">
+                  <input
+                    value={wholesaleQ}
+                    onChange={(e) => setWholesaleQ(e.target.value)}
+                    placeholder="Search wholesale applications..."
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  />
+                </div>
+
+                <select
+                  value={wholesaleStatusFilter}
+                  onChange={(e) => setWholesaleStatusFilter(e.target.value as any)}
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                >
+                  <option value="">All</option>
+                  <option value="new">new</option>
+                  <option value="reviewing">reviewing</option>
+                  <option value="approved">approved</option>
+                  <option value="rejected">rejected</option>
+                  <option value="closed">closed</option>
+                </select>
+
+                <Button type="button" onClick={loadWholesale} className="h-10">
+                  Refresh
+                </Button>
+              </div>
+
+              {wholesaleLoading && (
+                <div className="mt-3 text-sm text-muted-foreground">Loading…</div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <div className="font-semibold">
+                  Wholesale applications ({filteredWholesale.length})
+                </div>
+              </div>
+
+              <div className="overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40">
+                    <tr>
+                      <th className="p-3 text-left">Business</th>
+                      <th className="p-3 text-left">Contact</th>
+                      <th className="p-3 text-left">Email</th>
+                      <th className="p-3 text-left">Status</th>
+                      <th className="p-3 text-left">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredWholesale.map((r) => (
+                      <tr key={r.id} className="border-t border-border">
+                        <td className="p-3">{r.businessName}</td>
+                        <td className="p-3">{r.contactName}</td>
+                        <td className="p-3">{r.email}</td>
+                        <td className="p-3">
+                          <code>{r.status}</code>
+                        </td>
+                        <td className="p-3">
+                          <select
+                            value={r.status}
+                            onChange={(e) =>
+                              updateWholesaleStatus(r.id, e.target.value as any)
+                            }
+                            className="h-8 rounded-md border border-border bg-background px-2 text-sm"
+                          >
+                            <option value="new">new</option>
+                            <option value="reviewing">reviewing</option>
+                            <option value="approved">approved</option>
+                            <option value="rejected">rejected</option>
+                            <option value="closed">closed</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {!filteredWholesale.length && (
+                      <tr>
+                        <td className="p-4 text-muted-foreground" colSpan={5}>
+                          No wholesale applications found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>

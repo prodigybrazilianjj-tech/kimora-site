@@ -36,6 +36,13 @@
       "when": 1771007401748,
       "tag": "0004_friendly_echo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772160813275,
+      "tag": "0005_slim_mulholland_black",
+      "breakpoints": true
     }
   ]
 }

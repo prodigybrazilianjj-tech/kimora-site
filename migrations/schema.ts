@@ -67,9 +67,7 @@ export const orders = pgTable(
     ),
 
     // Performance indexes
-    paymentIntentIdx: index("orders_payment_intent_idx").on(
-      t.stripePaymentIntentId,
-    ),
+    paymentIntentIdx: index("orders_payment_intent_idx").on(t.stripePaymentIntentId),
     subscriptionIdx: index("orders_subscription_idx").on(t.stripeSubscriptionId),
     customerEmailIdx: index("orders_customer_email_idx").on(t.customerEmail),
     stripeCustomerIdx: index("orders_stripe_customer_idx").on(t.stripeCustomerId),
@@ -99,6 +97,16 @@ export const orderItems = pgTable(
     quantity: integer("quantity").notNull().default(1),
 
     unitAmount: integer("unit_amount"),
+
+    // ✅ Fulfillment tracking (per item)
+    // Keep as text so you can evolve statuses without enum migrations.
+    fulfillmentStatus: text("fulfillment_status")
+      .notNull()
+      .default("unfulfilled"),
+    carrier: text("carrier"),
+    trackingNumber: text("tracking_number"),
+    shippedAt: timestamp("shipped_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
 
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -151,14 +159,10 @@ export const portalTokens = pgTable(
       .defaultNow(),
   },
   (t) => ({
-    tokenHashUnique: uniqueIndex("portal_tokens_token_hash_unique").on(
-      t.tokenHash,
-    ),
+    tokenHashUnique: uniqueIndex("portal_tokens_token_hash_unique").on(t.tokenHash),
     emailIdx: index("portal_tokens_email_idx").on(t.email),
     expiresAtIdx: index("portal_tokens_expires_at_idx").on(t.expiresAt),
-    stripeCustomerIdx: index("portal_tokens_stripe_customer_idx").on(
-      t.stripeCustomerId,
-    ),
+    stripeCustomerIdx: index("portal_tokens_stripe_customer_idx").on(t.stripeCustomerId),
   }),
 );
 

@@ -187,7 +187,7 @@ async function findStripeCustomerIdByEmail(
     const dbCustomerId = found?.[0]?.stripeCustomerId ?? null;
     if (dbCustomerId) return dbCustomerId;
   } catch (e) {
-    console.warn("[checkout] DB customer lookup failed:", e);
+    console.warn("[checkout] DB customer lookup failed:", safeErrSummary(e));
   }
 
   try {
@@ -197,7 +197,7 @@ async function findStripeCustomerIdByEmail(
     });
     return list.data?.[0]?.id ?? null;
   } catch (e) {
-    console.warn("[checkout] Stripe customer lookup failed:", e);
+    console.warn("[checkout] Stripe customer lookup failed:", safeErrSummary(e));
     return null;
   }
 }
@@ -380,6 +380,8 @@ async function sendOrderConfirmationEmail(args: {
     return;
   }
 
+  // ✅ Use resolved shipping if present on session (we persist it in DB),
+  // but fall back to customer_details name.
   const name = safeString(args.session?.customer_details?.name, 200);
   const shippingName =
     safeString(args.session?.shipping_details?.name, 200) || name;
@@ -448,9 +450,7 @@ async function sendOrderConfirmationEmail(args: {
     (amountSubtotal != null
       ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n`
       : "") +
-    (amountTotal != null
-      ? `Total: ${formatMoney(amountTotal, currency)}\n`
-      : "") +
+    (amountTotal != null ? `Total: ${formatMoney(amountTotal, currency)}\n` : "") +
     (shippingAddr
       ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(
           shippingAddr,
@@ -537,9 +537,7 @@ async function sendOrderConfirmationEmail(args: {
       ? `<div style="margin:0 0 14px;">
           <div><b>Shipping to</b></div>
           <div style="color:#444;">${escapeHtml(shippingName || "(name)")}</div>
-          <div style="color:#444;">${escapeHtml(
-            addressToOneLine(shippingAddr),
-          )}</div>
+          <div style="color:#444;">${escapeHtml(addressToOneLine(shippingAddr))}</div>
         </div>`
       : ""
   }
@@ -716,14 +714,6 @@ function verifyToken<T>(token: string, secret: string): T | null {
   }
 }
 
-function parseBool(s: any): boolean | null {
-  if (s === null || s === undefined) return null;
-  const v = String(s).trim().toLowerCase();
-  if (v === "true" || v === "1" || v === "yes") return true;
-  if (v === "false" || v === "0" || v === "no") return false;
-  return null;
-}
-
 function pickOrderSearchWhere(q: string) {
   const needle = `%${q}%`;
   return or(
@@ -891,7 +881,8 @@ export async function registerRoutes(
       if (q) whereParts.push(pickOrderSearchWhere(q));
       if (status) whereParts.push(eq(orders.status, status));
 
-      if (mode === "subscription") whereParts.push(eq(orders.isSubscription, true));
+      if (mode === "subscription")
+        whereParts.push(eq(orders.isSubscription, true));
       if (mode === "payment") whereParts.push(eq(orders.isSubscription, false));
 
       const where = whereParts.length === 0 ? undefined : and(...whereParts);
@@ -936,7 +927,8 @@ export async function registerRoutes(
 
     try {
       const id = String(req.params.id || "").trim();
-      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+      if (!id)
+        return res.status(400).json({ ok: false, message: "Missing id." });
 
       const order = await db
         .select()
@@ -966,15 +958,19 @@ export async function registerRoutes(
   });
 
   // ✅ Admin: per-item fulfillment update
+  // (No changes needed here besides keeping in sync with schema fields, which now exist.)
   app.patch("/api/admin/order-items/:id/fulfillment", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
 
     try {
       const id = String(req.params.id || "").trim();
-      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+      if (!id)
+        return res.status(400).json({ ok: false, message: "Missing id." });
 
-      const status = String(req.body?.fulfillmentStatus ?? "").trim().toLowerCase();
+      const status = String(req.body?.fulfillmentStatus ?? "")
+        .trim()
+        .toLowerCase();
       const carrier = safeString(req.body?.carrier, 80) || null;
       const trackingNumber = safeString(req.body?.trackingNumber, 120) || null;
 
@@ -1012,7 +1008,9 @@ export async function registerRoutes(
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("PATCH /api/admin/order-items/:id/fulfillment error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to update item." });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to update item." });
     }
   });
 
@@ -1555,6 +1553,10 @@ export async function registerRoutes(
           }
         }
 
+        // ✅ IMPORTANT CHANGE:
+        // order_items now has a UNIQUE index on (order_id, stripe_price_id) AND (order_id, stripe_line_item_id).
+        // In subscription mode, Stripe line item IDs can change across invoices, but checkout.session.completed is one-time,
+        // so we're ok. Still: prefer to conflict-target on (orderId, stripeLineItemId) when available.
         if (orderId) {
           for (const li of lineItems.data) {
             const priceId = li.price?.id ?? null;
@@ -1580,14 +1582,14 @@ export async function registerRoutes(
                 quantity: qty,
                 unitAmount: li.price?.unit_amount ?? null,
 
-                // ✅ new items start unfulfilled
+                // ✅ new items start unfulfilled (schema now has these cols)
                 fulfillmentStatus: "unfulfilled",
                 carrier: null,
                 trackingNumber: null,
                 shippedAt: null,
                 deliveredAt: null,
               })
-              .onConflictDoNothing();
+              .onConflictDoNothing(); // relies on your unique indexes in schema/db
           }
         }
 

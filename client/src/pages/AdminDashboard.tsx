@@ -116,11 +116,7 @@ function getApiBase() {
   return "";
 }
 
-async function api<T>(
-  path: string,
-  token: string,
-  init?: RequestInit,
-): Promise<T> {
+async function api<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const res = await fetch(getApiBase() + path, {
     ...(init || {}),
     headers: {
@@ -173,30 +169,21 @@ export default function AdminDashboard() {
   const [orderQ, setOrderQ] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
   const [orderMode, setOrderMode] = useState("");
+
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(
-    null,
-  );
-  const [selectedOrderItems, setSelectedOrderItems] = useState<OrderItemRow[]>(
-    [],
-  );
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(null);
+  const [selectedOrderItems, setSelectedOrderItems] = useState<OrderItemRow[]>([]);
   const [orderDetailLoading, setOrderDetailLoading] = useState(false);
   const [orderDetailError, setOrderDetailError] = useState<string | null>(null);
 
-  // Local edits for item fulfillment (so inputs don't fight server state)
   const [itemEdits, setItemEdits] = useState<
-    Record<
-      string,
-      { fulfillmentStatus: FulfillmentStatus; carrier: string; trackingNumber: string }
-    >
+    Record<string, { fulfillmentStatus: FulfillmentStatus; carrier: string; trackingNumber: string }>
   >({});
 
   const [wholesale, setWholesale] = useState<WholesaleRow[]>([]);
   const [wholesaleLoading, setWholesaleLoading] = useState(false);
   const [wholesaleQ, setWholesaleQ] = useState("");
-  const [wholesaleStatusFilter, setWholesaleStatusFilter] = useState<
-    "" | WholesaleRow["status"]
-  >("");
+  const [wholesaleStatusFilter, setWholesaleStatusFilter] = useState<"" | WholesaleRow["status"]>("");
 
   const canAuth = Boolean(savedToken);
 
@@ -228,10 +215,7 @@ export default function AdminDashboard() {
 
   async function loadSummary() {
     if (!savedToken) return;
-    const data = await api<{ ok: true; summary: Summary }>(
-      "/api/admin/summary",
-      savedToken,
-    );
+    const data = await api<{ ok: true; summary: Summary }>("/api/admin/summary", savedToken);
     setSummary(data.summary);
   }
 
@@ -245,7 +229,6 @@ export default function AdminDashboard() {
       if (orderMode.trim()) qs.set("mode", orderMode.trim());
 
       const url = `/api/admin/orders${qs.toString() ? `?${qs.toString()}` : ""}`;
-
       const data = await api<{ ok: true; rows: OrderRow[] }>(url, savedToken);
       setOrders(data.rows || []);
     } finally {
@@ -277,8 +260,6 @@ export default function AdminDashboard() {
     setOrderDetailLoading(true);
     setItemEdits({});
 
-    toast({ title: "Loading order…", description: id });
-
     try {
       const data = await api<{ ok: true; order: any; items: OrderItemRow[] }>(
         `/api/admin/orders/${id}`,
@@ -286,17 +267,16 @@ export default function AdminDashboard() {
       );
 
       setSelectedOrderDetail(data.order);
+
       const items = (data.items || []) as OrderItemRow[];
       setSelectedOrderItems(items);
 
-      // seed edit state
-      const seeded: typeof itemEdits = {};
+      const seeded: Record<string, { fulfillmentStatus: FulfillmentStatus; carrier: string; trackingNumber: string }> =
+        {};
       for (const it of items) {
         const status = (it.fulfillmentStatus || "unfulfilled") as FulfillmentStatus;
         seeded[it.id] = {
-          fulfillmentStatus: FULFILLMENT_STATUSES.includes(status)
-            ? status
-            : "unfulfilled",
+          fulfillmentStatus: FULFILLMENT_STATUSES.includes(status) ? status : "unfulfilled",
           carrier: String(it.carrier || ""),
           trackingNumber: String(it.trackingNumber || ""),
         };
@@ -320,20 +300,13 @@ export default function AdminDashboard() {
     setItemEdits({});
   }
 
-  async function updateWholesaleStatus(
-    id: string,
-    status: WholesaleRow["status"],
-  ) {
+  async function updateWholesaleStatus(id: string, status: WholesaleRow["status"]) {
     if (!savedToken) return;
 
-    await api<{ ok: true }>(
-      `/api/admin/wholesale-applications/${id}`,
-      savedToken,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      },
-    );
+    await api<{ ok: true }>(`/api/admin/wholesale-applications/${id}`, savedToken, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
 
     await loadWholesale();
   }
@@ -344,22 +317,17 @@ export default function AdminDashboard() {
     const edit = itemEdits[itemId];
     if (!edit) return;
 
-    await api<{ ok: true }>(
-      `/api/admin/order-items/${itemId}/fulfillment`,
-      savedToken,
-      {
-        method: "PATCH",
-        body: JSON.stringify({
-          fulfillmentStatus: edit.fulfillmentStatus,
-          carrier: edit.carrier || null,
-          trackingNumber: edit.trackingNumber || null,
-        }),
-      },
-    );
+    await api<{ ok: true }>(`/api/admin/order-items/${itemId}/fulfillment`, savedToken, {
+      method: "PATCH",
+      body: JSON.stringify({
+        fulfillmentStatus: edit.fulfillmentStatus,
+        carrier: edit.carrier || null,
+        trackingNumber: edit.trackingNumber || null,
+      }),
+    });
 
-    toast({ title: "Saved item", description: `Item ${itemId}` });
+    toast({ title: "Saved", description: `Item updated` });
 
-    // reload order detail so timestamps (shippedAt/deliveredAt) are reflected
     if (selectedOrderId) {
       await openOrder(selectedOrderId);
     }
@@ -367,7 +335,6 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!savedToken) return;
-
     loadSummary().catch(() => {});
     loadOrders().catch(() => {});
     loadWholesale().catch(() => {});
@@ -376,21 +343,12 @@ export default function AdminDashboard() {
   const filteredWholesale = useMemo(() => {
     let rows = wholesale;
 
-    if (wholesaleStatusFilter) {
-      rows = rows.filter((r) => r.status === wholesaleStatusFilter);
-    }
+    if (wholesaleStatusFilter) rows = rows.filter((r) => r.status === wholesaleStatusFilter);
 
     const q = wholesaleQ.trim().toLowerCase();
     if (q) {
       rows = rows.filter((r) => {
-        const hay = [
-          r.businessName,
-          r.contactName,
-          r.email,
-          r.city,
-          r.state,
-          r.phone,
-        ]
+        const hay = [r.businessName, r.contactName, r.email, r.city, r.state, r.phone]
           .map((x) => String(x || "").toLowerCase())
           .join(" | ");
         return hay.includes(q);
@@ -406,9 +364,7 @@ export default function AdminDashboard() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground mt-2">
-              Orders • Revenue • Wholesale
-            </p>
+            <p className="text-muted-foreground mt-2">Orders • Revenue • Wholesale</p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -421,12 +377,7 @@ export default function AdminDashboard() {
             <Button type="button" onClick={saveToken} className="h-10">
               Save token
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={clearToken}
-              className="h-10"
-            >
+            <Button type="button" variant="outline" onClick={clearToken} className="h-10">
               Clear
             </Button>
           </div>
@@ -436,32 +387,19 @@ export default function AdminDashboard() {
           <div className="mt-8 rounded-lg border border-border p-5">
             <div className="font-semibold">Token required</div>
             <p className="text-sm text-muted-foreground mt-1">
-              Set ADMIN_DASHBOARD_TOKEN in Render, then paste it here and click
-              Save token.
+              Set ADMIN_DASHBOARD_TOKEN in Render, then paste it here and click Save token.
             </p>
           </div>
         )}
 
         <div className="mt-8 flex gap-2 flex-wrap">
-          <Button
-            type="button"
-            variant={tab === "overview" ? "default" : "outline"}
-            onClick={() => setTab("overview")}
-          >
+          <Button type="button" variant={tab === "overview" ? "default" : "outline"} onClick={() => setTab("overview")}>
             Overview
           </Button>
-          <Button
-            type="button"
-            variant={tab === "orders" ? "default" : "outline"}
-            onClick={() => setTab("orders")}
-          >
+          <Button type="button" variant={tab === "orders" ? "default" : "outline"} onClick={() => setTab("orders")}>
             Orders
           </Button>
-          <Button
-            type="button"
-            variant={tab === "wholesale" ? "default" : "outline"}
-            onClick={() => setTab("wholesale")}
-          >
+          <Button type="button" variant={tab === "wholesale" ? "default" : "outline"} onClick={() => setTab("wholesale")}>
             Wholesale
           </Button>
 
@@ -495,26 +433,18 @@ export default function AdminDashboard() {
 
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Total orders</div>
-                <div className="text-2xl font-bold mt-1">
-                  {summary ? summary.totalOrders : "—"}
-                </div>
+                <div className="text-2xl font-bold mt-1">{summary ? summary.totalOrders : "—"}</div>
               </div>
 
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Avg order value</div>
-                <div className="text-2xl font-bold mt-1">
-                  {summary ? money(summary.aovCents, "usd") : "—"}
-                </div>
+                <div className="text-2xl font-bold mt-1">{summary ? money(summary.aovCents, "usd") : "—"}</div>
               </div>
 
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Paid vs Refunded</div>
-                <div className="text-lg font-semibold mt-2">
-                  {summary ? `${summary.paidOrders} paid` : "—"}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {summary ? `${summary.refundedOrders} refunded` : ""}
-                </div>
+                <div className="text-lg font-semibold mt-2">{summary ? `${summary.paidOrders} paid` : "—"}</div>
+                <div className="text-sm text-muted-foreground">{summary ? `${summary.refundedOrders} refunded` : ""}</div>
               </div>
             </div>
           </div>
@@ -545,70 +475,47 @@ export default function AdminDashboard() {
                         Refresh detail
                       </Button>
                     )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-9"
-                      onClick={closeOrder}
-                    >
+                    <Button type="button" variant="outline" className="h-9" onClick={closeOrder}>
                       Close
                     </Button>
                   </div>
                 </div>
 
-                {orderDetailLoading && (
-                  <div className="mt-3 text-sm text-muted-foreground">
-                    Loading order…
-                  </div>
-                )}
-
-                {orderDetailError && (
-                  <div className="mt-3 text-sm text-red-400">{orderDetailError}</div>
-                )}
+                {orderDetailLoading && <div className="mt-3 text-sm text-muted-foreground">Loading order…</div>}
+                {orderDetailError && <div className="mt-3 text-sm text-red-400">{orderDetailError}</div>}
 
                 {selectedOrderDetail && (
                   <div className="mt-4 grid md:grid-cols-3 gap-4">
                     <div className="rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Created</div>
-                      <div className="font-medium mt-1">
-                        {fmtDate(selectedOrderDetail.createdAt)}
-                      </div>
+                      <div className="font-medium mt-1">{fmtDate(selectedOrderDetail.createdAt)}</div>
                     </div>
 
                     <div className="rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Customer</div>
-                      <div className="font-medium mt-1">
-                        {selectedOrderDetail.customerEmail || "—"}
-                      </div>
+                      <div className="font-medium mt-1">{selectedOrderDetail.customerEmail || "—"}</div>
                     </div>
 
                     <div className="rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Total</div>
                       <div className="font-medium mt-1">
-                        {money(
-                          selectedOrderDetail.amountTotal,
-                          selectedOrderDetail.currency,
-                        )}
+                        {money(selectedOrderDetail.amountTotal, selectedOrderDetail.currency)}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         Status: {selectedOrderDetail.status || "—"} •{" "}
-                        {selectedOrderDetail.isSubscription
-                          ? "Subscription"
-                          : "One-time"}
+                        {selectedOrderDetail.isSubscription ? "Subscription" : "One-time"}
                       </div>
                     </div>
 
                     <div className="md:col-span-3 rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Shipping</div>
-                      <div className="font-medium mt-1">
-                        {selectedOrderDetail.shippingName || "—"}
-                      </div>
+                      <div className="font-medium mt-1">{selectedOrderDetail.shippingName || "—"}</div>
                       <div className="text-sm text-muted-foreground mt-1">
                         {oneLineAddress(selectedOrderDetail.shippingAddress)}
                       </div>
                     </div>
 
-                    {/* ✅ Fulfillment per item */}
+                    {/* Fulfillment per item */}
                     <div className="md:col-span-3 rounded-md border border-border p-3">
                       <div className="text-xs text-muted-foreground">Items</div>
 
@@ -622,6 +529,7 @@ export default function AdminDashboard() {
                               <th className="p-2 text-left">Carrier</th>
                               <th className="p-2 text-left">Tracking</th>
                               <th className="p-2 text-left">Shipped</th>
+                              <th className="p-2 text-left">Delivered</th>
                               <th className="p-2 text-left">Action</th>
                             </tr>
                           </thead>
@@ -691,10 +599,7 @@ export default function AdminDashboard() {
                                       onChange={(e) =>
                                         setItemEdits((prev) => ({
                                           ...prev,
-                                          [it.id]: {
-                                            ...edit,
-                                            trackingNumber: e.target.value,
-                                          },
+                                          [it.id]: { ...edit, trackingNumber: e.target.value },
                                         }))
                                       }
                                       placeholder="Tracking #"
@@ -702,9 +607,8 @@ export default function AdminDashboard() {
                                     />
                                   </td>
 
-                                  <td className="p-2 text-muted-foreground">
-                                    {it.shippedAt ? fmtDate(it.shippedAt) : "—"}
-                                  </td>
+                                  <td className="p-2 text-muted-foreground">{it.shippedAt ? fmtDate(it.shippedAt) : "—"}</td>
+                                  <td className="p-2 text-muted-foreground">{it.deliveredAt ? fmtDate(it.deliveredAt) : "—"}</td>
 
                                   <td className="p-2">
                                     <Button
@@ -722,7 +626,7 @@ export default function AdminDashboard() {
 
                             {!selectedOrderItems.length && (
                               <tr>
-                                <td className="p-3 text-muted-foreground" colSpan={7}>
+                                <td className="p-3 text-muted-foreground" colSpan={8}>
                                   No items found for this order.
                                 </td>
                               </tr>
@@ -732,7 +636,7 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="text-xs text-muted-foreground mt-2">
-                        Tip: setting an item to <code>shipped</code> automatically stamps shippedAt.
+                        Tip: setting to <code>shipped</code> stamps shippedAt. Setting to <code>delivered</code> stamps both.
                       </div>
                     </div>
                   </div>
@@ -776,9 +680,7 @@ export default function AdminDashboard() {
                 </Button>
               </div>
 
-              {ordersLoading && (
-                <div className="mt-3 text-sm text-muted-foreground">Loading…</div>
-              )}
+              {ordersLoading && <div className="mt-3 text-sm text-muted-foreground">Loading…</div>}
             </div>
 
             <div className="rounded-lg border border-border overflow-hidden">
@@ -803,9 +705,7 @@ export default function AdminDashboard() {
                       <tr key={o.id} className="border-t border-border">
                         <td className="p-3">{fmtDate(o.createdAt)}</td>
                         <td className="p-3">{o.customerEmail || "—"}</td>
-                        <td className="p-3">
-                          {o.isSubscription ? "Subscription" : "One-time"}
-                        </td>
+                        <td className="p-3">{o.isSubscription ? "Subscription" : "One-time"}</td>
                         <td className="p-3">{o.status || "—"}</td>
                         <td className="p-3">{money(o.amountTotal, o.currency)}</td>
                         <td className="p-3">
@@ -871,16 +771,12 @@ export default function AdminDashboard() {
                 </Button>
               </div>
 
-              {wholesaleLoading && (
-                <div className="mt-3 text-sm text-muted-foreground">Loading…</div>
-              )}
+              {wholesaleLoading && <div className="mt-3 text-sm text-muted-foreground">Loading…</div>}
             </div>
 
             <div className="rounded-lg border border-border overflow-hidden">
               <div className="p-4 border-b border-border">
-                <div className="font-semibold">
-                  Wholesale applications ({filteredWholesale.length})
-                </div>
+                <div className="font-semibold">Wholesale applications ({filteredWholesale.length})</div>
               </div>
 
               <div className="overflow-auto">
@@ -906,9 +802,7 @@ export default function AdminDashboard() {
                         <td className="p-3">
                           <select
                             value={r.status}
-                            onChange={(e) =>
-                              updateWholesaleStatus(r.id, e.target.value as any)
-                            }
+                            onChange={(e) => updateWholesaleStatus(r.id, e.target.value as any)}
                             className="h-8 rounded-md border border-border bg-background px-2 text-sm"
                           >
                             <option value="new">new</option>

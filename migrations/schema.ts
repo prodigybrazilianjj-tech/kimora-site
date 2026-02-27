@@ -1,92 +1,235 @@
-import { pgTable, unique, check, varchar, text, index, uniqueIndex, foreignKey, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
+// shared/schema.ts
+import { sql } from "drizzle-orm";
+import {
+  pgTable,
+  text,
+  varchar,
+  integer,
+  boolean,
+  timestamp,
+  jsonb,
+  uniqueIndex,
+  index,
+  check,
+} from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
 
-
-
+/** USERS */
 export const users = pgTable("users", {
-	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
-	username: text().notNull(),
-	password: text().notNull(),
-}, (table) => [
-	unique("users_username_unique").on(table.username),
-	check("users_id_not_null", sql`NOT NULL id`),
-	check("users_password_not_null", sql`NOT NULL password`),
-	check("users_username_not_null", sql`NOT NULL username`),
-]);
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+});
 
-export const orderItems = pgTable("order_items", {
-	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
-	orderId: varchar("order_id").notNull(),
-	flavor: text().notNull(),
-	purchaseType: text("purchase_type").notNull(),
-	frequencyWeeks: integer("frequency_weeks"),
-	quantity: integer().default(1).notNull(),
-	unitAmount: integer("unit_amount"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	stripePriceId: text("stripe_price_id"),
-	stripeLineItemId: text("stripe_line_item_id"),
-}, (table) => [
-	index("order_items_order_id_idx").using("btree", table.orderId.asc().nullsLast().op("text_ops")),
-	uniqueIndex("order_items_order_line_item_unique").using("btree", table.orderId.asc().nullsLast().op("text_ops"), table.stripeLineItemId.asc().nullsLast().op("text_ops")),
-	uniqueIndex("order_items_order_price_unique").using("btree", table.orderId.asc().nullsLast().op("text_ops"), table.stripePriceId.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.orderId],
-			foreignColumns: [orders.id],
-			name: "order_items_order_id_orders_id_fk"
-		}).onDelete("cascade"),
-	check("order_items_created_at_not_null", sql`NOT NULL created_at`),
-	check("order_items_flavor_not_null", sql`NOT NULL flavor`),
-	check("order_items_id_not_null", sql`NOT NULL id`),
-	check("order_items_order_id_not_null", sql`NOT NULL order_id`),
-	check("order_items_purchase_type_not_null", sql`NOT NULL purchase_type`),
-	check("order_items_quantity_not_null", sql`NOT NULL quantity`),
-]);
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+});
 
-export const orders = pgTable("orders", {
-	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
-	stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull(),
-	stripePaymentIntentId: text("stripe_payment_intent_id"),
-	stripeSubscriptionId: text("stripe_subscription_id"),
-	customerEmail: text("customer_email"),
-	currency: text().default('usd').notNull(),
-	amountSubtotal: integer("amount_subtotal"),
-	amountTotal: integer("amount_total"),
-	isSubscription: boolean("is_subscription").default(false).notNull(),
-	status: text().default('paid').notNull(),
-	shippingName: text("shipping_name"),
-	shippingAddress: jsonb("shipping_address"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	stripeCustomerId: text("stripe_customer_id"),
-}, (table) => [
-	uniqueIndex("orders_checkout_session_unique").using("btree", table.stripeCheckoutSessionId.asc().nullsLast().op("text_ops")),
-	index("orders_customer_email_idx").using("btree", table.customerEmail.asc().nullsLast().op("text_ops")),
-	index("orders_payment_intent_idx").using("btree", table.stripePaymentIntentId.asc().nullsLast().op("text_ops")),
-	index("orders_stripe_customer_idx").using("btree", table.stripeCustomerId.asc().nullsLast().op("text_ops")),
-	index("orders_subscription_idx").using("btree", table.stripeSubscriptionId.asc().nullsLast().op("text_ops")),
-	check("orders_created_at_not_null", sql`NOT NULL created_at`),
-	check("orders_currency_not_null", sql`NOT NULL currency`),
-	check("orders_id_not_null", sql`NOT NULL id`),
-	check("orders_is_subscription_not_null", sql`NOT NULL is_subscription`),
-	check("orders_status_not_null", sql`NOT NULL status`),
-	check("orders_stripe_checkout_session_id_not_null", sql`NOT NULL stripe_checkout_session_id`),
-]);
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
 
-export const portalTokens = pgTable("portal_tokens", {
-	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
-	tokenHash: text("token_hash").notNull(),
-	email: text().notNull(),
-	stripeCustomerId: text("stripe_customer_id"),
-	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
-	usedAt: timestamp("used_at", { withTimezone: true, mode: 'string' }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("portal_tokens_email_idx").using("btree", table.email.asc().nullsLast().op("text_ops")),
-	index("portal_tokens_expires_at_idx").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")),
-	index("portal_tokens_stripe_customer_idx").using("btree", table.stripeCustomerId.asc().nullsLast().op("text_ops")),
-	uniqueIndex("portal_tokens_token_hash_unique").using("btree", table.tokenHash.asc().nullsLast().op("text_ops")),
-	check("portal_tokens_created_at_not_null", sql`NOT NULL created_at`),
-	check("portal_tokens_email_not_null", sql`NOT NULL email`),
-	check("portal_tokens_expires_at_not_null", sql`NOT NULL expires_at`),
-	check("portal_tokens_id_not_null", sql`NOT NULL id`),
-	check("portal_tokens_token_hash_not_null", sql`NOT NULL token_hash`),
-]);
+/** ORDERS */
+export const orders = pgTable(
+  "orders",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    // Stripe identifiers
+    stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull(),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+
+    // Stripe customer id (needed for portal)
+    stripeCustomerId: text("stripe_customer_id"),
+
+    customerEmail: text("customer_email"),
+
+    currency: text("currency").notNull().default("usd"),
+    amountSubtotal: integer("amount_subtotal"),
+    amountTotal: integer("amount_total"),
+
+    isSubscription: boolean("is_subscription").notNull().default(false),
+    status: text("status").notNull().default("paid"),
+
+    shippingName: text("shipping_name"),
+    shippingAddress: jsonb("shipping_address"),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    // Webhook idempotency: one order per checkout session
+    checkoutSessionUnique: uniqueIndex("orders_checkout_session_unique").on(
+      t.stripeCheckoutSessionId,
+    ),
+
+    // Performance indexes
+    paymentIntentIdx: index("orders_payment_intent_idx").on(
+      t.stripePaymentIntentId,
+    ),
+    subscriptionIdx: index("orders_subscription_idx").on(t.stripeSubscriptionId),
+    customerEmailIdx: index("orders_customer_email_idx").on(t.customerEmail),
+    stripeCustomerIdx: index("orders_stripe_customer_idx").on(t.stripeCustomerId),
+  }),
+);
+
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = typeof orders.$inferInsert;
+
+/** ORDER ITEMS */
+export const orderItems = pgTable(
+  "order_items",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    orderId: varchar("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+
+    // Stripe identifiers
+    stripePriceId: text("stripe_price_id"),
+    stripeLineItemId: text("stripe_line_item_id"),
+
+    flavor: text("flavor").notNull(),
+    purchaseType: text("purchase_type").notNull(), // "onetime" | "subscribe"
+    frequencyWeeks: integer("frequency_weeks"),
+    quantity: integer("quantity").notNull().default(1),
+
+    unitAmount: integer("unit_amount"),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
+
+    // Fallback uniqueness: one price per order (if priceId exists)
+    orderPriceUnique: uniqueIndex("order_items_order_price_unique").on(
+      t.orderId,
+      t.stripePriceId,
+    ),
+
+    // More specific uniqueness when line item id exists
+    orderLineItemUnique: uniqueIndex("order_items_order_line_item_unique").on(
+      t.orderId,
+      t.stripeLineItemId,
+    ),
+  }),
+);
+
+export type OrderItem = typeof orderItems.$inferSelect;
+export type InsertOrderItem = typeof orderItems.$inferInsert;
+
+/**
+ * PORTAL TOKENS
+ * (Keeping this in case you still use it elsewhere. If not used, safe to delete later.)
+ */
+export const portalTokens = pgTable(
+  "portal_tokens",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    // store sha256(rawToken) only — never store raw token
+    tokenHash: text("token_hash").notNull(),
+
+    // normalized email (lowercase)
+    email: text("email").notNull(),
+
+    // optional: store customer id for speed/stability
+    stripeCustomerId: text("stripe_customer_id"),
+
+    // expiry + single-use enforcement
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    tokenHashUnique: uniqueIndex("portal_tokens_token_hash_unique").on(
+      t.tokenHash,
+    ),
+    emailIdx: index("portal_tokens_email_idx").on(t.email),
+    expiresAtIdx: index("portal_tokens_expires_at_idx").on(t.expiresAt),
+    stripeCustomerIdx: index("portal_tokens_stripe_customer_idx").on(
+      t.stripeCustomerId,
+    ),
+  }),
+);
+
+export type PortalToken = typeof portalTokens.$inferSelect;
+export type InsertPortalToken = typeof portalTokens.$inferInsert;
+
+/** WHOLESALE APPLICATIONS */
+export const wholesaleApplications = pgTable(
+  "wholesale_applications",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    businessName: text("business_name").notNull(),
+    contactName: text("contact_name").notNull(),
+
+    email: varchar("email", { length: 320 }).notNull(),
+
+    // REQUIRED now (backend stores digits-only)
+    phone: varchar("phone", { length: 32 }).notNull(),
+
+    websiteOrInstagram: text("website_or_instagram"),
+    city: text("city").notNull(),
+    state: varchar("state", { length: 16 }).notNull(),
+
+    businessType: varchar("business_type", { length: 32 }).notNull(), // gym|bjj|performance|trainer|retail|other
+    businessTypeOther: text("business_type_other"),
+
+    // REQUIRED now
+    memberCount: integer("member_count").notNull(),
+
+    retailSetup: varchar("retail_setup", { length: 32 }), // front_desk|pro_shop|supplement_wall|not_sure
+
+    interestedOnShelf: boolean("interested_on_shelf").notNull().default(true),
+    interestedCoachAffiliate: boolean("interested_coach_affiliate")
+      .notNull()
+      .default(false),
+    interestedEventSponsorship: boolean("interested_event_sponsorship")
+      .notNull()
+      .default(false),
+
+    notes: text("notes"),
+
+    status: varchar("status", { length: 32 }).notNull().default("new"), // new|reviewing|approved|rejected|closed
+    source: varchar("source", { length: 64 }).notNull().default("kimoraco.com"),
+
+    metadata: jsonb("metadata").$type<{
+      ip?: string | null;
+      userAgent?: string | null;
+      referer?: string | null;
+    }>(),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    createdAtIdx: index("wholesale_applications_created_at_idx").on(t.createdAt),
+    emailIdx: index("wholesale_applications_email_idx").on(t.email),
+    statusIdx: index("wholesale_applications_status_idx").on(t.status),
+
+    // DB constraints to match your backend validation
+    wholesalePhoneLenChk: check(
+      "wholesale_phone_len_chk",
+      sql`length(regexp_replace(${t.phone}, '\\D', '', 'g')) >= 10`,
+    ),
+    wholesaleMemberCountChk: check(
+      "wholesale_member_count_chk",
+      sql`${t.memberCount} > 0`,
+    ),
+  }),
+);
+
+export type WholesaleApplication = typeof wholesaleApplications.$inferSelect;
+export type InsertWholesaleApplication = typeof wholesaleApplications.$inferInsert;

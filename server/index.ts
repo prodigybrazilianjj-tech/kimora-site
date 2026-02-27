@@ -20,7 +20,7 @@ declare module "http" {
 // Stripe webhooks require raw body for signature verification
 app.use(
   express.json({
-    verify: (req, _res, buf) => {
+    verify: (req: any, _res, buf) => {
       req.rawBody = buf;
     },
   }),

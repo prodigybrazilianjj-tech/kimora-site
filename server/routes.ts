@@ -1,7 +1,7 @@
 // server/routes.ts
 import type { Express } from "express";
 import type { Server } from "http";
-import { eq, desc, sql, and, or } from "drizzle-orm";
+import { eq, desc, sql, and, or, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import { Resend } from "resend";
 
@@ -735,6 +735,61 @@ const ALLOWED_FULFILLMENT = new Set([
   "backordered",
 ]);
 
+function normalizeFulfillment(v: any) {
+  const s = String(v || "").trim().toLowerCase();
+  return ALLOWED_FULFILLMENT.has(s) ? s : "unfulfilled";
+}
+
+function computeFulfillmentRollup(items: Array<{ fulfillmentStatus?: any }>) {
+  const counts: Record<string, number> = {};
+
+  for (const it of items) {
+    const s = normalizeFulfillment(it.fulfillmentStatus);
+    counts[s] = (counts[s] || 0) + 1;
+  }
+
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+  const top = Object.entries(counts)
+    .map(([status, count]) => ({ status, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Derivation rules:
+  // - no items => unfulfilled
+  // - all canceled => canceled
+  // - all delivered => delivered
+  // - if any backordered => backordered (unless all delivered)
+  // - else if any shipped => shipped
+  // - else if any packed => packed
+  // - else if any allocated => allocated
+  // - else => unfulfilled
+  let fulfillmentStatus = "unfulfilled";
+
+  if (!total) {
+    fulfillmentStatus = "unfulfilled";
+  } else if ((counts["canceled"] || 0) === total) {
+    fulfillmentStatus = "canceled";
+  } else if ((counts["delivered"] || 0) === total) {
+    fulfillmentStatus = "delivered";
+  } else if ((counts["backordered"] || 0) > 0) {
+    fulfillmentStatus = "backordered";
+  } else if ((counts["shipped"] || 0) > 0) {
+    fulfillmentStatus = "shipped";
+  } else if ((counts["packed"] || 0) > 0) {
+    fulfillmentStatus = "packed";
+  } else if ((counts["allocated"] || 0) > 0) {
+    fulfillmentStatus = "allocated";
+  } else {
+    fulfillmentStatus = "unfulfilled";
+  }
+
+  return {
+    fulfillmentStatus,
+    fulfillmentCounts: counts,
+    fulfillmentTop: top,
+  };
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
@@ -887,7 +942,7 @@ export async function registerRoutes(
 
       const where = whereParts.length === 0 ? undefined : and(...whereParts);
 
-      const rows = await db
+      const baseRows = await db
         .select({
           id: orders.id,
           createdAt: orders.createdAt,
@@ -910,6 +965,38 @@ export async function registerRoutes(
         .where(where as any)
         .orderBy(desc(orders.createdAt))
         .limit(500);
+
+      const orderIds = baseRows.map((r) => r.id).filter(Boolean);
+      let itemsByOrder: Record<string, Array<{ fulfillmentStatus?: any }>> = {};
+
+      if (orderIds.length) {
+        const itemRows = await db
+          .select({
+            orderId: orderItems.orderId,
+            fulfillmentStatus: orderItems.fulfillmentStatus,
+          })
+          .from(orderItems)
+          .where(inArray(orderItems.orderId, orderIds as any))
+          .limit(5000);
+
+        itemsByOrder = {};
+        for (const it of itemRows) {
+          const oid = String(it.orderId);
+          if (!itemsByOrder[oid]) itemsByOrder[oid] = [];
+          itemsByOrder[oid].push({ fulfillmentStatus: it.fulfillmentStatus });
+        }
+      }
+
+      const rows = baseRows.map((r) => {
+        const items = itemsByOrder[String(r.id)] || [];
+        const rollup = computeFulfillmentRollup(items);
+        return {
+          ...r,
+          fulfillmentStatus: rollup.fulfillmentStatus,
+          fulfillmentCounts: rollup.fulfillmentCounts,
+          fulfillmentTop: rollup.fulfillmentTop,
+        };
+      });
 
       return res.json({ ok: true, rows });
     } catch (err: any) {
@@ -957,8 +1044,65 @@ export async function registerRoutes(
     }
   });
 
+  // ✅ Admin: order-level bulk fulfillment update (quick set)
+  app.patch("/api/admin/orders/:id/fulfillment", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) {
+        return res.status(400).json({ ok: false, message: "Missing id." });
+      }
+
+      const status = String(req.body?.fulfillmentStatus ?? "")
+        .trim()
+        .toLowerCase();
+
+      if (!status || !ALLOWED_FULFILLMENT.has(status)) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            "Invalid fulfillmentStatus. Allowed: unfulfilled, allocated, packed, shipped, delivered, canceled, backordered",
+        });
+      }
+
+      const now = new Date();
+
+      // Bulk update ALL items in the order.
+      // Timestamp behavior:
+      // - shipped => shippedAt = now (if null)
+      // - delivered => shippedAt = COALESCE(shippedAt, now), deliveredAt = now (if null)
+      const set: any = {
+        fulfillmentStatus: status,
+      };
+
+      if (status === "shipped") {
+        set.shippedAt = sql`COALESCE(${orderItems.shippedAt}, ${now})`;
+      }
+
+      if (status === "delivered") {
+        set.shippedAt = sql`COALESCE(${orderItems.shippedAt}, ${now})`;
+        set.deliveredAt = sql`COALESCE(${orderItems.deliveredAt}, ${now})`;
+      }
+
+      const updated = await db
+        .update(orderItems)
+        .set(set)
+        .where(eq(orderItems.orderId, id))
+        .returning({ id: orderItems.id });
+
+      return res.json({ ok: true, updated: updated?.length || 0 });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("PATCH /api/admin/orders/:id/fulfillment error:", s);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to update order items." });
+    }
+  });
+
   // ✅ Admin: per-item fulfillment update
-  // (No changes needed here besides keeping in sync with schema fields, which now exist.)
   app.patch("/api/admin/order-items/:id/fulfillment", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
@@ -1553,10 +1697,6 @@ export async function registerRoutes(
           }
         }
 
-        // ✅ IMPORTANT CHANGE:
-        // order_items now has a UNIQUE index on (order_id, stripe_price_id) AND (order_id, stripe_line_item_id).
-        // In subscription mode, Stripe line item IDs can change across invoices, but checkout.session.completed is one-time,
-        // so we're ok. Still: prefer to conflict-target on (orderId, stripeLineItemId) when available.
         if (orderId) {
           for (const li of lineItems.data) {
             const priceId = li.price?.id ?? null;
@@ -1582,14 +1722,13 @@ export async function registerRoutes(
                 quantity: qty,
                 unitAmount: li.price?.unit_amount ?? null,
 
-                // ✅ new items start unfulfilled (schema now has these cols)
                 fulfillmentStatus: "unfulfilled",
                 carrier: null,
                 trackingNumber: null,
                 shippedAt: null,
                 deliveredAt: null,
               })
-              .onConflictDoNothing(); // relies on your unique indexes in schema/db
+              .onConflictDoNothing();
           }
         }
 

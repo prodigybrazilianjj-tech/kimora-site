@@ -28,9 +28,7 @@ function slugToEnvKey(slug: string) {
 function getSiteUrl() {
   return (
     process.env.PUBLIC_SITE_URL ||
-    (process.env.NODE_ENV === "production"
-      ? "https://kimoraco.com"
-      : "http://localhost:5173")
+    (process.env.NODE_ENV === "production" ? "https://kimoraco.com" : "http://localhost:5173")
   );
 }
 
@@ -62,15 +60,8 @@ function escapeHtml(s: string) {
  */
 function safeErrSummary(err: any) {
   const message = String(err?.message || "unknown error");
-  const code =
-    err?.code ||
-    err?.cause?.code ||
-    err?.cause?.errno ||
-    err?.errno ||
-    null;
-
+  const code = err?.code || err?.cause?.code || err?.cause?.errno || err?.errno || null;
   const shortMsg = message.length > 180 ? message.slice(0, 180) + "…" : message;
-
   return { code, message: shortMsg };
 }
 
@@ -91,16 +82,10 @@ function getPriceId(item: CheckoutItem) {
   return priceId;
 }
 
-function envPriceId(
-  flavor: string,
-  type: "onetime" | "subscribe",
-  frequency?: "2" | "4" | "6",
-) {
+function envPriceId(flavor: string, type: "onetime" | "subscribe", frequency?: "2" | "4" | "6") {
   const flavorKey = slugToEnvKey(flavor);
   const envName =
-    type === "onetime"
-      ? `STRIPE_PRICE_${flavorKey}_ONETIME`
-      : `STRIPE_PRICE_${flavorKey}_SUB_${frequency}W`;
+    type === "onetime" ? `STRIPE_PRICE_${flavorKey}_ONETIME` : `STRIPE_PRICE_${flavorKey}_SUB_${frequency}W`;
 
   return process.env[envName] || null;
 }
@@ -110,11 +95,7 @@ function mapPriceIdToItem(priceId: string): {
   purchaseType: "onetime" | "subscribe";
   frequencyWeeks: number | null;
 } {
-  const flavors = [
-    "strawberry-guava",
-    "lemon-yuzu",
-    "raspberry-dragonfruit",
-  ] as const;
+  const flavors = ["strawberry-guava", "lemon-yuzu", "raspberry-dragonfruit"] as const;
 
   for (const flavor of flavors) {
     const onetime = envPriceId(flavor, "onetime");
@@ -137,20 +118,14 @@ function mapPriceIdToItem(priceId: string): {
  * Stripe customer id is sometimes missing from checkout.session.completed in subscription mode.
  * This helper backfills via the subscription if necessary.
  */
-async function getStripeCustomerIdFromCheckoutSession(
-  session: any,
-): Promise<string | null> {
+async function getStripeCustomerIdFromCheckoutSession(session: any): Promise<string | null> {
   let stripeCustomerId: string | null =
-    typeof session.customer === "string"
-      ? session.customer
-      : session.customer?.id ?? null;
+    typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
 
   if (!stripeCustomerId && session.subscription) {
     try {
       const subId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : session.subscription?.id;
+        typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
 
       if (subId) {
         const subscription = await stripe.subscriptions.retrieve(subId);
@@ -160,19 +135,14 @@ async function getStripeCustomerIdFromCheckoutSession(
             : subscription.customer?.id ?? null;
       }
     } catch (err) {
-      console.warn(
-        "Failed to retrieve subscription to backfill stripe customer id:",
-        err,
-      );
+      console.warn("Failed to retrieve subscription to backfill stripe customer id:", err);
     }
   }
 
   return stripeCustomerId;
 }
 
-async function findStripeCustomerIdByEmail(
-  email: string,
-): Promise<string | null> {
+async function findStripeCustomerIdByEmail(email: string): Promise<string | null> {
   const normalized = normalizeEmail(email);
   if (!normalized || !isValidEmail(normalized)) return null;
 
@@ -226,8 +196,7 @@ function parsePositiveInt(value: unknown): number | null {
 
 function adminTokenFromReq(req: any) {
   const header =
-    String(req.headers["x-admin-token"] ?? "").trim() ||
-    String(req.headers["authorization"] ?? "").trim();
+    String(req.headers["x-admin-token"] ?? "").trim() || String(req.headers["authorization"] ?? "").trim();
 
   if (!header) return "";
 
@@ -254,10 +223,7 @@ function requireAdmin(req: any, res: any) {
   return null;
 }
 
-function formatMoney(
-  amountCents: number | null | undefined,
-  currency: string | null | undefined,
-) {
+function formatMoney(amountCents: number | null | undefined, currency: string | null | undefined) {
   if (amountCents === null || amountCents === undefined) return "";
   const ccy = String(currency || "usd").toUpperCase();
   const dollars = amountCents / 100;
@@ -273,14 +239,7 @@ function formatMoney(
 
 function addressToOneLine(addr: any): string {
   if (!addr) return "";
-  const parts = [
-    addr.line1,
-    addr.line2,
-    addr.city,
-    addr.state,
-    addr.postal_code,
-    addr.country,
-  ]
+  const parts = [addr.line1, addr.line2, addr.city, addr.state, addr.postal_code, addr.country]
     .map((x: any) => String(x || "").trim())
     .filter(Boolean);
   return parts.join(", ");
@@ -299,14 +258,10 @@ async function resolveShippingForSession(sessionId: string, sessionLike?: any) {
     const full: any = await stripe.checkout.sessions.retrieve(sessionId);
 
     const shippingName =
-      full?.shipping_details?.name ??
-      (sessionLike as any)?.shipping_details?.name ??
-      null;
+      full?.shipping_details?.name ?? (sessionLike as any)?.shipping_details?.name ?? null;
 
     const shippingAddress =
-      full?.shipping_details?.address ??
-      (sessionLike as any)?.shipping_details?.address ??
-      null;
+      full?.shipping_details?.address ?? (sessionLike as any)?.shipping_details?.address ?? null;
 
     if (shippingName || shippingAddress) {
       return { shippingName, shippingAddress };
@@ -315,14 +270,15 @@ async function resolveShippingForSession(sessionId: string, sessionLike?: any) {
     // Step 2: Fallback to PaymentIntent -> latest_charge.shipping
     const piId =
       (typeof full?.payment_intent === "string" ? full.payment_intent : null) ||
-      (typeof (sessionLike as any)?.payment_intent === "string"
-        ? (sessionLike as any).payment_intent
-        : null);
+      (typeof (sessionLike as any)?.payment_intent === "string" ? (sessionLike as any).payment_intent : null);
 
     if (piId) {
-      const pi: any = await stripe.paymentIntents.retrieve(piId, {
-        expand: ["latest_charge"],
-      } as any);
+      const pi: any = await stripe.paymentIntents.retrieve(
+        piId,
+        {
+          expand: ["latest_charge"],
+        } as any,
+      );
 
       const ch: any = pi?.latest_charge ?? null;
       const chShipping = ch?.shipping ?? null;
@@ -337,27 +293,16 @@ async function resolveShippingForSession(sessionId: string, sessionLike?: any) {
 
     return { shippingName: null, shippingAddress: null };
   } catch (e) {
-    console.warn(
-      "[shipping] resolveShippingForSession failed:",
-      safeErrSummary(e),
-    );
+    console.warn("[shipping] resolveShippingForSession failed:", safeErrSummary(e));
     return { shippingName: null, shippingAddress: null };
   }
 }
 
-async function sendOrderConfirmationEmail(args: {
-  session: any;
-  lineItems: any[];
-  isSubscription: boolean;
-}) {
+async function sendOrderConfirmationEmail(args: { session: any; lineItems: any[]; isSubscription: boolean }) {
   const resendKey = String(process.env.RESEND_API_KEY || "").trim();
-  const fromEmail = String(
-    process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "",
-  ).trim();
+  const fromEmail = String(process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "").trim();
   if (!resendKey || !fromEmail) {
-    console.warn(
-      "[order-email] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM).",
-    );
+    console.warn("[order-email] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM).");
     return;
   }
 
@@ -367,13 +312,7 @@ async function sendOrderConfirmationEmail(args: {
   const siteUrl = getSiteUrl();
 
   const email =
-    normalizeEmail(
-      String(
-        args.session?.customer_details?.email ??
-          args.session?.customer_email ??
-          "",
-      ),
-    ) || "";
+    normalizeEmail(String(args.session?.customer_details?.email ?? args.session?.customer_email ?? "")) || "";
 
   if (!email || !isValidEmail(email)) {
     console.warn("[order-email] Missing/invalid customer email; skipping send.");
@@ -383,8 +322,7 @@ async function sendOrderConfirmationEmail(args: {
   // ✅ Use resolved shipping if present on session (we persist it in DB),
   // but fall back to customer_details name.
   const name = safeString(args.session?.customer_details?.name, 200);
-  const shippingName =
-    safeString(args.session?.shipping_details?.name, 200) || name;
+  const shippingName = safeString(args.session?.shipping_details?.name, 200) || name;
   const shippingAddr = args.session?.shipping_details?.address || null;
 
   const currency = String(args.session?.currency || "usd");
@@ -418,9 +356,7 @@ async function sendOrderConfirmationEmail(args: {
     };
   });
 
-  const subject = args.isSubscription
-    ? "Kimora Co — Subscription confirmed"
-    : "Kimora Co — Order confirmed";
+  const subject = args.isSubscription ? "Kimora Co — Subscription confirmed" : "Kimora Co — Order confirmed";
 
   const manageLink = `${siteUrl}/manage-subscription`;
   const supportEmail = "alex@kimoraco.com";
@@ -431,14 +367,9 @@ async function sendOrderConfirmationEmail(args: {
         .split("-")
         .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
-      const cadence =
-        l.purchaseType === "subscribe" && l.frequencyWeeks
-          ? ` (Subscription — every ${l.frequencyWeeks} weeks)`
-          : "";
-      const money =
-        l.unitAmount != null ? ` @ ${formatMoney(l.unitAmount, currency)}` : "";
-      const total =
-        l.lineTotal != null ? ` = ${formatMoney(l.lineTotal, currency)}` : "";
+      const cadence = l.purchaseType === "subscribe" && l.frequencyWeeks ? ` (Subscription — every ${l.frequencyWeeks} weeks)` : "";
+      const money = l.unitAmount != null ? ` @ ${formatMoney(l.unitAmount, currency)}` : "";
+      const total = l.lineTotal != null ? ` = ${formatMoney(l.lineTotal, currency)}` : "";
       return `- ${flavor} x${l.qty}${cadence}${money}${total}`;
     })
     .join("\n");
@@ -447,18 +378,10 @@ async function sendOrderConfirmationEmail(args: {
     `Thanks${shippingName ? `, ${shippingName}` : ""} — your Kimora order is confirmed.\n\n` +
     (orderNumber ? `Order: ${orderNumber}\n` : "") +
     (itemsText ? `\nItems:\n${itemsText}\n` : "") +
-    (amountSubtotal != null
-      ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n`
-      : "") +
+    (amountSubtotal != null ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n` : "") +
     (amountTotal != null ? `Total: ${formatMoney(amountTotal, currency)}\n` : "") +
-    (shippingAddr
-      ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(
-          shippingAddr,
-        )}\n`
-      : "") +
-    (args.isSubscription
-      ? `\nManage your subscription anytime:\n${manageLink}\n`
-      : "") +
+    (shippingAddr ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(shippingAddr)}\n` : "") +
+    (args.isSubscription ? `\nManage your subscription anytime:\n${manageLink}\n` : "") +
     `\nNeed help? Reply to this email or contact ${supportEmail}.\n\n` +
     `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
 
@@ -474,37 +397,24 @@ async function sendOrderConfirmationEmail(args: {
         l.purchaseType === "subscribe" && l.frequencyWeeks
           ? ` <span style="color:#666;">(Subscription — every ${l.frequencyWeeks} weeks)</span>`
           : "";
-      const money =
-        l.unitAmount != null
-          ? ` <span style="color:#666;">@ ${escapeHtml(
-              formatMoney(l.unitAmount, currency),
-            )}</span>`
-          : "";
+      const money = l.unitAmount != null ? ` <span style="color:#666;">@ ${escapeHtml(formatMoney(l.unitAmount, currency))}</span>` : "";
       const total =
         l.lineTotal != null
-          ? ` <span style="color:#111;font-weight:600;">${escapeHtml(
-              formatMoney(l.lineTotal, currency),
-            )}</span>`
+          ? ` <span style="color:#111;font-weight:600;">${escapeHtml(formatMoney(l.lineTotal, currency))}</span>`
           : "";
-      return `<li style="margin:6px 0;">${flavor} <b>x${l.qty}</b>${cadence}${money}${
-        total ? ` — ${total}` : ""
-      }</li>`;
+      return `<li style="margin:6px 0;">${flavor} <b>x${l.qty}</b>${cadence}${money}${total ? ` — ${total}` : ""}</li>`;
     })
     .join("");
 
   const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Order confirmed 🎉</h2>
   <p style="margin:0 0 14px;">
-    Thanks${
-      shippingName ? `, <b>${escapeHtml(shippingName)}</b>` : ""
-    }. Your Kimora order is confirmed.
+    Thanks${shippingName ? `, <b>${escapeHtml(shippingName)}</b>` : ""}. Your Kimora order is confirmed.
   </p>
 
   ${
     orderNumber
-      ? `<div style="margin:0 0 12px;color:#444;"><b>Order:</b> ${escapeHtml(
-          orderNumber,
-        )}</div>`
+      ? `<div style="margin:0 0 12px;color:#444;"><b>Order:</b> ${escapeHtml(orderNumber)}</div>`
       : ""
   }
 
@@ -517,18 +427,10 @@ async function sendOrderConfirmationEmail(args: {
 
   <div style="margin:0 0 12px;">
     ${
-      amountSubtotal != null
-        ? `<div><b>Subtotal:</b> ${escapeHtml(
-            formatMoney(amountSubtotal, currency),
-          )}</div>`
-        : ""
+      amountSubtotal != null ? `<div><b>Subtotal:</b> ${escapeHtml(formatMoney(amountSubtotal, currency))}</div>` : ""
     }
     ${
-      amountTotal != null
-        ? `<div><b>Total:</b> ${escapeHtml(
-            formatMoney(amountTotal, currency),
-          )}</div>`
-        : ""
+      amountTotal != null ? `<div><b>Total:</b> ${escapeHtml(formatMoney(amountTotal, currency))}</div>` : ""
     }
   </div>
 
@@ -587,9 +489,7 @@ async function sendOrderConfirmationEmail(args: {
  *    - $5 flat under $50
  *    - FREE at $50+
  */
-async function computeCartSubtotalCentsFromStripePrices(
-  lineItems: Array<{ price: string; quantity: number }>,
-): Promise<number> {
+async function computeCartSubtotalCentsFromStripePrices(lineItems: Array<{ price: string; quantity: number }>): Promise<number> {
   const cache = new Map<string, any>();
   let subtotal = 0;
 
@@ -613,11 +513,7 @@ async function computeCartSubtotalCentsFromStripePrices(
   return subtotal;
 }
 
-function buildShippingOptions(params: {
-  mode: "payment" | "subscription";
-  currency: string;
-  subtotalCents: number;
-}): any[] {
+function buildShippingOptions(params: { mode: "payment" | "subscription"; currency: string; subtotalCents: number }): any[] {
   const currency = params.currency || "usd";
 
   if (params.mode === "subscription") {
@@ -681,10 +577,7 @@ function unbase64url(input: string) {
 }
 function signToken(payload: object, secret: string) {
   const body = base64url(JSON.stringify(payload));
-  const sig = crypto
-    .createHmac("sha256", secret)
-    .update(body)
-    .digest("base64url");
+  const sig = crypto.createHmac("sha256", secret).update(body).digest("base64url");
   return `${body}.${sig}`;
 }
 
@@ -693,10 +586,7 @@ function verifyToken<T>(token: string, secret: string): T | null {
   if (parts.length !== 2) return null;
 
   const [body, sig] = parts;
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(body)
-    .digest("base64url");
+  const expected = crypto.createHmac("sha256", secret).update(body).digest("base64url");
 
   if (sig.length !== expected.length) return null;
 
@@ -740,60 +630,34 @@ function normalizeFulfillment(v: any) {
   return ALLOWED_FULFILLMENT.has(s) ? s : "unfulfilled";
 }
 
-function computeFulfillmentRollup(items: Array<{ fulfillmentStatus?: any }>) {
-  const counts: Record<string, number> = {};
+/**
+ * Order rollup logic:
+ * - pick the "most actionable" status based on the set present
+ */
+function rollupOrderFulfillment(counts: Record<string, number>) {
+  const get = (k: string) => Number(counts[k] ?? 0) || 0;
 
-  for (const it of items) {
-    const s = normalizeFulfillment(it.fulfillmentStatus);
-    counts[s] = (counts[s] || 0) + 1;
-  }
+  const backordered = get("backordered");
+  const unfulfilled = get("unfulfilled");
+  const allocated = get("allocated");
+  const packed = get("packed");
+  const shipped = get("shipped");
+  const delivered = get("delivered");
+  const canceled = get("canceled");
 
-  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  let top = "unfulfilled";
+  if (backordered > 0) top = "backordered";
+  else if (unfulfilled > 0) top = "unfulfilled";
+  else if (allocated > 0) top = "allocated";
+  else if (packed > 0) top = "packed";
+  else if (shipped > 0) top = "shipped";
+  else if (delivered > 0) top = "delivered";
+  else if (canceled > 0) top = "canceled";
 
-  const top = Object.entries(counts)
-    .map(([status, count]) => ({ status, count }))
-    .sort((a, b) => b.count - a.count);
-
-  // Derivation rules:
-  // - no items => unfulfilled
-  // - all canceled => canceled
-  // - all delivered => delivered
-  // - if any backordered => backordered (unless all delivered)
-  // - else if any shipped => shipped
-  // - else if any packed => packed
-  // - else if any allocated => allocated
-  // - else => unfulfilled
-  let fulfillmentStatus = "unfulfilled";
-
-  if (!total) {
-    fulfillmentStatus = "unfulfilled";
-  } else if ((counts["canceled"] || 0) === total) {
-    fulfillmentStatus = "canceled";
-  } else if ((counts["delivered"] || 0) === total) {
-    fulfillmentStatus = "delivered";
-  } else if ((counts["backordered"] || 0) > 0) {
-    fulfillmentStatus = "backordered";
-  } else if ((counts["shipped"] || 0) > 0) {
-    fulfillmentStatus = "shipped";
-  } else if ((counts["packed"] || 0) > 0) {
-    fulfillmentStatus = "packed";
-  } else if ((counts["allocated"] || 0) > 0) {
-    fulfillmentStatus = "allocated";
-  } else {
-    fulfillmentStatus = "unfulfilled";
-  }
-
-  return {
-    fulfillmentStatus,
-    fulfillmentCounts: counts,
-    fulfillmentTop: top,
-  };
+  return { fulfillmentStatus: top, fulfillmentCounts: counts };
 }
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express,
-): Promise<Server> {
+export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
   // -----------------------------
@@ -804,19 +668,12 @@ export async function registerRoutes(
     if (denied) return;
 
     try {
-      const rows = await db
-        .select()
-        .from(wholesaleApplications)
-        .orderBy(desc(wholesaleApplications.createdAt))
-        .limit(500);
-
+      const rows = await db.select().from(wholesaleApplications).orderBy(desc(wholesaleApplications.createdAt)).limit(500);
       return res.json({ ok: true, rows });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/admin/wholesale-applications error:", s);
-      return res
-        .status(500)
-        .json({ ok: false, message: "Failed to load applications." });
+      return res.status(500).json({ ok: false, message: "Failed to load applications." });
     }
   });
 
@@ -828,16 +685,9 @@ export async function registerRoutes(
       const id = String(req.params.id || "").trim();
       const status = String(req.body?.status || "").trim();
 
-      const allowed = new Set([
-        "new",
-        "reviewing",
-        "approved",
-        "rejected",
-        "closed",
-      ]);
+      const allowed = new Set(["new", "reviewing", "approved", "rejected", "closed"]);
 
-      if (!id)
-        return res.status(400).json({ ok: false, message: "Missing id." });
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
       if (!allowed.has(status)) {
         return res.status(400).json({ ok: false, message: "Invalid status." });
       }
@@ -856,9 +706,7 @@ export async function registerRoutes(
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("PATCH /api/admin/wholesale-applications/:id error:", s);
-      return res
-        .status(500)
-        .json({ ok: false, message: "Failed to update status." });
+      return res.status(500).json({ ok: false, message: "Failed to update status." });
     }
   });
 
@@ -881,24 +729,13 @@ export async function registerRoutes(
         .orderBy(desc(orders.createdAt))
         .limit(5000);
 
-      const paid = rows.filter(
-        (r) => String(r.status || "").toLowerCase() === "paid",
-      );
-      const refunded = rows.filter(
-        (r) => String(r.status || "").toLowerCase() === "refunded",
-      );
+      const paid = rows.filter((r) => String(r.status || "").toLowerCase() === "paid");
+      const refunded = rows.filter((r) => String(r.status || "").toLowerCase() === "refunded");
 
-      const totalRevenueCents = paid.reduce(
-        (acc, r) => acc + (r.amountTotal ?? 0),
-        0,
-      );
+      const totalRevenueCents = paid.reduce((acc, r) => acc + (r.amountTotal ?? 0), 0);
+      const aovCents = paid.length ? Math.round(totalRevenueCents / paid.length) : 0;
 
-      const aovCents = paid.length
-        ? Math.round(totalRevenueCents / paid.length)
-        : 0;
-
-      const subscriptionOrders = rows.filter((r) => Boolean(r.isSubscription))
-        .length;
+      const subscriptionOrders = rows.filter((r) => Boolean(r.isSubscription)).length;
       const onetimeOrders = rows.length - subscriptionOrders;
 
       return res.json({
@@ -916,12 +753,13 @@ export async function registerRoutes(
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/admin/summary error:", s);
-      return res
-        .status(500)
-        .json({ ok: false, message: "Failed to load summary." });
+      return res.status(500).json({ ok: false, message: "Failed to load summary." });
     }
   });
 
+  // ✅ Orders list now returns order-level fulfillment rollup fields:
+  // - fulfillmentStatus
+  // - fulfillmentCounts
   app.get("/api/admin/orders", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
@@ -936,13 +774,12 @@ export async function registerRoutes(
       if (q) whereParts.push(pickOrderSearchWhere(q));
       if (status) whereParts.push(eq(orders.status, status));
 
-      if (mode === "subscription")
-        whereParts.push(eq(orders.isSubscription, true));
+      if (mode === "subscription") whereParts.push(eq(orders.isSubscription, true));
       if (mode === "payment") whereParts.push(eq(orders.isSubscription, false));
 
       const where = whereParts.length === 0 ? undefined : and(...whereParts);
 
-      const baseRows = await db
+      const rows = await db
         .select({
           id: orders.id,
           createdAt: orders.createdAt,
@@ -966,45 +803,58 @@ export async function registerRoutes(
         .orderBy(desc(orders.createdAt))
         .limit(500);
 
-      const orderIds = baseRows.map((r) => r.id).filter(Boolean);
-      let itemsByOrder: Record<string, Array<{ fulfillmentStatus?: any }>> = {};
+      const orderIds = rows.map((r) => r.id).filter(Boolean);
+      const rollupByOrderId: Record<
+        string,
+        { fulfillmentStatus: string; fulfillmentCounts: Record<string, number> }
+      > = {};
 
       if (orderIds.length) {
-        const itemRows = await db
+        const agg = await db
           .select({
             orderId: orderItems.orderId,
-            fulfillmentStatus: orderItems.fulfillmentStatus,
+            status: orderItems.fulfillmentStatus,
+            count: sql<number>`count(*)`.mapWith(Number),
           })
           .from(orderItems)
           .where(inArray(orderItems.orderId, orderIds as any))
-          .limit(5000);
+          .groupBy(orderItems.orderId, orderItems.fulfillmentStatus);
 
-        itemsByOrder = {};
-        for (const it of itemRows) {
-          const oid = String(it.orderId);
-          if (!itemsByOrder[oid]) itemsByOrder[oid] = [];
-          itemsByOrder[oid].push({ fulfillmentStatus: it.fulfillmentStatus });
+        for (const row of agg as any[]) {
+          const oid = String(row.orderId || "");
+          if (!oid) continue;
+          if (!rollupByOrderId[oid]) {
+            rollupByOrderId[oid] = { fulfillmentStatus: "unfulfilled", fulfillmentCounts: {} };
+          }
+          const st = normalizeFulfillment(row.status);
+          const n = Number(row.count ?? 0) || 0;
+          rollupByOrderId[oid].fulfillmentCounts[st] = (rollupByOrderId[oid].fulfillmentCounts[st] || 0) + n;
+        }
+
+        for (const oid of Object.keys(rollupByOrderId)) {
+          const r = rollupByOrderId[oid];
+          const rolled = rollupOrderFulfillment(r.fulfillmentCounts || {});
+          rollupByOrderId[oid] = {
+            fulfillmentStatus: rolled.fulfillmentStatus,
+            fulfillmentCounts: rolled.fulfillmentCounts,
+          };
         }
       }
 
-      const rows = baseRows.map((r) => {
-        const items = itemsByOrder[String(r.id)] || [];
-        const rollup = computeFulfillmentRollup(items);
+      const withRollup = rows.map((r) => {
+        const roll = rollupByOrderId[String(r.id)] || null;
         return {
           ...r,
-          fulfillmentStatus: rollup.fulfillmentStatus,
-          fulfillmentCounts: rollup.fulfillmentCounts,
-          fulfillmentTop: rollup.fulfillmentTop,
+          fulfillmentStatus: roll?.fulfillmentStatus ?? "unfulfilled",
+          fulfillmentCounts: roll?.fulfillmentCounts ?? {},
         };
       });
 
-      return res.json({ ok: true, rows });
+      return res.json({ ok: true, rows: withRollup });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/admin/orders error:", s);
-      return res
-        .status(500)
-        .json({ ok: false, message: "Failed to load orders." });
+      return res.status(500).json({ ok: false, message: "Failed to load orders." });
     }
   });
 
@@ -1014,14 +864,9 @@ export async function registerRoutes(
 
     try {
       const id = String(req.params.id || "").trim();
-      if (!id)
-        return res.status(400).json({ ok: false, message: "Missing id." });
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
 
-      const order = await db
-        .select()
-        .from(orders)
-        .where(eq(orders.id, id))
-        .limit(1);
+      const order = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
 
       if (!order?.length) {
         return res.status(404).json({ ok: false, message: "Not found." });
@@ -1038,27 +883,20 @@ export async function registerRoutes(
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/admin/orders/:id error:", s);
-      return res
-        .status(500)
-        .json({ ok: false, message: "Failed to load order." });
+      return res.status(500).json({ ok: false, message: "Failed to load order." });
     }
   });
 
-  // ✅ Admin: order-level bulk fulfillment update (quick set)
+  // ✅ NEW: Admin order-level fulfillment update (sets ALL items for the order)
   app.patch("/api/admin/orders/:id/fulfillment", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
 
     try {
-      const id = String(req.params.id || "").trim();
-      if (!id) {
-        return res.status(400).json({ ok: false, message: "Missing id." });
-      }
+      const orderId = String(req.params.id || "").trim();
+      if (!orderId) return res.status(400).json({ ok: false, message: "Missing id." });
 
-      const status = String(req.body?.fulfillmentStatus ?? "")
-        .trim()
-        .toLowerCase();
-
+      const status = String(req.body?.fulfillmentStatus ?? "").trim().toLowerCase();
       if (!status || !ALLOWED_FULFILLMENT.has(status)) {
         return res.status(400).json({
           ok: false,
@@ -1068,37 +906,27 @@ export async function registerRoutes(
       }
 
       const now = new Date();
+      const set: any = { fulfillmentStatus: status };
 
-      // Bulk update ALL items in the order.
-      // Timestamp behavior:
-      // - shipped => shippedAt = now (if null)
-      // - delivered => shippedAt = COALESCE(shippedAt, now), deliveredAt = now (if null)
-      const set: any = {
-        fulfillmentStatus: status,
-      };
-
-      if (status === "shipped") {
-        set.shippedAt = sql`COALESCE(${orderItems.shippedAt}, ${now})`;
-      }
-
-      if (status === "delivered") {
-        set.shippedAt = sql`COALESCE(${orderItems.shippedAt}, ${now})`;
-        set.deliveredAt = sql`COALESCE(${orderItems.deliveredAt}, ${now})`;
-      }
+      // stamp timestamps (do not clear existing)
+      if (status === "shipped") set.shippedAt = now;
+      if (status === "delivered") set.deliveredAt = now;
 
       const updated = await db
         .update(orderItems)
         .set(set)
-        .where(eq(orderItems.orderId, id))
+        .where(eq(orderItems.orderId, orderId))
         .returning({ id: orderItems.id });
 
-      return res.json({ ok: true, updated: updated?.length || 0 });
+      if (!updated?.length) {
+        return res.status(404).json({ ok: false, message: "No items found for that order." });
+      }
+
+      return res.json({ ok: true });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("PATCH /api/admin/orders/:id/fulfillment error:", s);
-      return res
-        .status(500)
-        .json({ ok: false, message: "Failed to update order items." });
+      return res.status(500).json({ ok: false, message: "Failed to update order fulfillment." });
     }
   });
 
@@ -1109,12 +937,9 @@ export async function registerRoutes(
 
     try {
       const id = String(req.params.id || "").trim();
-      if (!id)
-        return res.status(400).json({ ok: false, message: "Missing id." });
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
 
-      const status = String(req.body?.fulfillmentStatus ?? "")
-        .trim()
-        .toLowerCase();
+      const status = String(req.body?.fulfillmentStatus ?? "").trim().toLowerCase();
       const carrier = safeString(req.body?.carrier, 80) || null;
       const trackingNumber = safeString(req.body?.trackingNumber, 120) || null;
 
@@ -1138,11 +963,7 @@ export async function registerRoutes(
       if (status === "shipped") set.shippedAt = now;
       if (status === "delivered") set.deliveredAt = now;
 
-      const updated = await db
-        .update(orderItems)
-        .set(set)
-        .where(eq(orderItems.id, id))
-        .returning({ id: orderItems.id });
+      const updated = await db.update(orderItems).set(set).where(eq(orderItems.id, id)).returning({ id: orderItems.id });
 
       if (!updated?.length) {
         return res.status(404).json({ ok: false, message: "Not found." });
@@ -1152,9 +973,7 @@ export async function registerRoutes(
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("PATCH /api/admin/order-items/:id/fulfillment error:", s);
-      return res
-        .status(500)
-        .json({ ok: false, message: "Failed to update item." });
+      return res.status(500).json({ ok: false, message: "Failed to update item." });
     }
   });
 
@@ -1190,25 +1009,17 @@ export async function registerRoutes(
       const notes = safeString(body.notes, 5000);
 
       if (!businessName) {
-        return res
-          .status(400)
-          .json({ ok: false, message: "Business name is required." });
+        return res.status(400).json({ ok: false, message: "Business name is required." });
       }
       if (!contactName) {
-        return res
-          .status(400)
-          .json({ ok: false, message: "Contact name is required." });
+        return res.status(400).json({ ok: false, message: "Contact name is required." });
       }
       if (!email || !isValidEmail(email)) {
-        return res
-          .status(400)
-          .json({ ok: false, message: "Valid email is required." });
+        return res.status(400).json({ ok: false, message: "Valid email is required." });
       }
 
       if (!phoneDigits) {
-        return res
-          .status(400)
-          .json({ ok: false, message: "Phone number is required." });
+        return res.status(400).json({ ok: false, message: "Phone number is required." });
       }
       if (!isValidPhoneDigits(phoneDigits)) {
         return res.status(400).json({
@@ -1217,33 +1028,22 @@ export async function registerRoutes(
         });
       }
 
-      if (!city)
-        return res.status(400).json({ ok: false, message: "City is required." });
-      if (!state)
-        return res
-          .status(400)
-          .json({ ok: false, message: "State is required." });
+      if (!city) return res.status(400).json({ ok: false, message: "City is required." });
+      if (!state) return res.status(400).json({ ok: false, message: "State is required." });
 
       if (businessType === "other" && !businessTypeOther) {
-        return res
-          .status(400)
-          .json({ ok: false, message: "Please specify business type." });
+        return res.status(400).json({ ok: false, message: "Please specify business type." });
       }
 
       if (!memberCount || memberCount <= 0) {
         return res.status(400).json({
           ok: false,
-          message:
-            "Approx members / active clients is required and must be > 0.",
+          message: "Approx members / active clients is required and must be > 0.",
         });
       }
 
       const ip =
-        (req.headers["x-forwarded-for"] as string | undefined)
-          ?.split(",")[0]
-          ?.trim() ||
-        req.socket?.remoteAddress ||
-        null;
+        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || req.socket?.remoteAddress || null;
 
       const userAgent = String(req.headers["user-agent"] ?? "") || null;
       const referer = String(req.headers["referer"] ?? "") || null;
@@ -1275,17 +1075,14 @@ export async function registerRoutes(
       const applicationId = inserted?.[0]?.id ?? null;
 
       const resendKey = process.env.RESEND_API_KEY;
-      const fromEmail =
-        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       const notifyTo = process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
       const siteUrl = getSiteUrl();
 
       const canSend = Boolean(resendKey && fromEmail);
       if (canSend) {
         const resend = new Resend(resendKey!);
-        const from = fromEmail.includes("<")
-          ? fromEmail
-          : `Kimora Co <${fromEmail}>`;
+        const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
 
         const internalSubject = `New wholesale application — ${businessName}`;
 
@@ -1298,9 +1095,7 @@ export async function registerRoutes(
           `Phone: ${phoneDigits}\n` +
           `Website/IG: ${websiteOrInstagram || "(not provided)"}\n` +
           `City/State: ${city}, ${state}\n` +
-          `Business type: ${businessType}${
-            businessType === "other" ? ` (${businessTypeOther})` : ""
-          }\n` +
+          `Business type: ${businessType}${businessType === "other" ? ` (${businessTypeOther})` : ""}\n` +
           `Member count: ${memberCount}\n` +
           `Retail setup: ${retailSetup || "(not provided)"}\n` +
           `Interested: onShelf=${interestedOnShelf}, coachAffiliate=${interestedCoachAffiliate}, eventSponsorship=${interestedEventSponsorship}\n\n` +
@@ -1309,38 +1104,18 @@ export async function registerRoutes(
 
         const internalHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">New wholesale application</h2>
-  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(
-    safeString(applicationId ?? "(unknown)"),
-  )}</div>
-  <div style="margin:0 0 8px;"><b>Business:</b> ${escapeHtml(
-    safeString(businessName),
-  )}</div>
-  <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(
-    safeString(contactName),
-  )}</div>
+  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(safeString(applicationId ?? "(unknown)"))}</div>
+  <div style="margin:0 0 8px;"><b>Business:</b> ${escapeHtml(safeString(businessName))}</div>
+  <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(safeString(contactName))}</div>
   <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(safeString(email))}</div>
-  <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(
-    safeString(phoneDigits),
-  )}</div>
-  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(
-    safeString(websiteOrInstagram || "(not provided)"),
-  )}</div>
-  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(
-    safeString(city),
-  )}, ${escapeHtml(safeString(state))}</div>
-  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(
-    safeString(businessType),
-  )}${
-          businessType === "other" && businessTypeOther
-            ? ` (${escapeHtml(safeString(businessTypeOther))})`
-            : ""
+  <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(safeString(phoneDigits))}</div>
+  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(safeString(websiteOrInstagram || "(not provided)"))}</div>
+  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(safeString(city))}, ${escapeHtml(safeString(state))}</div>
+  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(safeString(businessType))}${
+          businessType === "other" && businessTypeOther ? ` (${escapeHtml(safeString(businessTypeOther))})` : ""
         }</div>
-  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(
-    safeString(memberCount),
-  )}</div>
-  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(
-    safeString(retailSetup || "(not provided)"),
-  )}</div>
+  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(safeString(memberCount))}</div>
+  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(safeString(retailSetup || "(not provided)"))}</div>
   <div style="margin:0 0 8px;"><b>Interested:</b>
     onShelf=${String(interestedOnShelf)},
     coachAffiliate=${String(interestedCoachAffiliate)},
@@ -1362,9 +1137,7 @@ export async function registerRoutes(
         const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Wholesale application received</h2>
   <p style="margin:0 0 12px;">
-    Thanks${
-      contactName ? `, ${escapeHtml(safeString(contactName))}` : ""
-    }! We received your wholesale application for <b>${escapeHtml(
+    Thanks${contactName ? `, ${escapeHtml(safeString(contactName))}` : ""}! We received your wholesale application for <b>${escapeHtml(
           safeString(businessName),
         )}</b>.
   </p>
@@ -1402,9 +1175,7 @@ export async function registerRoutes(
           console.error("[wholesale] applicant email send failed:", s);
         }
       } else {
-        console.warn(
-          "[wholesale] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM). Stored application without emailing.",
-        );
+        console.warn("[wholesale] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM). Stored application without emailing.");
       }
 
       return res.json({ ok: true, id: applicationId });
@@ -1421,14 +1192,11 @@ export async function registerRoutes(
       ) {
         return res.status(400).json({
           ok: false,
-          message:
-            "Please check required fields (phone + member count) and try again.",
+          message: "Please check required fields (phone + member count) and try again.",
         });
       }
 
-      return res
-        .status(500)
-        .json({ ok: false, message: "Failed to submit wholesale application." });
+      return res.status(500).json({ ok: false, message: "Failed to submit wholesale application." });
     }
   });
 
@@ -1440,25 +1208,17 @@ export async function registerRoutes(
       const emailRaw = String(req.body?.email ?? "");
       const email = normalizeEmail(emailRaw);
 
-      const itemsRaw: any[] = Array.isArray(req.body?.items)
-        ? req.body.items
-        : [];
+      const itemsRaw: any[] = Array.isArray(req.body?.items) ? req.body.items : [];
       const items: CheckoutItem[] = itemsRaw
         .map((it: any) => {
           const flavor = String(it?.flavor ?? "").trim();
-          const type: CheckoutItem["type"] =
-            it?.type === "subscribe" ? "subscribe" : "onetime";
+          const type: CheckoutItem["type"] = it?.type === "subscribe" ? "subscribe" : "onetime";
           const frequency: CheckoutItem["frequency"] | undefined =
-            type === "subscribe" &&
-            (it?.frequency === "2" ||
-              it?.frequency === "4" ||
-              it?.frequency === "6")
+            type === "subscribe" && (it?.frequency === "2" || it?.frequency === "4" || it?.frequency === "6")
               ? it.frequency
               : undefined;
           const qRaw = Number(it?.quantity);
-          const quantity = Number.isFinite(qRaw)
-            ? Math.max(1, Math.floor(qRaw))
-            : 1;
+          const quantity = Number.isFinite(qRaw) ? Math.max(1, Math.floor(qRaw)) : 1;
           return { flavor, type, frequency, quantity };
         })
         .filter((it: CheckoutItem) => {
@@ -1479,8 +1239,7 @@ export async function registerRoutes(
       const hasOne = items.some((it: CheckoutItem) => it.type === "onetime");
       if (hasSub && hasOne) {
         return res.status(400).json({
-          message:
-            "Subscriptions and one-time items must be checked out separately.",
+          message: "Subscriptions and one-time items must be checked out separately.",
         });
       }
 
@@ -1488,9 +1247,7 @@ export async function registerRoutes(
       const successUrl = `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${siteUrl}/checkout?canceled=1`;
 
-      const mode: "payment" | "subscription" = hasSub
-        ? "subscription"
-        : "payment";
+      const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
 
       const line_items = items.map((it: CheckoutItem) => ({
         price: getPriceId(it),
@@ -1498,10 +1255,7 @@ export async function registerRoutes(
       }));
 
       const currency = "usd";
-      const subtotalCents =
-        mode === "subscription"
-          ? 0
-          : await computeCartSubtotalCentsFromStripePrices(line_items);
+      const subtotalCents = mode === "subscription" ? 0 : await computeCartSubtotalCentsFromStripePrices(line_items);
 
       const shipping_options = buildShippingOptions({
         mode,
@@ -1542,10 +1296,7 @@ export async function registerRoutes(
       const s = safeErrSummary(err);
       console.error("POST /api/checkout error:", s);
 
-      const stripeMsg =
-        err?.raw?.message ||
-        err?.message ||
-        "Failed to create checkout session.";
+      const stripeMsg = err?.raw?.message || err?.message || "Failed to create checkout session.";
 
       if (String(stripeMsg).startsWith("Missing env var:")) {
         return res.status(500).json({ message: stripeMsg });
@@ -1574,8 +1325,7 @@ export async function registerRoutes(
       return res.json({
         id: session.id,
         mode: session.mode,
-        customer_email:
-          session.customer_details?.email ?? session.customer_email ?? null,
+        customer_email: session.customer_details?.email ?? session.customer_email ?? null,
         payment_status: session.payment_status ?? null,
         subscription: session.subscription ?? null,
       });
@@ -1603,9 +1353,7 @@ export async function registerRoutes(
 
       const rawBody = (req as any).rawBody as Buffer | undefined;
       if (!rawBody) {
-        return res
-          .status(400)
-          .send("Missing rawBody for webhook verification");
+        return res.status(400).send("Missing rawBody for webhook verification");
       }
 
       const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
@@ -1614,18 +1362,11 @@ export async function registerRoutes(
         const session = event.data.object as any;
 
         // ✅ resolve shipping reliably (refetch session + fallback to charge)
-        const resolvedShipping = await resolveShippingForSession(
-          String(session.id),
-          session,
-        );
+        const resolvedShipping = await resolveShippingForSession(String(session.id), session);
 
-        const stripeCustomerId =
-          await getStripeCustomerIdFromCheckoutSession(session);
+        const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(session);
 
-        const lineItems = await stripe.checkout.sessions.listLineItems(
-          session.id,
-          { limit: 100 },
-        );
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
 
         const inserted = await db
           .insert(orders)
@@ -1634,8 +1375,7 @@ export async function registerRoutes(
             stripePaymentIntentId: session.payment_intent ?? null,
             stripeSubscriptionId: session.subscription ?? null,
             stripeCustomerId,
-            customerEmail:
-              session.customer_details?.email ?? session.customer_email ?? null,
+            customerEmail: session.customer_details?.email ?? session.customer_email ?? null,
             currency: session.currency ?? "usd",
             amountSubtotal: session.amount_subtotal ?? null,
             amountTotal: session.amount_total ?? null,
@@ -1670,30 +1410,18 @@ export async function registerRoutes(
           const hadName = Boolean(existing?.[0]?.shippingName);
           const hadAddr = Boolean(existing?.[0]?.shippingAddress);
 
-          if (
-            (!hadName || !hadAddr) &&
-            (resolvedShipping.shippingName || resolvedShipping.shippingAddress)
-          ) {
+          if ((!hadName || !hadAddr) && (resolvedShipping.shippingName || resolvedShipping.shippingAddress)) {
             await db
               .update(orders)
               .set({
-                shippingName:
-                  resolvedShipping.shippingName ??
-                  existing?.[0]?.shippingName ??
-                  null,
-                shippingAddress:
-                  resolvedShipping.shippingAddress ??
-                  existing?.[0]?.shippingAddress ??
-                  null,
+                shippingName: resolvedShipping.shippingName ?? existing?.[0]?.shippingName ?? null,
+                shippingAddress: resolvedShipping.shippingAddress ?? existing?.[0]?.shippingAddress ?? null,
               })
               .where(eq(orders.stripeCheckoutSessionId, session.id));
           }
 
           if (stripeCustomerId) {
-            await db
-              .update(orders)
-              .set({ stripeCustomerId })
-              .where(eq(orders.stripeCheckoutSessionId, session.id));
+            await db.update(orders).set({ stripeCustomerId }).where(eq(orders.stripeCheckoutSessionId, session.id));
           }
         }
 
@@ -1722,6 +1450,7 @@ export async function registerRoutes(
                 quantity: qty,
                 unitAmount: li.price?.unit_amount ?? null,
 
+                // ✅ new items start unfulfilled
                 fulfillmentStatus: "unfulfilled",
                 carrier: null,
                 trackingNumber: null,
@@ -1737,8 +1466,7 @@ export async function registerRoutes(
           await sendOrderConfirmationEmail({
             session,
             lineItems: lineItems.data,
-            isSubscription:
-              session.mode === "subscription" || Boolean(session.subscription),
+            isSubscription: session.mode === "subscription" || Boolean(session.subscription),
           });
         }
       }
@@ -1759,8 +1487,7 @@ export async function registerRoutes(
     const genericOk = () =>
       res.json({
         ok: true,
-        message:
-          "If that email is in our system, you’ll receive a link shortly.",
+        message: "If that email is in our system, you’ll receive a link shortly.",
       });
 
     try {
@@ -1787,19 +1514,13 @@ export async function registerRoutes(
 
       const siteUrl = getSiteUrl();
 
-      const token = signToken(
-        { email, exp: Math.floor(Date.now() / 1000) + 15 * 60, v: 1 },
-        sessionSecret,
-      );
+      const token = signToken({ email, exp: Math.floor(Date.now() / 1000) + 15 * 60, v: 1 }, sessionSecret);
 
-      const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(
-        token,
-      )}`;
+      const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(token)}`;
       const fallbackLink = `${siteUrl}/manage-subscription`;
 
       const resendKey = process.env.RESEND_API_KEY;
-      const fromEmail =
-        process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+      const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
       if (!resendKey || !fromEmail) return genericOk();
 
       const resend = new Resend(resendKey);
@@ -1834,9 +1555,7 @@ Need help? Reply to this email or contact alex@kimoraco.com
 </div>`;
 
       try {
-        const from = fromEmail.includes("<")
-          ? fromEmail
-          : `Kimora Co <${fromEmail}>`;
+        const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
         await resend.emails.send({ from, to: email, subject, text, html } as any);
       } catch (e: any) {
         const s = safeErrSummary(e);
@@ -1865,16 +1584,12 @@ Need help? Reply to this email or contact alex@kimoraco.com
       const payload = verifyToken<{ email?: string }>(token, sessionSecret);
       const email = normalizeEmail(String(payload?.email ?? ""));
       if (!email || !isValidEmail(email)) {
-        return res
-          .status(401)
-          .json({ ok: false, message: "Invalid or expired token." });
+        return res.status(401).json({ ok: false, message: "Invalid or expired token." });
       }
 
       const stripeCustomerId = await findStripeCustomerIdByEmail(email);
       if (!stripeCustomerId) {
-        return res
-          .status(404)
-          .json({ ok: false, message: "No customer found for that email." });
+        return res.status(404).json({ ok: false, message: "No customer found for that email." });
       }
 
       const siteUrl = getSiteUrl();
@@ -1887,9 +1602,7 @@ Need help? Reply to this email or contact alex@kimoraco.com
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/customer-portal error:", s);
-      return res
-        .status(500)
-        .json({ ok: false, message: "Failed to open subscription portal." });
+      return res.status(500).json({ ok: false, message: "Failed to open subscription portal." });
     }
   });
 
@@ -1903,18 +1616,14 @@ Need help? Reply to this email or contact alex@kimoraco.com
 
       const payload = verifyToken<{ email?: string }>(token, sessionSecret);
       if (!payload?.email || !isValidEmail(payload.email)) {
-        return res
-          .status(401)
-          .json({ ok: false, message: "Invalid or expired token." });
+        return res.status(401).json({ ok: false, message: "Invalid or expired token." });
       }
 
       return res.json({ ok: true, email: payload.email });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/customer-portal/verify error:", s);
-      return res
-        .status(500)
-        .json({ ok: false, message: "Failed to verify token." });
+      return res.status(500).json({ ok: false, message: "Failed to verify token." });
     }
   });
 

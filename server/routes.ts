@@ -85,7 +85,9 @@ function getPriceId(item: CheckoutItem) {
 function envPriceId(flavor: string, type: "onetime" | "subscribe", frequency?: "2" | "4" | "6") {
   const flavorKey = slugToEnvKey(flavor);
   const envName =
-    type === "onetime" ? `STRIPE_PRICE_${flavorKey}_ONETIME` : `STRIPE_PRICE_${flavorKey}_SUB_${frequency}W`;
+    type === "onetime"
+      ? `STRIPE_PRICE_${flavorKey}_ONETIME`
+      : `STRIPE_PRICE_${flavorKey}_SUB_${frequency}W`;
 
   return process.env[envName] || null;
 }
@@ -196,7 +198,8 @@ function parsePositiveInt(value: unknown): number | null {
 
 function adminTokenFromReq(req: any) {
   const header =
-    String(req.headers["x-admin-token"] ?? "").trim() || String(req.headers["authorization"] ?? "").trim();
+    String(req.headers["x-admin-token"] ?? "").trim() ||
+    String(req.headers["authorization"] ?? "").trim();
 
   if (!header) return "";
 
@@ -270,14 +273,16 @@ async function resolveShippingForSession(sessionId: string, sessionLike?: any) {
     // Step 2: Fallback to PaymentIntent -> latest_charge.shipping
     const piId =
       (typeof full?.payment_intent === "string" ? full.payment_intent : null) ||
-      (typeof (sessionLike as any)?.payment_intent === "string" ? (sessionLike as any).payment_intent : null);
+      (typeof (sessionLike as any)?.payment_intent === "string"
+        ? (sessionLike as any).payment_intent
+        : null);
 
     if (piId) {
       const pi: any = await stripe.paymentIntents.retrieve(
         piId,
         {
           expand: ["latest_charge"],
-        } as any,
+        } as any
       );
 
       const ch: any = pi?.latest_charge ?? null;
@@ -298,11 +303,17 @@ async function resolveShippingForSession(sessionId: string, sessionLike?: any) {
   }
 }
 
-async function sendOrderConfirmationEmail(args: { session: any; lineItems: any[]; isSubscription: boolean }) {
+async function sendOrderConfirmationEmail(args: {
+  session: any;
+  lineItems: any[];
+  isSubscription: boolean;
+}) {
   const resendKey = String(process.env.RESEND_API_KEY || "").trim();
   const fromEmail = String(process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "").trim();
   if (!resendKey || !fromEmail) {
-    console.warn("[order-email] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM).");
+    console.warn(
+      "[order-email] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM)."
+    );
     return;
   }
 
@@ -312,7 +323,9 @@ async function sendOrderConfirmationEmail(args: { session: any; lineItems: any[]
   const siteUrl = getSiteUrl();
 
   const email =
-    normalizeEmail(String(args.session?.customer_details?.email ?? args.session?.customer_email ?? "")) || "";
+    normalizeEmail(
+      String(args.session?.customer_details?.email ?? args.session?.customer_email ?? "")
+    ) || "";
 
   if (!email || !isValidEmail(email)) {
     console.warn("[order-email] Missing/invalid customer email; skipping send.");
@@ -356,7 +369,9 @@ async function sendOrderConfirmationEmail(args: { session: any; lineItems: any[]
     };
   });
 
-  const subject = args.isSubscription ? "Kimora Co — Subscription confirmed" : "Kimora Co — Order confirmed";
+  const subject = args.isSubscription
+    ? "Kimora Co — Subscription confirmed"
+    : "Kimora Co — Order confirmed";
 
   const manageLink = `${siteUrl}/manage-subscription`;
   const supportEmail = "alex@kimoraco.com";
@@ -367,7 +382,10 @@ async function sendOrderConfirmationEmail(args: { session: any; lineItems: any[]
         .split("-")
         .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
-      const cadence = l.purchaseType === "subscribe" && l.frequencyWeeks ? ` (Subscription — every ${l.frequencyWeeks} weeks)` : "";
+      const cadence =
+        l.purchaseType === "subscribe" && l.frequencyWeeks
+          ? ` (Subscription — every ${l.frequencyWeeks} weeks)`
+          : "";
       const money = l.unitAmount != null ? ` @ ${formatMoney(l.unitAmount, currency)}` : "";
       const total = l.lineTotal != null ? ` = ${formatMoney(l.lineTotal, currency)}` : "";
       return `- ${flavor} x${l.qty}${cadence}${money}${total}`;
@@ -380,7 +398,9 @@ async function sendOrderConfirmationEmail(args: { session: any; lineItems: any[]
     (itemsText ? `\nItems:\n${itemsText}\n` : "") +
     (amountSubtotal != null ? `\nSubtotal: ${formatMoney(amountSubtotal, currency)}\n` : "") +
     (amountTotal != null ? `Total: ${formatMoney(amountTotal, currency)}\n` : "") +
-    (shippingAddr ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(shippingAddr)}\n` : "") +
+    (shippingAddr
+      ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(shippingAddr)}\n`
+      : "") +
     (args.isSubscription ? `\nManage your subscription anytime:\n${manageLink}\n` : "") +
     `\nNeed help? Reply to this email or contact ${supportEmail}.\n\n` +
     `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
@@ -391,18 +411,25 @@ async function sendOrderConfirmationEmail(args: { session: any; lineItems: any[]
         String(l.flavor || "")
           .split("-")
           .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" "),
+          .join(" ")
       );
       const cadence =
         l.purchaseType === "subscribe" && l.frequencyWeeks
           ? ` <span style="color:#666;">(Subscription — every ${l.frequencyWeeks} weeks)</span>`
           : "";
-      const money = l.unitAmount != null ? ` <span style="color:#666;">@ ${escapeHtml(formatMoney(l.unitAmount, currency))}</span>` : "";
+      const money =
+        l.unitAmount != null
+          ? ` <span style="color:#666;">@ ${escapeHtml(formatMoney(l.unitAmount, currency))}</span>`
+          : "";
       const total =
         l.lineTotal != null
-          ? ` <span style="color:#111;font-weight:600;">${escapeHtml(formatMoney(l.lineTotal, currency))}</span>`
+          ? ` <span style="color:#111;font-weight:600;">${escapeHtml(
+              formatMoney(l.lineTotal, currency)
+            )}</span>`
           : "";
-      return `<li style="margin:6px 0;">${flavor} <b>x${l.qty}</b>${cadence}${money}${total ? ` — ${total}` : ""}</li>`;
+      return `<li style="margin:6px 0;">${flavor} <b>x${l.qty}</b>${cadence}${money}${
+        total ? ` — ${total}` : ""
+      }</li>`;
     })
     .join("");
 
@@ -426,12 +453,8 @@ async function sendOrderConfirmationEmail(args: { session: any; lineItems: any[]
   }
 
   <div style="margin:0 0 12px;">
-    ${
-      amountSubtotal != null ? `<div><b>Subtotal:</b> ${escapeHtml(formatMoney(amountSubtotal, currency))}</div>` : ""
-    }
-    ${
-      amountTotal != null ? `<div><b>Total:</b> ${escapeHtml(formatMoney(amountTotal, currency))}</div>` : ""
-    }
+    ${amountSubtotal != null ? `<div><b>Subtotal:</b> ${escapeHtml(formatMoney(amountSubtotal, currency))}</div>` : ""}
+    ${amountTotal != null ? `<div><b>Total:</b> ${escapeHtml(formatMoney(amountTotal, currency))}</div>` : ""}
   </div>
 
   ${
@@ -483,13 +506,15 @@ async function sendOrderConfirmationEmail(args: { session: any; lineItems: any[]
 }
 
 /**
- * Shipping strategy:
- * - Subscriptions: FREE shipping
+ * Shipping strategy (US only):
+ * - Subscriptions: FREE shipping (IMPORTANT: Stripe Checkout subscriptions cannot use `shipping_options`)
  * - One-time:
- *    - $5 flat under $50
- *    - FREE at $50+
+ *    - $5 flat under $100
+ *    - FREE at $100+
  */
-async function computeCartSubtotalCentsFromStripePrices(lineItems: Array<{ price: string; quantity: number }>): Promise<number> {
+async function computeCartSubtotalCentsFromStripePrices(
+  lineItems: Array<{ price: string; quantity: number }>
+): Promise<number> {
   const cache = new Map<string, any>();
   let subtotal = 0;
 
@@ -513,26 +538,10 @@ async function computeCartSubtotalCentsFromStripePrices(lineItems: Array<{ price
   return subtotal;
 }
 
-function buildShippingOptions(params: { mode: "payment" | "subscription"; currency: string; subtotalCents: number }): any[] {
+function buildShippingOptions(params: { currency: string; subtotalCents: number }): any[] {
   const currency = params.currency || "usd";
 
-  if (params.mode === "subscription") {
-    return [
-      {
-        shipping_rate_data: {
-          type: "fixed_amount",
-          fixed_amount: { amount: 0, currency },
-          display_name: "Free Shipping",
-          delivery_estimate: {
-            minimum: { unit: "business_day", value: 3 },
-            maximum: { unit: "business_day", value: 7 },
-          },
-        },
-      },
-    ];
-  }
-
-  const FREE_THRESHOLD_CENTS = 5000; // $50.00
+  const FREE_THRESHOLD_CENTS = 10000; // $100.00
   const isFree = params.subtotalCents >= FREE_THRESHOLD_CENTS;
 
   if (isFree) {
@@ -541,7 +550,7 @@ function buildShippingOptions(params: { mode: "payment" | "subscription"; curren
         shipping_rate_data: {
           type: "fixed_amount",
           fixed_amount: { amount: 0, currency },
-          display_name: "Free Shipping (orders $50+)",
+          display_name: "Free Shipping (orders $100+)",
           delivery_estimate: {
             minimum: { unit: "business_day", value: 3 },
             maximum: { unit: "business_day", value: 7 },
@@ -611,7 +620,7 @@ function pickOrderSearchWhere(q: string) {
     sql`${orders.stripeCheckoutSessionId} ILIKE ${needle}`,
     sql`${orders.stripePaymentIntentId} ILIKE ${needle}`,
     sql`${orders.stripeSubscriptionId} ILIKE ${needle}`,
-    sql`${orders.shippingName} ILIKE ${needle}`,
+    sql`${orders.shippingName} ILIKE ${needle}`
   );
 }
 
@@ -668,7 +677,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (denied) return;
 
     try {
-      const rows = await db.select().from(wholesaleApplications).orderBy(desc(wholesaleApplications.createdAt)).limit(500);
+      const rows = await db
+        .select()
+        .from(wholesaleApplications)
+        .orderBy(desc(wholesaleApplications.createdAt))
+        .limit(500);
       return res.json({ ok: true, rows });
     } catch (err: any) {
       const s = safeErrSummary(err);
@@ -828,7 +841,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
           const st = normalizeFulfillment(row.status);
           const n = Number(row.count ?? 0) || 0;
-          rollupByOrderId[oid].fulfillmentCounts[st] = (rollupByOrderId[oid].fulfillmentCounts[st] || 0) + n;
+          rollupByOrderId[oid].fulfillmentCounts[st] =
+            (rollupByOrderId[oid].fulfillmentCounts[st] || 0) + n;
         }
 
         for (const oid of Object.keys(rollupByOrderId)) {
@@ -963,7 +977,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (status === "shipped") set.shippedAt = now;
       if (status === "delivered") set.deliveredAt = now;
 
-      const updated = await db.update(orderItems).set(set).where(eq(orderItems.id, id)).returning({ id: orderItems.id });
+      const updated = await db
+        .update(orderItems)
+        .set(set)
+        .where(eq(orderItems.id, id))
+        .returning({ id: orderItems.id });
 
       if (!updated?.length) {
         return res.status(404).json({ ok: false, message: "Not found." });
@@ -1043,7 +1061,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const ip =
-        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || req.socket?.remoteAddress || null;
+        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        null;
 
       const userAgent = String(req.headers["user-agent"] ?? "") || null;
       const referer = String(req.headers["referer"] ?? "") || null;
@@ -1104,18 +1124,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         const internalHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">New wholesale application</h2>
-  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(safeString(applicationId ?? "(unknown)"))}</div>
+  <div style="margin:0 0 8px;"><b>Application ID:</b> ${escapeHtml(
+    safeString(applicationId ?? "(unknown)")
+  )}</div>
   <div style="margin:0 0 8px;"><b>Business:</b> ${escapeHtml(safeString(businessName))}</div>
   <div style="margin:0 0 8px;"><b>Contact:</b> ${escapeHtml(safeString(contactName))}</div>
   <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(safeString(email))}</div>
   <div style="margin:0 0 8px;"><b>Phone:</b> ${escapeHtml(safeString(phoneDigits))}</div>
-  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(safeString(websiteOrInstagram || "(not provided)"))}</div>
-  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(safeString(city))}, ${escapeHtml(safeString(state))}</div>
+  <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(
+    safeString(websiteOrInstagram || "(not provided)")
+  )}</div>
+  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(
+    safeString(city)
+  )}, ${escapeHtml(safeString(state))}</div>
   <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(safeString(businessType))}${
-          businessType === "other" && businessTypeOther ? ` (${escapeHtml(safeString(businessTypeOther))})` : ""
+          businessType === "other" && businessTypeOther
+            ? ` (${escapeHtml(safeString(businessTypeOther))})`
+            : ""
         }</div>
   <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(safeString(memberCount))}</div>
-  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(safeString(retailSetup || "(not provided)"))}</div>
+  <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(
+    safeString(retailSetup || "(not provided)")
+  )}</div>
   <div style="margin:0 0 8px;"><b>Interested:</b>
     onShelf=${String(interestedOnShelf)},
     coachAffiliate=${String(interestedCoachAffiliate)},
@@ -1124,7 +1154,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   <hr style="border:none;border-top:1px solid #eee;margin:14px 0;" />
   <div style="margin:0 0 6px;"><b>Notes</b></div>
   <pre style="white-space:pre-wrap;background:#f7f7f7;padding:12px;border-radius:10px;font-size:12px;">${escapeHtml(
-    safeString(notes || "(none)"),
+    safeString(notes || "(none)")
   )}</pre>
 </div>`;
 
@@ -1137,9 +1167,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Wholesale application received</h2>
   <p style="margin:0 0 12px;">
-    Thanks${contactName ? `, ${escapeHtml(safeString(contactName))}` : ""}! We received your wholesale application for <b>${escapeHtml(
-          safeString(businessName),
-        )}</b>.
+    Thanks${
+      contactName ? `, ${escapeHtml(safeString(contactName))}` : ""
+    }! We received your wholesale application for <b>${escapeHtml(safeString(businessName))}</b>.
   </p>
   <p style="margin:0 0 12px;">We’ll review it and get back to you shortly.</p>
   <p style="margin:16px 0 0;font-size:12px;color:#666;">
@@ -1175,7 +1205,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           console.error("[wholesale] applicant email send failed:", s);
         }
       } else {
-        console.warn("[wholesale] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM). Stored application without emailing.");
+        console.warn(
+          "[wholesale] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM). Stored application without emailing."
+        );
       }
 
       return res.json({ ok: true, id: applicationId });
@@ -1255,13 +1287,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }));
 
       const currency = "usd";
-      const subtotalCents = mode === "subscription" ? 0 : await computeCartSubtotalCentsFromStripePrices(line_items);
 
-      const shipping_options = buildShippingOptions({
-        mode,
-        currency,
-        subtotalCents,
-      });
+      // Only calculate shipping/thresholds for one-time purchases.
+      const subtotalCents =
+        mode === "payment" ? await computeCartSubtotalCentsFromStripePrices(line_items) : 0;
+
+      // ✅ IMPORTANT STRIPE RULE:
+      // `shipping_options` cannot be used in `mode: "subscription"`.
+      // For subscriptions, we simply omit `shipping_options` entirely (shipping is "free" by policy).
+      const shipping_options = mode === "payment" ? buildShippingOptions({ currency, subtotalCents }) : undefined;
 
       const existingCustomerId = await findStripeCustomerIdByEmail(email);
 
@@ -1273,11 +1307,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         allow_promotion_codes: false,
 
         shipping_address_collection: { allowed_countries: ["US"] },
-        shipping_options,
 
         phone_number_collection: { enabled: true },
         automatic_tax: { enabled: true },
       };
+
+      // Only include shipping_options for one-time (payment) mode
+      if (mode === "payment") {
+        sessionParams.shipping_options = shipping_options;
+      }
 
       if (existingCustomerId) {
         sessionParams.customer = existingCustomerId;

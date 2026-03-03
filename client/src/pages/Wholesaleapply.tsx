@@ -194,10 +194,10 @@ export default function WholesaleApply() {
             <p className="text-xs text-white/45 mb-8">
               If you don’t see a reply within 1–2 business days, email{" "}
               <a
-                href="mailto:alex@kimoraco.com"
+                href="mailto:support@kimoraco.com"
                 className="underline underline-offset-4 hover:text-white"
               >
-                alex@kimoraco.com
+                support@kimoraco.com
               </a>
               .
             </p>

@@ -12,10 +12,10 @@ export function Footer() {
           <span>Kimora Co. © 2025. All rights reserved.</span>
 
           <a
-            href="mailto:alex@kimoraco.com"
+            href="mailto:support@kimoraco.com"
             className="hover:text-white transition-colors"
           >
-            alex@kimoraco.com
+            support@kimoraco.com
           </a>
 
           {/* Legal + Utility Links */}

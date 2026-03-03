@@ -1096,7 +1096,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const resendKey = process.env.RESEND_API_KEY;
       const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
-      const notifyTo = process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
+      const notifyTo = process.env.WHOLESALE_NOTIFY_TO || "support@kimoraco.com";
       const siteUrl = getSiteUrl();
 
       const canSend = Boolean(resendKey && fromEmail);
@@ -1162,7 +1162,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const applicantText =
           `Thanks for applying to Kimora Co wholesale.\n\n` +
           `We received your application for ${businessName} and will review it shortly.\n\n` +
-          `If you need to add anything, reply to this email or contact alex@kimoraco.com.\n`;
+          `If you need to add anything, reply to this email or contact support@kimoraco.com.\n`;
 
         const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
   <h2 style="margin:0 0 10px;">Wholesale application received</h2>
@@ -1174,7 +1174,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   <p style="margin:0 0 12px;">We’ll review it and get back to you shortly.</p>
   <p style="margin:16px 0 0;font-size:12px;color:#666;">
     Need to add something? Reply to this email or contact
-    <a href="mailto:alex@kimoraco.com">alex@kimoraco.com</a>.
+    <a href="mailto:support@kimoraco.com">support@kimoraco.com</a>.
   </p>
 </div>`;
 
@@ -1572,7 +1572,7 @@ ${portalLink}
 If your link expired, request a fresh one here:
 ${fallbackLink}
 
-Need help? Reply to this email or contact alex@kimoraco.com
+Need help? Reply to this email or contact support@kimoraco.com
 `;
 
       const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
@@ -1588,7 +1588,7 @@ Need help? Reply to this email or contact alex@kimoraco.com
     <a href="${fallbackLink}">${fallbackLink}</a>
   </p>
   <p style="margin:18px 0 0;font-size:12px;color:#666;">
-    Need help? Reply to this email or contact <a href="mailto:alex@kimoraco.com">alex@kimoraco.com</a>.
+    Need help? Reply to this email or contact <a href="mailto:support@kimoraco.com">support@kimoraco.com</a>.
   </p>
 </div>`;
 

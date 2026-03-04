@@ -374,7 +374,7 @@ async function sendOrderConfirmationEmail(args: {
     : "Kimora Co — Order confirmed";
 
   const manageLink = `${siteUrl}/manage-subscription`;
-  const supportEmail = "alex@kimoraco.com";
+  const supportEmail = "support@kimoraco.com";
 
   const itemsText = lines
     .map((l: any) => {
@@ -453,8 +453,16 @@ async function sendOrderConfirmationEmail(args: {
   }
 
   <div style="margin:0 0 12px;">
-    ${amountSubtotal != null ? `<div><b>Subtotal:</b> ${escapeHtml(formatMoney(amountSubtotal, currency))}</div>` : ""}
-    ${amountTotal != null ? `<div><b>Total:</b> ${escapeHtml(formatMoney(amountTotal, currency))}</div>` : ""}
+    ${
+      amountSubtotal != null
+        ? `<div><b>Subtotal:</b> ${escapeHtml(formatMoney(amountSubtotal, currency))}</div>`
+        : ""
+    }
+    ${
+      amountTotal != null
+        ? `<div><b>Total:</b> ${escapeHtml(formatMoney(amountTotal, currency))}</div>`
+        : ""
+    }
   </div>
 
   ${
@@ -502,6 +510,89 @@ async function sendOrderConfirmationEmail(args: {
   } catch (e: any) {
     const s = safeErrSummary(e);
     console.error("[order-email] send failed:", s);
+  }
+}
+
+/**
+ * Shipping notification email (tracking)
+ */
+async function sendShippingNotificationEmail(args: {
+  customerEmail: string;
+  shippingName?: string | null;
+  orderId?: string | null;
+  carrier?: string | null;
+  trackingNumber?: string | null;
+}) {
+  const resendKey = String(process.env.RESEND_API_KEY || "").trim();
+  const fromEmail = String(process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "").trim();
+  if (!resendKey || !fromEmail) return;
+
+  const email = normalizeEmail(String(args.customerEmail || ""));
+  if (!email || !isValidEmail(email)) return;
+
+  const resend = new Resend(resendKey);
+  const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
+  const supportEmail = "support@kimoraco.com";
+
+  const carrier = safeString(args.carrier || "", 40);
+  const tracking = safeString(args.trackingNumber || "", 120);
+  const name = safeString(args.shippingName || "", 200);
+
+  const subject = "Kimora Co — Your order is on the way";
+
+  const orderLine = args.orderId ? `Order: ${String(args.orderId)}\n` : "";
+  const trackingLine = tracking
+    ? `Tracking${carrier ? ` (${carrier})` : ""}: ${tracking}\n`
+    : "Tracking: (pending)\n";
+
+  const text =
+    `Hey${name ? ` ${name}` : ""}, your Kimora order has shipped.\n\n` +
+    orderLine +
+    trackingLine +
+    `\nNeed help? Reply to this email or contact ${supportEmail}.\n` +
+    `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
+
+  const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
+  <h2 style="margin:0 0 10px;">Shipped ✅</h2>
+  <p style="margin:0 0 14px;">
+    Hey${name ? ` <b>${escapeHtml(name)}</b>` : ""}, your Kimora order is on the way.
+  </p>
+
+  ${
+    args.orderId
+      ? `<div style="margin:0 0 8px;color:#444;"><b>Order:</b> ${escapeHtml(
+          String(args.orderId)
+        )}</div>`
+      : ""
+  }
+
+  <div style="margin:0 0 14px;color:#444;">
+    <b>Tracking${carrier ? ` (${escapeHtml(carrier)})` : ""}:</b>
+    ${tracking ? escapeHtml(tracking) : "(pending)"}
+  </div>
+
+  <div style="margin:16px 0 0;font-size:12px;color:#666;">
+    Need help? Reply to this email or contact
+    <a href="mailto:${supportEmail}">${supportEmail}</a>.
+  </div>
+
+  <div style="margin:14px 0 0;font-size:12px;letter-spacing:0.08em;color:#999;text-transform:uppercase;">
+    OUT-TRAIN. OUT-SMART. OUT-LAST.
+  </div>
+</div>`;
+
+  try {
+    await resend.emails.send({
+      from,
+      to: email,
+      subject,
+      text,
+      html,
+      replyTo: supportEmail,
+    } as any);
+  } catch (e: any) {
+    const s = safeErrSummary(e);
+    console.error("[shipping-email] send failed:", s);
   }
 }
 
@@ -664,6 +755,201 @@ function rollupOrderFulfillment(counts: Record<string, number>) {
   else if (canceled > 0) top = "canceled";
 
   return { fulfillmentStatus: top, fulfillmentCounts: counts };
+}
+
+/**
+ * -----------------------------
+ * EasyPost (labels) — sane defaults
+ * -----------------------------
+ * This uses global fetch (Node 18+/20+). No extra dependency.
+ *
+ * ENV you should add (Render / local):
+ * - EASYPOST_API_KEY=...
+ *
+ * Ship-from defaults (your new PO Box):
+ * - SHIP_FROM_NAME=Kimora Co
+ * - SHIP_FROM_STREET1=PO Box 20024
+ * - SHIP_FROM_CITY=Village of Oak Creek
+ * - SHIP_FROM_STATE=AZ
+ * - SHIP_FROM_ZIP=86341
+ * - SHIP_FROM_COUNTRY=US
+ * - SHIP_FROM_PHONE= (optional)
+ *
+ * Parcel defaults (USPS Ground Advantage-ish for ~1 pouch):
+ * - PARCEL_WEIGHT_OZ=14
+ * - PARCEL_LENGTH_IN=10
+ * - PARCEL_WIDTH_IN=7
+ * - PARCEL_HEIGHT_IN=2
+ */
+function getShipFromAddress() {
+  return {
+    name: safeString(process.env.SHIP_FROM_NAME || "Kimora Co", 80) || "Kimora Co",
+    street1: safeString(process.env.SHIP_FROM_STREET1 || "PO Box 20024", 80) || "PO Box 20024",
+    street2: safeString(process.env.SHIP_FROM_STREET2 || "", 80) || undefined,
+    city:
+      safeString(process.env.SHIP_FROM_CITY || "Village of Oak Creek", 60) || "Village of Oak Creek",
+    state: safeString(process.env.SHIP_FROM_STATE || "AZ", 20) || "AZ",
+    zip: safeString(process.env.SHIP_FROM_ZIP || "86341", 20) || "86341",
+    country: safeString(process.env.SHIP_FROM_COUNTRY || "US", 2) || "US",
+    phone: safeString(process.env.SHIP_FROM_PHONE || "", 30) || undefined,
+  };
+}
+
+function getParcelDefaults() {
+  const weightOz = Number(process.env.PARCEL_WEIGHT_OZ ?? 14);
+  const lengthIn = Number(process.env.PARCEL_LENGTH_IN ?? 10);
+  const widthIn = Number(process.env.PARCEL_WIDTH_IN ?? 7);
+  const heightIn = Number(process.env.PARCEL_HEIGHT_IN ?? 2);
+
+  return {
+    weight: Number.isFinite(weightOz) && weightOz > 0 ? weightOz : 14,
+    length: Number.isFinite(lengthIn) && lengthIn > 0 ? lengthIn : 10,
+    width: Number.isFinite(widthIn) && widthIn > 0 ? widthIn : 7,
+    height: Number.isFinite(heightIn) && heightIn > 0 ? heightIn : 2,
+  };
+}
+
+function stripUndefined(obj: any) {
+  const out: any = {};
+  for (const k of Object.keys(obj || {})) {
+    const v = (obj as any)[k];
+    if (v === undefined) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+async function easyPostRequest(path: string, init?: RequestInit) {
+  const apiKey = String(process.env.EASYPOST_API_KEY || "").trim();
+  if (!apiKey) throw new Error("Missing EASYPOST_API_KEY");
+
+  const url = `https://api.easypost.com${path}`;
+  const auth = Buffer.from(`${apiKey}:`).toString("base64");
+
+  const res = await fetch(url, {
+    ...init,
+    headers: {
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+    },
+  });
+
+  const text = await res.text();
+  let json: any = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = null;
+  }
+
+  if (!res.ok) {
+    const msg =
+      json?.error?.message ||
+      json?.message ||
+      `EasyPost error (${res.status}) on ${path}: ${text?.slice?.(0, 200) || ""}`;
+    const err: any = new Error(msg);
+    err.status = res.status;
+    err.payload = json;
+    throw err;
+  }
+
+  return json;
+}
+
+function stripeAddrToEasyPost(toName: string | null | undefined, addr: any) {
+  // Stripe address keys: line1, line2, city, state, postal_code, country
+  const name = safeString(toName || "", 80);
+  const street1 = safeString(addr?.line1 || "", 100);
+  const street2 = safeString(addr?.line2 || "", 100);
+  const city = safeString(addr?.city || "", 60);
+  const state = safeString(addr?.state || "", 60);
+  const zip = safeString(addr?.postal_code || "", 20);
+  const country = safeString(addr?.country || "US", 2) || "US";
+
+  // phone optional; we don't store it (and you said no phone for now)
+  return stripUndefined({
+    name: name || undefined,
+    street1: street1 || undefined,
+    street2: street2 || undefined,
+    city: city || undefined,
+    state: state || undefined,
+    zip: zip || undefined,
+    country: country || "US",
+  });
+}
+
+async function createAndBuyEasyPostShipment(args: {
+  toAddress: any;
+  fromAddress: any;
+  parcel: { weight: number; length: number; width: number; height: number };
+}) {
+  // Create shipment with PDF labels
+  const created = await easyPostRequest("/v2/shipments", {
+    method: "POST",
+    body: JSON.stringify({
+      shipment: {
+        to_address: args.toAddress,
+        from_address: args.fromAddress,
+        parcel: {
+          weight: args.parcel.weight,
+          length: args.parcel.length,
+          width: args.parcel.width,
+          height: args.parcel.height,
+        },
+        options: {
+          label_format: "PDF",
+        },
+      },
+    }),
+  });
+
+  const shipment = created?.shipment ?? created;
+  const shipmentId = shipment?.id;
+  if (!shipmentId) throw new Error("EasyPost: missing shipment id");
+
+  const rates: any[] = Array.isArray(shipment?.rates) ? shipment.rates : [];
+  if (!rates.length) throw new Error("EasyPost: no rates returned for shipment");
+
+  // Pick lowest rate (sane default)
+  const rate = rates
+    .map((r) => ({
+      id: r?.id,
+      rate: Number(r?.rate),
+      carrier: String(r?.carrier || ""),
+      service: String(r?.service || ""),
+    }))
+    .filter((r) => r.id && Number.isFinite(r.rate))
+    .sort((a, b) => a.rate - b.rate)[0];
+
+  if (!rate?.id) throw new Error("EasyPost: could not select a rate to buy");
+
+  const bought = await easyPostRequest(`/v2/shipments/${encodeURIComponent(shipmentId)}/buy`, {
+    method: "POST",
+    body: JSON.stringify({
+      rate: { id: rate.id },
+    }),
+  });
+
+  const boughtShipment = bought?.shipment ?? bought;
+  const tracking = safeString(boughtShipment?.tracking_code || "", 120) || "";
+  const carrier = safeString(boughtShipment?.selected_rate?.carrier || rate.carrier || "", 80) || "";
+  const labelUrl =
+    safeString(boughtShipment?.postage_label?.label_url || "", 1000) ||
+    safeString(boughtShipment?.postage_label?.label_pdf_url || "", 1000) ||
+    "";
+
+  return {
+    shipmentId: String(shipmentId),
+    carrier,
+    trackingNumber: tracking || null,
+    labelUrl: labelUrl || null,
+    selectedRate: {
+      carrier,
+      service: safeString(boughtShipment?.selected_rate?.service || rate.service || "", 80),
+      rate: safeString(boughtShipment?.selected_rate?.rate || String(rate.rate) || "", 40),
+    },
+  };
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
@@ -996,6 +1282,155 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // -----------------------------
+  // ✅ Admin: batch create labels for PACKED orders (EasyPost)
+  // -----------------------------
+  /**
+   * POST /api/admin/labels/batch
+   * Body (optional): { orderIds?: string[] }
+   *
+   * Default behavior:
+   * - Finds orders that have items in "packed"
+   * - Only generates labels for orders that do NOT already have tracking_number on those packed items
+   * - Creates 1 shipment per order (not per item)
+   * - Stamps all items in the order as shipped + tracking
+   *
+   * Returns:
+   * - labels: [{ orderId, carrier, trackingNumber, labelUrl, selectedRate }]
+   * - errors: [{ orderId, message }]
+   */
+  app.post("/api/admin/labels/batch", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      // Optional: limit to specific orderIds
+      const orderIdsIn: string[] = Array.isArray(req.body?.orderIds)
+        ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
+        : [];
+
+      const whereOrderIds =
+        orderIdsIn.length > 0 ? inArray(orderItems.orderId, orderIdsIn as any) : undefined;
+
+      // Find candidate orders:
+      // - at least one item is packed
+      // - those packed items do not have tracking yet
+      const packedAgg = await db
+        .select({
+          orderId: orderItems.orderId,
+          packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
+            Number
+          ),
+          packedWithoutTracking: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' and (${orderItems.trackingNumber} is null or ${orderItems.trackingNumber} = '') then 1 else 0 end)`.mapWith(
+            Number
+          ),
+        })
+        .from(orderItems)
+        .where(whereOrderIds as any)
+        .groupBy(orderItems.orderId);
+
+      const candidateOrderIds = (packedAgg || [])
+        .filter((r: any) => (Number(r.packedCount) || 0) > 0 && (Number(r.packedWithoutTracking) || 0) > 0)
+        .map((r: any) => String(r.orderId || "").trim())
+        .filter(Boolean);
+
+      if (!candidateOrderIds.length) {
+        return res.json({ ok: true, labels: [], errors: [] });
+      }
+
+      // Load orders (shipping info)
+      const orderRows = await db
+        .select({
+          id: orders.id,
+          customerEmail: orders.customerEmail,
+          shippingName: orders.shippingName,
+          shippingAddress: orders.shippingAddress,
+        })
+        .from(orders)
+        .where(inArray(orders.id, candidateOrderIds as any))
+        .limit(500);
+
+      const byId: Record<string, any> = {};
+      for (const o of orderRows as any[]) byId[String(o.id)] = o;
+
+      const fromAddress = getShipFromAddress();
+      const parcel = getParcelDefaults();
+
+      const labels: any[] = [];
+      const errors: any[] = [];
+
+      // Process sequentially (safer + simpler)
+      for (const orderId of candidateOrderIds) {
+        const o = byId[String(orderId)];
+        if (!o) {
+          errors.push({ orderId, message: "Order not found." });
+          continue;
+        }
+
+        const shipAddr = o.shippingAddress;
+        if (!shipAddr || !shipAddr.line1 || !shipAddr.city || !shipAddr.state || !shipAddr.postal_code) {
+          errors.push({ orderId, message: "Missing shipping address on order." });
+          continue;
+        }
+
+        const toAddress = stripeAddrToEasyPost(o.shippingName || null, shipAddr);
+
+        try {
+          const result = await createAndBuyEasyPostShipment({
+            toAddress,
+            fromAddress,
+            parcel,
+          });
+
+          const now = new Date();
+
+          // Stamp all items on that order:
+          // - carrier / tracking
+          // - fulfillment_status shipped
+          // - shipped_at
+          await db
+            .update(orderItems)
+            .set({
+              carrier: result.carrier || null,
+              trackingNumber: result.trackingNumber || null,
+              fulfillmentStatus: "shipped",
+              shippedAt: now,
+            } as any)
+            .where(eq(orderItems.orderId, orderId));
+
+          labels.push({
+            orderId,
+            carrier: result.carrier || null,
+            trackingNumber: result.trackingNumber || null,
+            labelUrl: result.labelUrl || null,
+            selectedRate: result.selectedRate || null,
+          });
+
+          // Notify customer (best effort; do not fail the batch)
+          if (o.customerEmail) {
+            await sendShippingNotificationEmail({
+              customerEmail: String(o.customerEmail),
+              shippingName: o.shippingName ?? null,
+              orderId,
+              carrier: result.carrier || null,
+              trackingNumber: result.trackingNumber || null,
+            });
+          }
+        } catch (e: any) {
+          const s = safeErrSummary(e);
+          errors.push({ orderId, message: s.message || "Failed to create label." });
+          continue;
+        }
+      }
+
+      return res.json({ ok: true, labels, errors });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/admin/labels/batch error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to create labels." });
+    }
+  });
+
+  // -----------------------------
   // Wholesale apply
   // -----------------------------
   app.post("/api/wholesale/apply", async (req, res) => {
@@ -1115,7 +1550,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           `Phone: ${phoneDigits}\n` +
           `Website/IG: ${websiteOrInstagram || "(not provided)"}\n` +
           `City/State: ${city}, ${state}\n` +
-          `Business type: ${businessType}${businessType === "other" ? ` (${businessTypeOther})` : ""}\n` +
+          `Business type: ${businessType}${
+            businessType === "other" ? ` (${businessTypeOther})` : ""
+          }\n` +
           `Member count: ${memberCount}\n` +
           `Retail setup: ${retailSetup || "(not provided)"}\n` +
           `Interested: onShelf=${interestedOnShelf}, coachAffiliate=${interestedCoachAffiliate}, eventSponsorship=${interestedEventSponsorship}\n\n` +
@@ -1137,7 +1574,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(
     safeString(city)
   )}, ${escapeHtml(safeString(state))}</div>
-  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(safeString(businessType))}${
+  <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(
+    safeString(businessType)
+  )}${
           businessType === "other" && businessTypeOther
             ? ` (${escapeHtml(safeString(businessTypeOther))})`
             : ""
@@ -1169,7 +1608,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   <p style="margin:0 0 12px;">
     Thanks${
       contactName ? `, ${escapeHtml(safeString(contactName))}` : ""
-    }! We received your wholesale application for <b>${escapeHtml(safeString(businessName))}</b>.
+    }! We received your wholesale application for <b>${escapeHtml(
+          safeString(businessName)
+        )}</b>.
   </p>
   <p style="margin:0 0 12px;">We’ll review it and get back to you shortly.</p>
   <p style="margin:16px 0 0;font-size:12px;color:#666;">
@@ -1448,18 +1889,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const hadName = Boolean(existing?.[0]?.shippingName);
           const hadAddr = Boolean(existing?.[0]?.shippingAddress);
 
-          if ((!hadName || !hadAddr) && (resolvedShipping.shippingName || resolvedShipping.shippingAddress)) {
+          if (
+            (!hadName || !hadAddr) &&
+            (resolvedShipping.shippingName || resolvedShipping.shippingAddress)
+          ) {
             await db
               .update(orders)
               .set({
-                shippingName: resolvedShipping.shippingName ?? existing?.[0]?.shippingName ?? null,
-                shippingAddress: resolvedShipping.shippingAddress ?? existing?.[0]?.shippingAddress ?? null,
+                shippingName:
+                  resolvedShipping.shippingName ?? existing?.[0]?.shippingName ?? null,
+                shippingAddress:
+                  resolvedShipping.shippingAddress ?? existing?.[0]?.shippingAddress ?? null,
               })
               .where(eq(orders.stripeCheckoutSessionId, session.id));
           }
 
           if (stripeCustomerId) {
-            await db.update(orders).set({ stripeCustomerId }).where(eq(orders.stripeCheckoutSessionId, session.id));
+            await db
+              .update(orders)
+              .set({ stripeCustomerId })
+              .where(eq(orders.stripeCheckoutSessionId, session.id));
           }
         }
 
@@ -1552,7 +2001,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const siteUrl = getSiteUrl();
 
-      const token = signToken({ email, exp: Math.floor(Date.now() / 1000) + 15 * 60, v: 1 }, sessionSecret);
+      const token = signToken(
+        { email, exp: Math.floor(Date.now() / 1000) + 15 * 60, v: 1 },
+        sessionSecret
+      );
 
       const portalLink = `${siteUrl}/manage-subscription?token=${encodeURIComponent(token)}`;
       const fallbackLink = `${siteUrl}/manage-subscription`;

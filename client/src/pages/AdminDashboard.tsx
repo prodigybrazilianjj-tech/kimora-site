@@ -104,14 +104,7 @@ function fmtDate(d?: string | null) {
 
 function oneLineAddress(addr: any) {
   if (!addr) return "—";
-  const parts = [
-    addr.line1,
-    addr.line2,
-    addr.city,
-    addr.state,
-    addr.postal_code,
-    addr.country,
-  ]
+  const parts = [addr.line1, addr.line2, addr.city, addr.state, addr.postal_code, addr.country]
     .map((x) => String(x || "").trim())
     .filter(Boolean);
   return parts.join(", ");
@@ -147,6 +140,51 @@ async function api<T>(path: string, token: string, init?: RequestInit): Promise<
   return json as T;
 }
 
+async function apiBlob(path: string, token: string, init?: RequestInit): Promise<Blob> {
+  const res = await fetch(getApiBase() + path, {
+    ...(init || {}),
+    headers: {
+      ...(init?.headers || {}),
+      // Only set JSON content-type when we actually have a JSON body
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      "x-admin-token": token,
+      Accept: "application/pdf, application/octet-stream",
+    },
+  });
+
+  if (!res.ok) {
+    // Try to extract JSON error message if server returned it
+    const text = await res.text();
+    try {
+      const j = text ? JSON.parse(text) : null;
+      const msg = j?.message || `Request failed (${res.status})`;
+      throw new Error(msg);
+    } catch {
+      throw new Error(text || `Request failed (${res.status})`);
+    }
+  }
+
+  return await res.blob();
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  // also open for quick print/view if it's a pdf
+  if (blob.type.includes("pdf")) {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  // cleanup later
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
 type TabKey = "overview" | "orders" | "wholesale";
 
 const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
@@ -166,12 +204,10 @@ function normalizeFulfillment(s: any): FulfillmentStatus {
 
 function formatCounts(counts?: Record<string, number> | null) {
   if (!counts) return "";
-  const parts = FULFILLMENT_STATUSES
-    .map((k) => {
-      const n = Number((counts as any)[k] ?? 0);
-      return n > 0 ? `${k}:${n}` : "";
-    })
-    .filter(Boolean);
+  const parts = FULFILLMENT_STATUSES.map((k) => {
+    const n = Number((counts as any)[k] ?? 0);
+    return n > 0 ? `${k}:${n}` : "";
+  }).filter(Boolean);
   return parts.join(" • ");
 }
 
@@ -208,6 +244,9 @@ export default function AdminDashboard() {
   const [wholesaleLoading, setWholesaleLoading] = useState(false);
   const [wholesaleQ, setWholesaleQ] = useState("");
   const [wholesaleStatusFilter, setWholesaleStatusFilter] = useState<"" | WholesaleRow["status"]>("");
+
+  // ✅ Labels
+  const [labelsLoading, setLabelsLoading] = useState(false);
 
   const canAuth = Boolean(savedToken);
 
@@ -269,10 +308,7 @@ export default function AdminDashboard() {
     if (!savedToken) return;
     setWholesaleLoading(true);
     try {
-      const data = await api<{ ok: true; rows: WholesaleRow[] }>(
-        "/api/admin/wholesale-applications",
-        savedToken,
-      );
+      const data = await api<{ ok: true; rows: WholesaleRow[] }>("/api/admin/wholesale-applications", savedToken);
       setWholesale(data.rows || []);
     } finally {
       setWholesaleLoading(false);
@@ -290,10 +326,7 @@ export default function AdminDashboard() {
     setItemEdits({});
 
     try {
-      const data = await api<{ ok: true; order: any; items: OrderItemRow[] }>(
-        `/api/admin/orders/${id}`,
-        savedToken,
-      );
+      const data = await api<{ ok: true; order: any; items: OrderItemRow[] }>(`/api/admin/orders/${id}`, savedToken);
 
       setSelectedOrderDetail(data.order);
 
@@ -383,6 +416,41 @@ export default function AdminDashboard() {
     }
   }
 
+  /**
+   * ✅ Generate a single PDF of labels for all PACKED items.
+   * Server endpoint we expect:
+   * POST /api/admin/labels/batch  (returns application/pdf)
+   * Body: { fromStatus: "packed" }
+   */
+  async function generatePackedLabelsPdf() {
+    if (!savedToken) return;
+    if (labelsLoading) return;
+
+    try {
+      setLabelsLoading(true);
+      toast({ title: "Generating labels…", description: "This can take a few seconds." });
+
+      const blob = await apiBlob("/api/admin/labels/batch", savedToken, {
+        method: "POST",
+        body: JSON.stringify({ fromStatus: "packed" }),
+      });
+
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      downloadBlob(blob, `kimora-labels-packed-${stamp}.pdf`);
+
+      toast({ title: "Labels ready", description: "Opened in a new tab + downloaded as PDF." });
+
+      // refresh orders (server may mark shipped / set tracking)
+      await loadOrders();
+      if (selectedOrderId) await openOrder(selectedOrderId);
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to generate labels.");
+      toast({ title: "Labels failed", description: msg });
+    } finally {
+      setLabelsLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!savedToken) return;
     loadSummary().catch(() => {});
@@ -408,6 +476,15 @@ export default function AdminDashboard() {
 
     return rows;
   }, [wholesale, wholesaleQ, wholesaleStatusFilter]);
+
+  const packedCount = useMemo(() => {
+    let n = 0;
+    for (const o of orders) {
+      const st = normalizeFulfillment(o.fulfillmentStatus);
+      if (st === "packed") n += 1;
+    }
+    return n;
+  }, [orders]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -457,7 +534,7 @@ export default function AdminDashboard() {
           <div className="flex-1" />
 
           {canAuth && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button type="button" variant="outline" onClick={loadSummary}>
                 Refresh overview
               </Button>
@@ -466,6 +543,17 @@ export default function AdminDashboard() {
               </Button>
               <Button type="button" variant="outline" onClick={loadWholesale}>
                 Refresh wholesale
+              </Button>
+
+              {/* ✅ Label generator */}
+              <Button
+                type="button"
+                variant="default"
+                onClick={generatePackedLabelsPdf}
+                disabled={labelsLoading || packedCount === 0}
+                title={packedCount === 0 ? "No packed orders yet" : "Generates one PDF for all packed items"}
+              >
+                {labelsLoading ? "Generating…" : `Generate labels (packed${packedCount ? `: ${packedCount}` : ""})`}
               </Button>
             </div>
           )}
@@ -477,9 +565,7 @@ export default function AdminDashboard() {
             <div className="grid md:grid-cols-4 gap-4">
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Total revenue</div>
-                <div className="text-2xl font-bold mt-1">
-                  {summary ? money(summary.totalRevenueCents, "usd") : "—"}
-                </div>
+                <div className="text-2xl font-bold mt-1">{summary ? money(summary.totalRevenueCents, "usd") : "—"}</div>
               </div>
 
               <div className="rounded-lg border border-border p-4">
@@ -649,12 +735,7 @@ export default function AdminDashboard() {
             {/* ✅ UX FIX: Order detail opens in a modal (no jumping to top) */}
             {(selectedOrderId || orderDetailLoading || orderDetailError) && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div
-                  className="absolute inset-0 bg-black/50"
-                  onClick={() => closeOrder()}
-                  role="button"
-                  tabIndex={-1}
-                />
+                <div className="absolute inset-0 bg-black/50" onClick={() => closeOrder()} role="button" tabIndex={-1} />
                 <div className="relative w-full max-w-5xl max-h-[85vh] overflow-auto rounded-xl border border-border bg-background shadow-lg">
                   <div className="sticky top-0 bg-background border-b border-border p-4 flex items-start justify-between gap-3 flex-wrap">
                     <div>
@@ -662,7 +743,7 @@ export default function AdminDashboard() {
                       <div className="text-sm text-muted-foreground">{selectedOrderId ? `ID: ${selectedOrderId}` : ""}</div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       {selectedOrderId && (
                         <Button
                           type="button"
@@ -698,9 +779,7 @@ export default function AdminDashboard() {
 
                         <div className="rounded-md border border-border p-3">
                           <div className="text-xs text-muted-foreground">Total</div>
-                          <div className="font-medium mt-1">
-                            {money(selectedOrderDetail.amountTotal, selectedOrderDetail.currency)}
-                          </div>
+                          <div className="font-medium mt-1">{money(selectedOrderDetail.amountTotal, selectedOrderDetail.currency)}</div>
                           <div className="text-xs text-muted-foreground mt-1">
                             Status: {selectedOrderDetail.status || "—"} •{" "}
                             {selectedOrderDetail.isSubscription ? "Subscription" : "One-time"}
@@ -710,9 +789,7 @@ export default function AdminDashboard() {
                         <div className="md:col-span-3 rounded-md border border-border p-3">
                           <div className="text-xs text-muted-foreground">Shipping</div>
                           <div className="font-medium mt-1">{selectedOrderDetail.shippingName || "—"}</div>
-                          <div className="text-sm text-muted-foreground mt-1">
-                            {oneLineAddress(selectedOrderDetail.shippingAddress)}
-                          </div>
+                          <div className="text-sm text-muted-foreground mt-1">{oneLineAddress(selectedOrderDetail.shippingAddress)}</div>
                         </div>
 
                         {/* Fulfillment per item */}
@@ -742,8 +819,7 @@ export default function AdminDashboard() {
                                   };
 
                                   const label =
-                                    it.flavor ||
-                                    `${it.purchaseType}${it.frequencyWeeks ? ` (${it.frequencyWeeks}w)` : ""}`;
+                                    it.flavor || `${it.purchaseType}${it.frequencyWeeks ? ` (${it.frequencyWeeks}w)` : ""}`;
 
                                   return (
                                     <tr key={it.id} className="border-t border-border">
@@ -811,12 +887,7 @@ export default function AdminDashboard() {
                                       <td className="p-2 text-muted-foreground">{it.deliveredAt ? fmtDate(it.deliveredAt) : "—"}</td>
 
                                       <td className="p-2">
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          className="h-8"
-                                          onClick={() => saveItemFulfillment(it.id)}
-                                        >
+                                        <Button type="button" variant="outline" className="h-8" onClick={() => saveItemFulfillment(it.id)}>
                                           Save
                                         </Button>
                                       </td>
@@ -836,8 +907,7 @@ export default function AdminDashboard() {
                           </div>
 
                           <div className="text-xs text-muted-foreground mt-2">
-                            Tip: setting to <code>shipped</code> stamps shippedAt. Setting to{" "}
-                            <code>delivered</code> stamps both.
+                            Tip: setting to <code>shipped</code> stamps shippedAt. Setting to <code>delivered</code> stamps both.
                           </div>
                         </div>
                       </div>

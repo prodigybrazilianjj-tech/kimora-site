@@ -33,7 +33,7 @@ export default function Refunds() {
 
             <p>
               Unopened and unused products may be returned within{" "}
-              <strong>14 days of delivery</strong>, provided they are in their
+              <strong>30 days of delivery</strong>, provided they are in their
               original packaging and condition.
             </p>
 

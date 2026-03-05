@@ -4,6 +4,7 @@ import type { Server } from "http";
 import { eq, desc, sql, and, or, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import { Resend } from "resend";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 
 import { stripe } from "./stripe";
 import { db } from "./db";
@@ -867,7 +868,6 @@ function stripeAddrToEasyPost(toName: string | null | undefined, addr: any) {
   const zip = safeString(addr?.postal_code || "", 20);
   const country = safeString(addr?.country || "US", 2) || "US";
 
-  // phone optional; we don't store it (and you said no phone for now)
   return stripUndefined({
     name: name || undefined,
     street1: street1 || undefined,
@@ -934,6 +934,8 @@ async function createAndBuyEasyPostShipment(args: {
   const boughtShipment = bought?.shipment ?? bought;
   const tracking = safeString(boughtShipment?.tracking_code || "", 120) || "";
   const carrier = safeString(boughtShipment?.selected_rate?.carrier || rate.carrier || "", 80) || "";
+
+  // EasyPost sometimes provides label_url OR label_pdf_url depending on account/settings
   const labelUrl =
     safeString(boughtShipment?.postage_label?.label_url || "", 1000) ||
     safeString(boughtShipment?.postage_label?.label_pdf_url || "", 1000) ||
@@ -950,6 +952,74 @@ async function createAndBuyEasyPostShipment(args: {
       rate: safeString(boughtShipment?.selected_rate?.rate || String(rate.rate) || "", 40),
     },
   };
+}
+
+/**
+ * Fetch a label PDF (bytes) from EasyPost's hosted labelUrl.
+ * We keep it simple (no auth needed for label URLs typically).
+ */
+async function fetchPdfBytes(url: string): Promise<Uint8Array> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch label PDF (${res.status})`);
+  const ab = await res.arrayBuffer();
+  return new Uint8Array(ab);
+}
+
+/**
+ * Merge multiple PDF byte arrays into a single multi-page PDF.
+ */
+async function mergePdfs(pdfs: Uint8Array[]): Promise<Uint8Array> {
+  const merged = await PDFDocument.create();
+
+  for (const bytes of pdfs) {
+    const doc = await PDFDocument.load(bytes);
+    const pages = await merged.copyPages(doc, doc.getPageIndices());
+    for (const p of pages) merged.addPage(p);
+  }
+
+  const out = await merged.save();
+  return new Uint8Array(out);
+}
+
+/**
+ * Create a simple PDF page listing errors (so you still get a valid PDF to open/print).
+ */
+async function appendErrorsPage(existing: Uint8Array, errors: Array<{ orderId: string; message: string }>) {
+  const doc = await PDFDocument.load(existing);
+  const page = doc.addPage();
+  const { width, height } = page.getSize();
+
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+  const title = `Label generation errors (${errors.length})`;
+  page.drawText(title, { x: 40, y: height - 60, size: 18, font: fontBold });
+
+  let y = height - 90;
+  const lineHeight = 14;
+
+  const lines: string[] = [];
+  for (const e of errors) {
+    lines.push(`${e.orderId}: ${e.message}`);
+  }
+
+  for (const line of lines) {
+    // wrap roughly
+    const maxChars = 110;
+    const chunks: string[] = [];
+    for (let i = 0; i < line.length; i += maxChars) chunks.push(line.slice(i, i + maxChars));
+    for (const c of chunks) {
+      page.drawText(c, { x: 40, y, size: 10, font });
+      y -= lineHeight;
+      if (y < 40) {
+        y = height - 60;
+        doc.addPage();
+      }
+    }
+  }
+
+  const out = await doc.save();
+  return new Uint8Array(out);
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
@@ -1056,17 +1126,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ✅ Orders list now returns order-level fulfillment rollup fields:
-  // - fulfillmentStatus
-  // - fulfillmentCounts
+  // ✅ Orders list returns order-level fulfillment rollup fields:
   app.get("/api/admin/orders", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
 
     try {
       const q = safeString(req.query?.q, 200).trim();
-      const status = safeString(req.query?.status, 32).trim(); // paid/refunded/etc
-      const mode = safeString(req.query?.mode, 32).trim(); // payment/subscription
+      const status = safeString(req.query?.status, 32).trim();
+      const mode = safeString(req.query?.mode, 32).trim();
 
       const whereParts: any[] = [];
 
@@ -1187,7 +1255,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ✅ NEW: Admin order-level fulfillment update (sets ALL items for the order)
+  // ✅ Admin order-level fulfillment update (sets ALL items for the order)
   app.patch("/api/admin/orders/:id/fulfillment", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
@@ -1208,7 +1276,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const now = new Date();
       const set: any = { fulfillmentStatus: status };
 
-      // stamp timestamps (do not clear existing)
       if (status === "shipped") set.shippedAt = now;
       if (status === "delivered") set.deliveredAt = now;
 
@@ -1259,7 +1326,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         trackingNumber,
       };
 
-      // auto timestamps
       if (status === "shipped") set.shippedAt = now;
       if (status === "delivered") set.deliveredAt = now;
 
@@ -1286,23 +1352,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // -----------------------------
   /**
    * POST /api/admin/labels/batch
-   * Body (optional): { orderIds?: string[] }
    *
-   * Default behavior:
+   * Returns: application/pdf (merged multi-page PDF)
+   *
+   * Logic:
    * - Finds orders that have items in "packed"
    * - Only generates labels for orders that do NOT already have tracking_number on those packed items
    * - Creates 1 shipment per order (not per item)
    * - Stamps all items in the order as shipped + tracking
-   *
-   * Returns:
-   * - labels: [{ orderId, carrier, trackingNumber, labelUrl, selectedRate }]
-   * - errors: [{ orderId, message }]
+   * - Merges all label PDFs into one PDF
+   * - If some fail, appends an error page to the PDF (still a valid PDF)
    */
   app.post("/api/admin/labels/batch", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
 
     try {
+      const apiKey = String(process.env.EASYPOST_API_KEY || "").trim();
+      if (!apiKey) {
+        return res.status(500).json({ ok: false, message: "Missing EASYPOST_API_KEY" });
+      }
+
       // Optional: limit to specific orderIds
       const orderIdsIn: string[] = Array.isArray(req.body?.orderIds)
         ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
@@ -1329,12 +1399,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         .groupBy(orderItems.orderId);
 
       const candidateOrderIds = (packedAgg || [])
-        .filter((r: any) => (Number(r.packedCount) || 0) > 0 && (Number(r.packedWithoutTracking) || 0) > 0)
+        .filter(
+          (r: any) =>
+            (Number(r.packedCount) || 0) > 0 && (Number(r.packedWithoutTracking) || 0) > 0
+        )
         .map((r: any) => String(r.orderId || "").trim())
         .filter(Boolean);
 
       if (!candidateOrderIds.length) {
-        return res.json({ ok: true, labels: [], errors: [] });
+        return res.status(404).json({
+          ok: false,
+          message: "No packed orders without tracking were found.",
+        });
       }
 
       // Load orders (shipping info)
@@ -1355,8 +1431,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const fromAddress = getShipFromAddress();
       const parcel = getParcelDefaults();
 
-      const labels: any[] = [];
-      const errors: any[] = [];
+      const labelPdfs: Uint8Array[] = [];
+      const errors: Array<{ orderId: string; message: string }> = [];
 
       // Process sequentially (safer + simpler)
       for (const orderId of candidateOrderIds) {
@@ -1381,12 +1457,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             parcel,
           });
 
+          if (!result.labelUrl) {
+            errors.push({ orderId, message: "EasyPost returned no label URL." });
+            continue;
+          }
+
+          // Fetch the label PDF bytes and keep for merge
+          const pdfBytes = await fetchPdfBytes(result.labelUrl);
+          labelPdfs.push(pdfBytes);
+
           const now = new Date();
 
-          // Stamp all items on that order:
-          // - carrier / tracking
-          // - fulfillment_status shipped
-          // - shipped_at
+          // Stamp all items on that order
           await db
             .update(orderItems)
             .set({
@@ -1397,15 +1479,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             } as any)
             .where(eq(orderItems.orderId, orderId));
 
-          labels.push({
-            orderId,
-            carrier: result.carrier || null,
-            trackingNumber: result.trackingNumber || null,
-            labelUrl: result.labelUrl || null,
-            selectedRate: result.selectedRate || null,
-          });
-
-          // Notify customer (best effort; do not fail the batch)
+          // Notify customer (best effort)
           if (o.customerEmail) {
             await sendShippingNotificationEmail({
               customerEmail: String(o.customerEmail),
@@ -1422,7 +1496,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
       }
 
-      return res.json({ ok: true, labels, errors });
+      if (!labelPdfs.length) {
+        return res.status(400).json({
+          ok: false,
+          message: errors.length
+            ? `No labels created. Example: ${errors[0].orderId}: ${errors[0].message}`
+            : "No labels created.",
+          errors,
+        });
+      }
+
+      // Merge into one PDF
+      let merged = await mergePdfs(labelPdfs);
+
+      // If any failures, append an error page so the PDF still opens and you can see what failed
+      if (errors.length) {
+        merged = await appendErrorsPage(merged, errors);
+        res.setHeader("X-Label-Errors", String(errors.length));
+      } else {
+        res.setHeader("X-Label-Errors", "0");
+      }
+
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const filename = `kimora-labels-packed-${stamp}.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.status(200).send(Buffer.from(merged));
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("POST /api/admin/labels/batch error:", s);
@@ -1729,14 +1829,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const currency = "usd";
 
-      // Only calculate shipping/thresholds for one-time purchases.
       const subtotalCents =
         mode === "payment" ? await computeCartSubtotalCentsFromStripePrices(line_items) : 0;
 
-      // ✅ IMPORTANT STRIPE RULE:
-      // `shipping_options` cannot be used in `mode: "subscription"`.
-      // For subscriptions, we simply omit `shipping_options` entirely (shipping is "free" by policy).
-      const shipping_options = mode === "payment" ? buildShippingOptions({ currency, subtotalCents }) : undefined;
+      const shipping_options =
+        mode === "payment" ? buildShippingOptions({ currency, subtotalCents }) : undefined;
 
       const existingCustomerId = await findStripeCustomerIdByEmail(email);
 
@@ -1753,7 +1850,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         automatic_tax: { enabled: true },
       };
 
-      // Only include shipping_options for one-time (payment) mode
       if (mode === "payment") {
         sessionParams.shipping_options = shipping_options;
       }
@@ -1840,11 +1936,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as any;
 
-        // ✅ resolve shipping reliably (refetch session + fallback to charge)
         const resolvedShipping = await resolveShippingForSession(String(session.id), session);
-
         const stripeCustomerId = await getStripeCustomerIdFromCheckoutSession(session);
-
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
 
         const inserted = await db
@@ -1861,7 +1954,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             isSubscription: session.mode === "subscription",
             status: session.payment_status || "paid",
 
-            // ✅ use resolved shipping (not event payload shipping_details)
             shippingName: resolvedShipping.shippingName ?? null,
             shippingAddress: resolvedShipping.shippingAddress ?? null,
           })
@@ -1885,7 +1977,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
           orderId = existing?.[0]?.id;
 
-          // ✅ backfill shipping if it was blank when first inserted
           const hadName = Boolean(existing?.[0]?.shippingName);
           const hadAddr = Boolean(existing?.[0]?.shippingAddress);
 
@@ -1937,7 +2028,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                 quantity: qty,
                 unitAmount: li.price?.unit_amount ?? null,
 
-                // ✅ new items start unfulfilled
                 fulfillmentStatus: "unfulfilled",
                 carrier: null,
                 trackingNumber: null,

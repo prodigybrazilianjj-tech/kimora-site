@@ -983,38 +983,52 @@ async function mergePdfs(pdfs: Uint8Array[]): Promise<Uint8Array> {
 
 /**
  * Create a simple PDF page listing errors (so you still get a valid PDF to open/print).
+ *
+ * ✅ FIXED: correctly continues on newly created pages.
  */
 async function appendErrorsPage(existing: Uint8Array, errors: Array<{ orderId: string; message: string }>) {
   const doc = await PDFDocument.load(existing);
-  const page = doc.addPage();
-  const { width, height } = page.getSize();
 
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-  const title = `Label generation errors (${errors.length})`;
-  page.drawText(title, { x: 40, y: height - 60, size: 18, font: fontBold });
+  const newPage = () => {
+    const p = doc.addPage();
+    const { width, height } = p.getSize();
 
-  let y = height - 90;
+    p.drawText(`Label generation errors (${errors.length})`, {
+      x: 40,
+      y: height - 60,
+      size: 18,
+      font: fontBold,
+    });
+
+    return { p, width, height, yStart: height - 90 };
+  };
+
+  let { p: page, height, yStart } = newPage();
+  let y = yStart;
+
   const lineHeight = 14;
 
   const lines: string[] = [];
-  for (const e of errors) {
-    lines.push(`${e.orderId}: ${e.message}`);
-  }
+  for (const e of errors) lines.push(`${e.orderId}: ${e.message}`);
 
   for (const line of lines) {
-    // wrap roughly
     const maxChars = 110;
     const chunks: string[] = [];
     for (let i = 0; i < line.length; i += maxChars) chunks.push(line.slice(i, i + maxChars));
+
     for (const c of chunks) {
+      if (y < 40) {
+        const np = newPage();
+        page = np.p;
+        height = np.height;
+        y = np.yStart;
+      }
+
       page.drawText(c, { x: 40, y, size: 10, font });
       y -= lineHeight;
-      if (y < 40) {
-        y = height - 60;
-        doc.addPage();
-      }
     }
   }
 

@@ -776,11 +776,27 @@ function rollupOrderFulfillment(counts: Record<string, number>) {
  * - SHIP_FROM_COUNTRY=US
  * - SHIP_FROM_PHONE= (optional)
  *
- * Parcel defaults (USPS Ground Advantage-ish for ~1 pouch):
- * - PARCEL_WEIGHT_OZ=14
- * - PARCEL_LENGTH_IN=10
- * - PARCEL_WIDTH_IN=7
- * - PARCEL_HEIGHT_IN=2
+ * Packaging logic (per your rule):
+ * - 1–2 pouches => mailer
+ * - 3+ pouches => box
+ *
+ * Optional ENV overrides:
+ * - POUCH_WEIGHT_OZ=14               (weight for ONE pouch)
+ * - MAILER_TARE_OZ=2                 (mailer weight)
+ * - BOX_TARE_OZ=6                    (box weight)
+ *
+ * - MAILER_LENGTH_IN=13
+ * - MAILER_WIDTH_IN=10
+ * - MAILER_HEIGHT_IN=3
+ *
+ * - BOX_LENGTH_IN=12
+ * - BOX_WIDTH_IN=10
+ * - BOX_HEIGHT_IN=6
+ *
+ * If you want pouch-based dimensions for more accuracy:
+ * - POUCH_WIDTH_IN=10.0
+ * - POUCH_HEIGHT_IN=8.3
+ * - POUCH_THICKNESS_IN=2.0
  */
 function getShipFromAddress() {
   return {
@@ -796,17 +812,78 @@ function getShipFromAddress() {
   };
 }
 
-function getParcelDefaults() {
-  const weightOz = Number(process.env.PARCEL_WEIGHT_OZ ?? 14);
-  const lengthIn = Number(process.env.PARCEL_LENGTH_IN ?? 10);
-  const widthIn = Number(process.env.PARCEL_WIDTH_IN ?? 7);
-  const heightIn = Number(process.env.PARCEL_HEIGHT_IN ?? 2);
+function numEnv(name: string, fallback: number) {
+  const v = Number(process.env[name]);
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+}
 
+function getPouchDefaults() {
+  // Your pouch (approx from prior sizing): ~10" x ~8.3" face.
+  // Thickness depends on fill; default 2".
   return {
-    weight: Number.isFinite(weightOz) && weightOz > 0 ? weightOz : 14,
-    length: Number.isFinite(lengthIn) && lengthIn > 0 ? lengthIn : 10,
-    width: Number.isFinite(widthIn) && widthIn > 0 ? widthIn : 7,
-    height: Number.isFinite(heightIn) && heightIn > 0 ? heightIn : 2,
+    weightOz: numEnv("POUCH_WEIGHT_OZ", 14),
+    widthIn: numEnv("POUCH_WIDTH_IN", 10.0),
+    heightIn: numEnv("POUCH_HEIGHT_IN", 8.3),
+    thicknessIn: numEnv("POUCH_THICKNESS_IN", 2.0),
+  };
+}
+
+function getMailerDefaults() {
+  // 10x13 poly mailer (common) with a bit of thickness allowance.
+  return {
+    tareOz: numEnv("MAILER_TARE_OZ", 2),
+    lengthIn: numEnv("MAILER_LENGTH_IN", 13),
+    widthIn: numEnv("MAILER_WIDTH_IN", 10),
+    heightIn: numEnv("MAILER_HEIGHT_IN", 3),
+  };
+}
+
+function getBoxDefaults() {
+  return {
+    tareOz: numEnv("BOX_TARE_OZ", 6),
+    lengthIn: numEnv("BOX_LENGTH_IN", 12),
+    widthIn: numEnv("BOX_WIDTH_IN", 10),
+    heightIn: numEnv("BOX_HEIGHT_IN", 6),
+  };
+}
+
+/**
+ * Per your rule:
+ * - 1–2 pouches => mailer
+ * - 3+ pouches => box
+ *
+ * Returns EasyPost parcel inches + ounces.
+ */
+function getParcelForPouchCount(pouchCount: number) {
+  const n = Number.isFinite(pouchCount) ? Math.max(1, Math.floor(pouchCount)) : 1;
+
+  const pouch = getPouchDefaults();
+  const mailer = getMailerDefaults();
+  const box = getBoxDefaults();
+
+  if (n <= 2) {
+    const weight = pouch.weightOz * n + mailer.tareOz;
+
+    // For EasyPost, parcel dimensions should be positive non-zero.
+    // Mailer is basically flat—give it a realistic height.
+    return {
+      weight: weight > 0 ? weight : 16,
+      length: mailer.lengthIn,
+      width: mailer.widthIn,
+      height: mailer.heightIn,
+      packagingType: "mailer" as const,
+    };
+  }
+
+  const weight = pouch.weightOz * n + box.tareOz;
+
+  // Box dims are simplest/safest vs trying to compute a stack; override via env if you want.
+  return {
+    weight: weight > 0 ? weight : 32,
+    length: box.lengthIn,
+    width: box.widthIn,
+    height: box.heightIn,
+    packagingType: "box" as const,
   };
 }
 
@@ -983,52 +1060,41 @@ async function mergePdfs(pdfs: Uint8Array[]): Promise<Uint8Array> {
 
 /**
  * Create a simple PDF page listing errors (so you still get a valid PDF to open/print).
- *
- * ✅ FIXED: correctly continues on newly created pages.
  */
-async function appendErrorsPage(existing: Uint8Array, errors: Array<{ orderId: string; message: string }>) {
+async function appendErrorsPage(
+  existing: Uint8Array,
+  errors: Array<{ orderId: string; message: string }>
+) {
   const doc = await PDFDocument.load(existing);
+  const page = doc.addPage();
+  const { width, height } = page.getSize();
 
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-  const newPage = () => {
-    const p = doc.addPage();
-    const { width, height } = p.getSize();
+  const title = `Label generation errors (${errors.length})`;
+  page.drawText(title, { x: 40, y: height - 60, size: 18, font: fontBold });
 
-    p.drawText(`Label generation errors (${errors.length})`, {
-      x: 40,
-      y: height - 60,
-      size: 18,
-      font: fontBold,
-    });
-
-    return { p, width, height, yStart: height - 90 };
-  };
-
-  let { p: page, height, yStart } = newPage();
-  let y = yStart;
-
+  let y = height - 90;
   const lineHeight = 14;
 
   const lines: string[] = [];
-  for (const e of errors) lines.push(`${e.orderId}: ${e.message}`);
+  for (const e of errors) {
+    lines.push(`${e.orderId}: ${e.message}`);
+  }
 
   for (const line of lines) {
+    // wrap roughly
     const maxChars = 110;
     const chunks: string[] = [];
     for (let i = 0; i < line.length; i += maxChars) chunks.push(line.slice(i, i + maxChars));
-
     for (const c of chunks) {
-      if (y < 40) {
-        const np = newPage();
-        page = np.p;
-        height = np.height;
-        y = np.yStart;
-      }
-
       page.drawText(c, { x: 40, y, size: 10, font });
       y -= lineHeight;
+      if (y < 40) {
+        y = height - 60;
+        doc.addPage();
+      }
     }
   }
 
@@ -1376,6 +1442,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
    * - Stamps all items in the order as shipped + tracking
    * - Merges all label PDFs into one PDF
    * - If some fail, appends an error page to the PDF (still a valid PDF)
+   *
+   * Packaging rule you confirmed:
+   * - 1–2 pouches => mailer
+   * - 3+ pouches => box
    */
   app.post("/api/admin/labels/batch", async (req, res) => {
     const denied = requireAdmin(req, res);
@@ -1443,7 +1513,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       for (const o of orderRows as any[]) byId[String(o.id)] = o;
 
       const fromAddress = getShipFromAddress();
-      const parcel = getParcelDefaults();
 
       const labelPdfs: Uint8Array[] = [];
       const errors: Array<{ orderId: string; message: string }> = [];
@@ -1457,12 +1526,45 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
 
         const shipAddr = o.shippingAddress;
-        if (!shipAddr || !shipAddr.line1 || !shipAddr.city || !shipAddr.state || !shipAddr.postal_code) {
+        if (
+          !shipAddr ||
+          !shipAddr.line1 ||
+          !shipAddr.city ||
+          !shipAddr.state ||
+          !shipAddr.postal_code
+        ) {
           errors.push({ orderId, message: "Missing shipping address on order." });
           continue;
         }
 
         const toAddress = stripeAddrToEasyPost(o.shippingName || null, shipAddr);
+
+        // Determine pouch count for THIS label run:
+        // Sum quantities for items that are PACKED and have no tracking (i.e., what we're about to ship).
+        let pouchCount = 1;
+        try {
+          const qtyAgg = await db
+            .select({
+              qty: sql<number>`coalesce(sum(${orderItems.quantity}), 0)`.mapWith(Number),
+            })
+            .from(orderItems)
+            .where(
+              and(
+                eq(orderItems.orderId, orderId),
+                eq(orderItems.fulfillmentStatus, "packed"),
+                or(sql`${orderItems.trackingNumber} is null`, sql`${orderItems.trackingNumber} = ''`)
+              ) as any
+            )
+            .limit(1);
+
+          const q = Number(qtyAgg?.[0]?.qty ?? 0) || 0;
+          pouchCount = q > 0 ? q : 1;
+        } catch (e) {
+          // If the qty sum query fails, default to 1 pouch so label still prints.
+          pouchCount = 1;
+        }
+
+        const parcel = getParcelForPouchCount(pouchCount);
 
         try {
           const result = await createAndBuyEasyPostShipment({
@@ -1482,7 +1584,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
           const now = new Date();
 
-          // Stamp all items on that order
+          // Stamp all items on that order (kept same behavior as your previous version)
           await db
             .update(orderItems)
             .set({
@@ -2001,8 +2103,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             await db
               .update(orders)
               .set({
-                shippingName:
-                  resolvedShipping.shippingName ?? existing?.[0]?.shippingName ?? null,
+                shippingName: resolvedShipping.shippingName ?? existing?.[0]?.shippingName ?? null,
                 shippingAddress:
                   resolvedShipping.shippingAddress ?? existing?.[0]?.shippingAddress ?? null,
               })

@@ -49,7 +49,7 @@ type OrderRow = {
   shippingName?: string | null;
   shippingAddress?: any | null;
 
-  // ✅ NEW: order-level rollup coming from /api/admin/orders
+  // ✅ order-level rollup coming from /api/admin/orders
   fulfillmentStatus?: FulfillmentStatus | string | null;
   fulfillmentCounts?: Record<string, number> | null;
 };
@@ -80,6 +80,24 @@ type OrderItemRow = {
   deliveredAt?: string | null;
 
   createdAt?: string;
+};
+
+type LabelRow = {
+  orderId: string;
+  carrier: string | null;
+  trackingNumber: string | null;
+  labelUrl: string | null;
+  selectedRate?: {
+    carrier?: string;
+    service?: string;
+    rate?: string;
+  } | null;
+};
+
+type LabelsBatchResponse = {
+  ok: boolean;
+  labels: LabelRow[];
+  errors: { orderId: string; message: string }[];
 };
 
 function money(cents?: number | null, currency?: string | null) {
@@ -140,51 +158,6 @@ async function api<T>(path: string, token: string, init?: RequestInit): Promise<
   return json as T;
 }
 
-async function apiBlob(path: string, token: string, init?: RequestInit): Promise<Blob> {
-  const res = await fetch(getApiBase() + path, {
-    ...(init || {}),
-    headers: {
-      ...(init?.headers || {}),
-      // Only set JSON content-type when we actually have a JSON body
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      "x-admin-token": token,
-      Accept: "application/pdf, application/octet-stream",
-    },
-  });
-
-  if (!res.ok) {
-    // Try to extract JSON error message if server returned it
-    const text = await res.text();
-    try {
-      const j = text ? JSON.parse(text) : null;
-      const msg = j?.message || `Request failed (${res.status})`;
-      throw new Error(msg);
-    } catch {
-      throw new Error(text || `Request failed (${res.status})`);
-    }
-  }
-
-  return await res.blob();
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  // also open for quick print/view if it's a pdf
-  if (blob.type.includes("pdf")) {
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-
-  // cleanup later
-  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
-}
-
 type TabKey = "overview" | "orders" | "wholesale";
 
 const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
@@ -227,7 +200,7 @@ export default function AdminDashboard() {
   const [orderStatus, setOrderStatus] = useState("");
   const [orderMode, setOrderMode] = useState("");
 
-  // ✅ NEW: order-level fulfillment edits (dropdown in orders table)
+  // ✅ order-level fulfillment edits
   const [orderFulfillmentEdits, setOrderFulfillmentEdits] = useState<Record<string, FulfillmentStatus>>({});
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -247,6 +220,8 @@ export default function AdminDashboard() {
 
   // ✅ Labels
   const [labelsLoading, setLabelsLoading] = useState(false);
+  const [labelsResultOpen, setLabelsResultOpen] = useState(false);
+  const [labelsResult, setLabelsResult] = useState<LabelsBatchResponse | null>(null);
 
   const canAuth = Boolean(savedToken);
 
@@ -271,6 +246,8 @@ export default function AdminDashboard() {
     setOrderFulfillmentEdits({});
     setWholesale([]);
     closeOrder();
+    setLabelsResult(null);
+    setLabelsResultOpen(false);
   }
 
   async function loadSummary() {
@@ -396,7 +373,7 @@ export default function AdminDashboard() {
     await loadOrders();
   }
 
-  // ✅ NEW: order-level fulfillment save (sets all items to selected status)
+  // ✅ order-level fulfillment save (sets all items to selected status)
   async function saveOrderFulfillment(orderId: string) {
     if (!savedToken) return;
     const status = orderFulfillmentEdits[orderId] || "unfulfilled";
@@ -417,30 +394,41 @@ export default function AdminDashboard() {
   }
 
   /**
-   * ✅ Generate a single PDF of labels for all PACKED items.
-   * Server endpoint we expect:
-   * POST /api/admin/labels/batch  (returns application/pdf)
-   * Body: { fromStatus: "packed" }
+   * ✅ Generate labels for PACKED orders.
+   * IMPORTANT: backend returns JSON ({labels, errors}), not a PDF blob.
+   * We show label URLs and open them for printing.
    */
-  async function generatePackedLabelsPdf() {
+  async function generatePackedLabels() {
     if (!savedToken) return;
     if (labelsLoading) return;
 
     try {
       setLabelsLoading(true);
+      setLabelsResult(null);
+      setLabelsResultOpen(false);
+
       toast({ title: "Generating labels…", description: "This can take a few seconds." });
 
-      const blob = await apiBlob("/api/admin/labels/batch", savedToken, {
+      const data = await api<LabelsBatchResponse>("/api/admin/labels/batch", savedToken, {
         method: "POST",
-        body: JSON.stringify({ fromStatus: "packed" }),
+        body: JSON.stringify({}), // backend already defaults to packed-without-tracking
       });
 
-      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-      downloadBlob(blob, `kimora-labels-packed-${stamp}.pdf`);
+      setLabelsResult(data);
+      setLabelsResultOpen(true);
 
-      toast({ title: "Labels ready", description: "Opened in a new tab + downloaded as PDF." });
+      const okCount = (data.labels || []).length;
+      const errCount = (data.errors || []).length;
 
-      // refresh orders (server may mark shipped / set tracking)
+      toast({
+        title: "Label batch complete",
+        description:
+          errCount > 0
+            ? `${okCount} created • ${errCount} errors (see details)`
+            : `${okCount} labels created`,
+      });
+
+      // refresh orders (server stamps shipped/tracking)
       await loadOrders();
       if (selectedOrderId) await openOrder(selectedOrderId);
     } catch (e: any) {
@@ -485,6 +473,26 @@ export default function AdminDashboard() {
     }
     return n;
   }, [orders]);
+
+  const labelsOkCount = (labelsResult?.labels || []).length;
+  const labelsErrCount = (labelsResult?.errors || []).length;
+
+  function openLabel(url: string) {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  function openAllLabels() {
+    const urls = (labelsResult?.labels || [])
+      .map((l) => String(l.labelUrl || "").trim())
+      .filter(Boolean);
+
+    if (!urls.length) return;
+
+    // Browsers may block multiple popups; opening sequentially still usually works after a click.
+    for (const u of urls) {
+      window.open(u, "_blank", "noopener,noreferrer");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -549,15 +557,134 @@ export default function AdminDashboard() {
               <Button
                 type="button"
                 variant="default"
-                onClick={generatePackedLabelsPdf}
+                onClick={generatePackedLabels}
                 disabled={labelsLoading || packedCount === 0}
-                title={packedCount === 0 ? "No packed orders yet" : "Generates one PDF for all packed items"}
+                title={packedCount === 0 ? "No packed orders yet" : "Generates labels for packed orders (opens PDF links)"}
               >
                 {labelsLoading ? "Generating…" : `Generate labels (packed${packedCount ? `: ${packedCount}` : ""})`}
               </Button>
             </div>
           )}
         </div>
+
+        {/* ✅ Labels results modal */}
+        {labelsResultOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setLabelsResultOpen(false)}
+              role="button"
+              tabIndex={-1}
+            />
+            <div className="relative w-full max-w-4xl max-h-[85vh] overflow-auto rounded-xl border border-border bg-background shadow-lg">
+              <div className="sticky top-0 bg-background border-b border-border p-4 flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <div className="font-semibold">Label batch results</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {labelsOkCount} labels • {labelsErrCount} errors
+                  </div>
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  <Button type="button" variant="outline" className="h-9" onClick={openAllLabels} disabled={!labelsOkCount}>
+                    Open all labels
+                  </Button>
+                  <Button type="button" variant="outline" className="h-9" onClick={() => setLabelsResultOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-4 grid gap-4">
+                {labelsOkCount > 0 && (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <div className="p-3 border-b border-border">
+                      <div className="font-semibold">Labels</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Click “Open label” to view/print the actual PDF from EasyPost.
+                      </div>
+                    </div>
+
+                    <div className="overflow-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/40">
+                          <tr>
+                            <th className="p-3 text-left">Order</th>
+                            <th className="p-3 text-left">Carrier</th>
+                            <th className="p-3 text-left">Tracking</th>
+                            <th className="p-3 text-left">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(labelsResult?.labels || []).map((l) => (
+                            <tr key={`${l.orderId}-${l.trackingNumber || ""}`} className="border-t border-border">
+                              <td className="p-3">
+                                <code>{l.orderId}</code>
+                              </td>
+                              <td className="p-3">{l.carrier || "—"}</td>
+                              <td className="p-3">
+                                {l.trackingNumber ? <code>{l.trackingNumber}</code> : <span className="text-muted-foreground">—</span>}
+                              </td>
+                              <td className="p-3">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="h-8"
+                                  disabled={!l.labelUrl}
+                                  onClick={() => l.labelUrl && openLabel(l.labelUrl)}
+                                >
+                                  Open label
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {labelsErrCount > 0 && (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <div className="p-3 border-b border-border">
+                      <div className="font-semibold">Errors</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        These orders did not get labels (missing address, API key, etc.)
+                      </div>
+                    </div>
+
+                    <div className="overflow-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/40">
+                          <tr>
+                            <th className="p-3 text-left">Order</th>
+                            <th className="p-3 text-left">Message</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(labelsResult?.errors || []).map((e) => (
+                            <tr key={`${e.orderId}-${e.message}`} className="border-t border-border">
+                              <td className="p-3">
+                                <code>{e.orderId}</code>
+                              </td>
+                              <td className="p-3">{e.message}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {!labelsOkCount && !labelsErrCount && (
+                  <div className="text-sm text-muted-foreground">
+                    No results returned.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* OVERVIEW */}
         {tab === "overview" && (
@@ -659,7 +786,6 @@ export default function AdminDashboard() {
                           <td className="p-3">{o.isSubscription ? "Subscription" : "One-time"}</td>
                           <td className="p-3">{o.status || "—"}</td>
 
-                          {/* ✅ Adjustable order-level fulfillment column */}
                           <td className="p-3">
                             <div className="flex items-center gap-2 flex-wrap">
                               <select
@@ -732,7 +858,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* ✅ UX FIX: Order detail opens in a modal (no jumping to top) */}
+            {/* Order detail modal */}
             {(selectedOrderId || orderDetailLoading || orderDetailError) && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div className="absolute inset-0 bg-black/50" onClick={() => closeOrder()} role="button" tabIndex={-1} />
@@ -792,7 +918,6 @@ export default function AdminDashboard() {
                           <div className="text-sm text-muted-foreground mt-1">{oneLineAddress(selectedOrderDetail.shippingAddress)}</div>
                         </div>
 
-                        {/* Fulfillment per item */}
                         <div className="md:col-span-3 rounded-md border border-border p-3">
                           <div className="text-xs text-muted-foreground">Items</div>
 

@@ -760,7 +760,7 @@ function rollupOrderFulfillment(counts: Record<string, number>) {
 
 /**
  * -----------------------------
- * EasyPost (labels) — sane defaults
+ * EasyPost (labels) — package automation + sane defaults
  * -----------------------------
  * This uses global fetch (Node 18+/20+). No extra dependency.
  *
@@ -776,27 +776,28 @@ function rollupOrderFulfillment(counts: Record<string, number>) {
  * - SHIP_FROM_COUNTRY=US
  * - SHIP_FROM_PHONE= (optional)
  *
- * Packaging logic (per your rule):
- * - 1–2 pouches => mailer
- * - 3+ pouches => box
+ * ✅ PACKAGE RULES (Kimora):
+ * - 1–2 pouches -> MAILER
+ * - 3–4 pouches -> SMALL BOX
+ * - 5+ pouches  -> MEDIUM BOX
  *
- * Optional ENV overrides:
- * - POUCH_WEIGHT_OZ=14               (weight for ONE pouch)
- * - MAILER_TARE_OZ=2                 (mailer weight)
- * - BOX_TARE_OZ=6                    (box weight)
+ * Provide defaults here; override via env:
  *
+ * Mailer (10x13 poly mailer):
+ * - MAILER_WEIGHT_OZ_PER_POUCH=16
  * - MAILER_LENGTH_IN=13
  * - MAILER_WIDTH_IN=10
- * - MAILER_HEIGHT_IN=3
+ * - MAILER_HEIGHT_IN=2
  *
- * - BOX_LENGTH_IN=12
- * - BOX_WIDTH_IN=10
- * - BOX_HEIGHT_IN=6
+ * Small box (10x8x6):
+ * - BOX_SM_LENGTH_IN=10
+ * - BOX_SM_WIDTH_IN=8
+ * - BOX_SM_HEIGHT_IN=6
  *
- * If you want pouch-based dimensions for more accuracy:
- * - POUCH_WIDTH_IN=10.0
- * - POUCH_HEIGHT_IN=8.3
- * - POUCH_THICKNESS_IN=2.0
+ * Medium box (12x10x8):
+ * - BOX_MD_LENGTH_IN=12
+ * - BOX_MD_WIDTH_IN=10
+ * - BOX_MD_HEIGHT_IN=8
  */
 function getShipFromAddress() {
   return {
@@ -813,77 +814,51 @@ function getShipFromAddress() {
 }
 
 function numEnv(name: string, fallback: number) {
-  const v = Number(process.env[name]);
-  return Number.isFinite(v) && v > 0 ? v : fallback;
-}
-
-function getPouchDefaults() {
-  // Your pouch (approx from prior sizing): ~10" x ~8.3" face.
-  // Thickness depends on fill; default 2".
-  return {
-    weightOz: numEnv("POUCH_WEIGHT_OZ", 14),
-    widthIn: numEnv("POUCH_WIDTH_IN", 10.0),
-    heightIn: numEnv("POUCH_HEIGHT_IN", 8.3),
-    thicknessIn: numEnv("POUCH_THICKNESS_IN", 2.0),
-  };
-}
-
-function getMailerDefaults() {
-  // 10x13 poly mailer (common) with a bit of thickness allowance.
-  return {
-    tareOz: numEnv("MAILER_TARE_OZ", 2),
-    lengthIn: numEnv("MAILER_LENGTH_IN", 13),
-    widthIn: numEnv("MAILER_WIDTH_IN", 10),
-    heightIn: numEnv("MAILER_HEIGHT_IN", 3),
-  };
-}
-
-function getBoxDefaults() {
-  return {
-    tareOz: numEnv("BOX_TARE_OZ", 6),
-    lengthIn: numEnv("BOX_LENGTH_IN", 12),
-    widthIn: numEnv("BOX_WIDTH_IN", 10),
-    heightIn: numEnv("BOX_HEIGHT_IN", 6),
-  };
+  const raw = process.env[name];
+  const n = raw == null ? NaN : Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
 /**
- * Per your rule:
- * - 1–2 pouches => mailer
- * - 3+ pouches => box
- *
- * Returns EasyPost parcel inches + ounces.
+ * Kimora packaging selector based on total pouch count.
+ * Returns parcel dimensions + total weight in ounces.
  */
 function getParcelForPouchCount(pouchCount: number) {
-  const n = Number.isFinite(pouchCount) ? Math.max(1, Math.floor(pouchCount)) : 1;
+  const count = Number.isFinite(pouchCount) ? Math.max(1, Math.floor(pouchCount)) : 1;
 
-  const pouch = getPouchDefaults();
-  const mailer = getMailerDefaults();
-  const box = getBoxDefaults();
+  // Weight model: each pouch ~ 16 oz (1 lb) per your current assumption
+  const weightOzPerPouch = numEnv("WEIGHT_OZ_PER_POUCH", 16);
+  const totalWeightOz = Math.max(1, Math.round(count * weightOzPerPouch));
 
-  if (n <= 2) {
-    const weight = pouch.weightOz * n + mailer.tareOz;
-
-    // For EasyPost, parcel dimensions should be positive non-zero.
-    // Mailer is basically flat—give it a realistic height.
+  // 1–2 => mailer
+  if (count <= 2) {
     return {
-      weight: weight > 0 ? weight : 16,
-      length: mailer.lengthIn,
-      width: mailer.widthIn,
-      height: mailer.heightIn,
-      packagingType: "mailer" as const,
+      weight: totalWeightOz,
+      length: numEnv("MAILER_LENGTH_IN", 13),
+      width: numEnv("MAILER_WIDTH_IN", 10),
+      height: numEnv("MAILER_HEIGHT_IN", 2),
+      kind: "mailer" as const,
     };
   }
 
-  const weight = pouch.weightOz * n + box.tareOz;
+  // 3–4 => small box
+  if (count <= 4) {
+    return {
+      weight: totalWeightOz,
+      length: numEnv("BOX_SM_LENGTH_IN", 10),
+      width: numEnv("BOX_SM_WIDTH_IN", 8),
+      height: numEnv("BOX_SM_HEIGHT_IN", 6),
+      kind: "box_sm" as const,
+    };
+  }
 
-  // Box dims are simplest/safest vs trying to compute a stack; override via env if you want.
+  // 5+ => medium box
   return {
-    weight: weight > 0 ? weight : 32,
-    length: box.lengthIn,
-    width: box.widthIn,
-    height: box.heightIn,
-    packagingType: "box" as const,
+    weight: totalWeightOz,
+    length: numEnv("BOX_MD_LENGTH_IN", 12),
+    width: numEnv("BOX_MD_WIDTH_IN", 10),
+    height: numEnv("BOX_MD_HEIGHT_IN", 8),
+    kind: "box_md" as const,
   };
 }
 
@@ -1061,10 +1036,7 @@ async function mergePdfs(pdfs: Uint8Array[]): Promise<Uint8Array> {
 /**
  * Create a simple PDF page listing errors (so you still get a valid PDF to open/print).
  */
-async function appendErrorsPage(
-  existing: Uint8Array,
-  errors: Array<{ orderId: string; message: string }>
-) {
+async function appendErrorsPage(existing: Uint8Array, errors: Array<{ orderId: string; message: string }>) {
   const doc = await PDFDocument.load(existing);
   const page = doc.addPage();
   const { width, height } = page.getSize();
@@ -1439,13 +1411,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
    * - Finds orders that have items in "packed"
    * - Only generates labels for orders that do NOT already have tracking_number on those packed items
    * - Creates 1 shipment per order (not per item)
+   * - Chooses package size based on total pouch quantity in the order:
+   *      1–2 => mailer
+   *      3–4 => small box
+   *      5+  => medium box
    * - Stamps all items in the order as shipped + tracking
    * - Merges all label PDFs into one PDF
    * - If some fail, appends an error page to the PDF (still a valid PDF)
-   *
-   * Packaging rule you confirmed:
-   * - 1–2 pouches => mailer
-   * - 3+ pouches => box
    */
   app.post("/api/admin/labels/batch", async (req, res) => {
     const denied = requireAdmin(req, res);
@@ -1512,6 +1484,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const byId: Record<string, any> = {};
       for (const o of orderRows as any[]) byId[String(o.id)] = o;
 
+      // Load total pouch quantity per order (sum of quantities)
+      const qtyAgg = await db
+        .select({
+          orderId: orderItems.orderId,
+          totalQty: sql<number>`sum(${orderItems.quantity})`.mapWith(Number),
+        })
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, candidateOrderIds as any))
+        .groupBy(orderItems.orderId);
+
+      const qtyByOrderId: Record<string, number> = {};
+      for (const r of qtyAgg as any[]) {
+        const oid = String(r.orderId || "").trim();
+        if (!oid) continue;
+        qtyByOrderId[oid] = Math.max(1, Number(r.totalQty ?? 1) || 1);
+      }
+
       const fromAddress = getShipFromAddress();
 
       const labelPdfs: Uint8Array[] = [];
@@ -1526,44 +1515,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
 
         const shipAddr = o.shippingAddress;
-        if (
-          !shipAddr ||
-          !shipAddr.line1 ||
-          !shipAddr.city ||
-          !shipAddr.state ||
-          !shipAddr.postal_code
-        ) {
+        if (!shipAddr || !shipAddr.line1 || !shipAddr.city || !shipAddr.state || !shipAddr.postal_code) {
           errors.push({ orderId, message: "Missing shipping address on order." });
           continue;
         }
 
         const toAddress = stripeAddrToEasyPost(o.shippingName || null, shipAddr);
 
-        // Determine pouch count for THIS label run:
-        // Sum quantities for items that are PACKED and have no tracking (i.e., what we're about to ship).
-        let pouchCount = 1;
-        try {
-          const qtyAgg = await db
-            .select({
-              qty: sql<number>`coalesce(sum(${orderItems.quantity}), 0)`.mapWith(Number),
-            })
-            .from(orderItems)
-            .where(
-              and(
-                eq(orderItems.orderId, orderId),
-                eq(orderItems.fulfillmentStatus, "packed"),
-                or(sql`${orderItems.trackingNumber} is null`, sql`${orderItems.trackingNumber} = ''`)
-              ) as any
-            )
-            .limit(1);
-
-          const q = Number(qtyAgg?.[0]?.qty ?? 0) || 0;
-          pouchCount = q > 0 ? q : 1;
-        } catch (e) {
-          // If the qty sum query fails, default to 1 pouch so label still prints.
-          pouchCount = 1;
-        }
-
+        // ✅ Choose package based on total pouches in the order
+        const pouchCount = qtyByOrderId[String(orderId)] ?? 1;
         const parcel = getParcelForPouchCount(pouchCount);
 
         try {
@@ -1584,7 +1544,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
           const now = new Date();
 
-          // Stamp all items on that order (kept same behavior as your previous version)
+          // Stamp all items on that order
           await db
             .update(orderItems)
             .set({
@@ -2103,7 +2063,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             await db
               .update(orders)
               .set({
-                shippingName: resolvedShipping.shippingName ?? existing?.[0]?.shippingName ?? null,
+                shippingName:
+                  resolvedShipping.shippingName ?? existing?.[0]?.shippingName ?? null,
                 shippingAddress:
                   resolvedShipping.shippingAddress ?? existing?.[0]?.shippingAddress ?? null,
               })

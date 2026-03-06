@@ -56,6 +56,12 @@ export const orders = pgTable(
     shippingName: text("shipping_name"),
     shippingAddress: jsonb("shipping_address"),
 
+    // ✅ Order-level shipment storage
+    shippingCarrier: text("shipping_carrier"),
+    shippingTrackingNumber: text("shipping_tracking_number"),
+    shippingLabelUrl: text("shipping_label_url"),
+    shippingShipmentId: text("shipping_shipment_id"),
+
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -71,6 +77,10 @@ export const orders = pgTable(
     subscriptionIdx: index("orders_subscription_idx").on(t.stripeSubscriptionId),
     customerEmailIdx: index("orders_customer_email_idx").on(t.customerEmail),
     stripeCustomerIdx: index("orders_stripe_customer_idx").on(t.stripeCustomerId),
+
+    // ✅ shipment indexes
+    shippingTrackingIdx: index("orders_shipping_tracking_idx").on(t.shippingTrackingNumber),
+    shippingShipmentIdx: index("orders_shipping_shipment_idx").on(t.shippingShipmentId),
   }),
 );
 
@@ -98,8 +108,10 @@ export const orderItems = pgTable(
 
     unitAmount: integer("unit_amount"),
 
-    // ✅ Fulfillment tracking (per-item)
-    fulfillmentStatus: text("fulfillment_status").notNull().default("unfulfilled"),
+    // Fulfillment tracking (per item)
+    fulfillmentStatus: text("fulfillment_status")
+      .notNull()
+      .default("unfulfilled"),
     carrier: text("carrier"),
     trackingNumber: text("tracking_number"),
     shippedAt: timestamp("shipped_at", { withTimezone: true }),
@@ -111,8 +123,6 @@ export const orderItems = pgTable(
   },
   (t) => ({
     orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
-
-    fulfillmentStatusIdx: index("order_items_fulfillment_status_idx").on(t.fulfillmentStatus),
 
     // Fallback uniqueness: one price per order (if priceId exists)
     orderPriceUnique: uniqueIndex("order_items_order_price_unique").on(
@@ -133,23 +143,16 @@ export type InsertOrderItem = typeof orderItems.$inferInsert;
 
 /**
  * PORTAL TOKENS
- * (Keeping this in case you still use it elsewhere. If not used, safe to delete later.)
  */
 export const portalTokens = pgTable(
   "portal_tokens",
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
 
-    // store sha256(rawToken) only — never store raw token
     tokenHash: text("token_hash").notNull(),
-
-    // normalized email (lowercase)
     email: text("email").notNull(),
-
-    // optional: store customer id for speed/stability
     stripeCustomerId: text("stripe_customer_id"),
 
-    // expiry + single-use enforcement
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     usedAt: timestamp("used_at", { withTimezone: true }),
 
@@ -179,20 +182,18 @@ export const wholesaleApplications = pgTable(
 
     email: varchar("email", { length: 320 }).notNull(),
 
-    // REQUIRED now (backend stores digits-only)
     phone: varchar("phone", { length: 32 }).notNull(),
 
     websiteOrInstagram: text("website_or_instagram"),
     city: text("city").notNull(),
     state: varchar("state", { length: 16 }).notNull(),
 
-    businessType: varchar("business_type", { length: 32 }).notNull(), // gym|bjj|performance|trainer|retail|other
+    businessType: varchar("business_type", { length: 32 }).notNull(),
     businessTypeOther: text("business_type_other"),
 
-    // REQUIRED now
     memberCount: integer("member_count").notNull(),
 
-    retailSetup: varchar("retail_setup", { length: 32 }), // front_desk|pro_shop|supplement_wall|not_sure
+    retailSetup: varchar("retail_setup", { length: 32 }),
 
     interestedOnShelf: boolean("interested_on_shelf").notNull().default(true),
     interestedCoachAffiliate: boolean("interested_coach_affiliate")
@@ -204,7 +205,7 @@ export const wholesaleApplications = pgTable(
 
     notes: text("notes"),
 
-    status: varchar("status", { length: 32 }).notNull().default("new"), // new|reviewing|approved|rejected|closed
+    status: varchar("status", { length: 32 }).notNull().default("new"),
     source: varchar("source", { length: 64 }).notNull().default("kimoraco.com"),
 
     metadata: jsonb("metadata").$type<{
@@ -222,7 +223,6 @@ export const wholesaleApplications = pgTable(
     emailIdx: index("wholesale_applications_email_idx").on(t.email),
     statusIdx: index("wholesale_applications_status_idx").on(t.status),
 
-    // DB constraints to match your backend validation
     wholesalePhoneLenChk: check(
       "wholesale_phone_len_chk",
       sql`length(regexp_replace(${t.phone}, '\\D', '', 'g')) >= 10`,

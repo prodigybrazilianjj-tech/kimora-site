@@ -11,9 +11,9 @@ import { db } from "./db";
 import { orders, orderItems, wholesaleApplications } from "../shared/schema";
 
 type CheckoutItem = {
-  flavor: string; // e.g. "strawberry-guava"
+  flavor: string;
   type: "onetime" | "subscribe";
-  frequency?: "2" | "4" | "6"; // required when type === "subscribe"
+  frequency?: "2" | "4" | "6";
   quantity: number;
 };
 
@@ -21,11 +21,6 @@ function slugToEnvKey(slug: string) {
   return slug.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 
-/**
- * IMPORTANT:
- * Never use req.headers.origin for security/correctness.
- * For emails and Stripe return URLs we want a stable canonical base URL.
- */
 function getSiteUrl() {
   return (
     process.env.PUBLIC_SITE_URL ||
@@ -55,10 +50,6 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/**
- * IMPORTANT: never log raw DB errors that include SQL params (PII).
- * Summarize safely.
- */
 function safeErrSummary(err: any) {
   const message = String(err?.message || "unknown error");
   const code = err?.code || err?.cause?.code || err?.cause?.errno || err?.errno || null;
@@ -117,10 +108,6 @@ function mapPriceIdToItem(priceId: string): {
   return { flavor: "unknown", purchaseType: "onetime", frequencyWeeks: null };
 }
 
-/**
- * Stripe customer id is sometimes missing from checkout.session.completed in subscription mode.
- * This helper backfills via the subscription if necessary.
- */
 async function getStripeCustomerIdFromCheckoutSession(session: any): Promise<string | null> {
   let stripeCustomerId: string | null =
     typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
@@ -175,7 +162,6 @@ async function findStripeCustomerIdByEmail(email: string): Promise<string | null
   }
 }
 
-/** Simple validations to match your DB constraints */
 function isValidPhoneDigits(digits: string) {
   return /^\d{10,}$/.test(digits);
 }
@@ -249,16 +235,8 @@ function addressToOneLine(addr: any): string {
   return parts.join(", ");
 }
 
-/**
- * Pull shipping from:
- * 1) session.shipping_details
- * 2) payment_intent.latest_charge.shipping (if present)
- *
- * ✅ Important: Stripe typings differ by version/api, so we treat Stripe objects as `any` here.
- */
 async function resolveShippingForSession(sessionId: string, sessionLike?: any) {
   try {
-    // Step 1: Fetch full session (event payload may be partial)
     const full: any = await stripe.checkout.sessions.retrieve(sessionId);
 
     const shippingName =
@@ -271,7 +249,6 @@ async function resolveShippingForSession(sessionId: string, sessionLike?: any) {
       return { shippingName, shippingAddress };
     }
 
-    // Step 2: Fallback to PaymentIntent -> latest_charge.shipping
     const piId =
       (typeof full?.payment_intent === "string" ? full.payment_intent : null) ||
       (typeof (sessionLike as any)?.payment_intent === "string"
@@ -333,8 +310,6 @@ async function sendOrderConfirmationEmail(args: {
     return;
   }
 
-  // ✅ Use resolved shipping if present on session (we persist it in DB),
-  // but fall back to customer_details name.
   const name = safeString(args.session?.customer_details?.name, 200);
   const shippingName = safeString(args.session?.shipping_details?.name, 200) || name;
   const shippingAddr = args.session?.shipping_details?.address || null;
@@ -514,9 +489,6 @@ async function sendOrderConfirmationEmail(args: {
   }
 }
 
-/**
- * Shipping notification email (tracking)
- */
 async function sendShippingNotificationEmail(args: {
   customerEmail: string;
   shippingName?: string | null;
@@ -597,13 +569,6 @@ async function sendShippingNotificationEmail(args: {
   }
 }
 
-/**
- * Shipping strategy (US only):
- * - Subscriptions: FREE shipping (IMPORTANT: Stripe Checkout subscriptions cannot use `shipping_options`)
- * - One-time:
- *    - $5 flat under $100
- *    - FREE at $100+
- */
 async function computeCartSubtotalCentsFromStripePrices(
   lineItems: Array<{ price: string; quantity: number }>
 ): Promise<number> {
@@ -633,7 +598,7 @@ async function computeCartSubtotalCentsFromStripePrices(
 function buildShippingOptions(params: { currency: string; subtotalCents: number }): any[] {
   const currency = params.currency || "usd";
 
-  const FREE_THRESHOLD_CENTS = 10000; // $100.00
+  const FREE_THRESHOLD_CENTS = 10000;
   const isFree = params.subtotalCents >= FREE_THRESHOLD_CENTS;
 
   if (isFree) {
@@ -656,7 +621,7 @@ function buildShippingOptions(params: { currency: string; subtotalCents: number 
     {
       shipping_rate_data: {
         type: "fixed_amount",
-        fixed_amount: { amount: 500, currency }, // $5.00
+        fixed_amount: { amount: 500, currency },
         display_name: "Standard Shipping",
         delivery_estimate: {
           minimum: { unit: "business_day", value: 3 },
@@ -667,9 +632,6 @@ function buildShippingOptions(params: { currency: string; subtotalCents: number 
   ];
 }
 
-/**
- * Magic link token (HMAC signed). No DB changes.
- */
 function base64url(input: string) {
   return Buffer.from(input).toString("base64url");
 }
@@ -731,10 +693,6 @@ function normalizeFulfillment(v: any) {
   return ALLOWED_FULFILLMENT.has(s) ? s : "unfulfilled";
 }
 
-/**
- * Order rollup logic:
- * - pick the "most actionable" status based on the set present
- */
 function rollupOrderFulfillment(counts: Record<string, number>) {
   const get = (k: string) => Number(counts[k] ?? 0) || 0;
 
@@ -758,47 +716,6 @@ function rollupOrderFulfillment(counts: Record<string, number>) {
   return { fulfillmentStatus: top, fulfillmentCounts: counts };
 }
 
-/**
- * -----------------------------
- * EasyPost (labels) — package automation + sane defaults
- * -----------------------------
- * This uses global fetch (Node 18+/20+). No extra dependency.
- *
- * ENV you should add (Render / local):
- * - EASYPOST_API_KEY=...
- *
- * Ship-from defaults (your new PO Box):
- * - SHIP_FROM_NAME=Kimora Co
- * - SHIP_FROM_STREET1=PO Box 20024
- * - SHIP_FROM_CITY=Village of Oak Creek
- * - SHIP_FROM_STATE=AZ
- * - SHIP_FROM_ZIP=86341
- * - SHIP_FROM_COUNTRY=US
- * - SHIP_FROM_PHONE= (optional)
- *
- * ✅ PACKAGE RULES (Kimora):
- * - 1–2 pouches -> MAILER
- * - 3–4 pouches -> SMALL BOX
- * - 5+ pouches  -> MEDIUM BOX
- *
- * Provide defaults here; override via env:
- *
- * Mailer (10x13 poly mailer):
- * - MAILER_WEIGHT_OZ_PER_POUCH=16
- * - MAILER_LENGTH_IN=13
- * - MAILER_WIDTH_IN=10
- * - MAILER_HEIGHT_IN=2
- *
- * Small box (10x8x6):
- * - BOX_SM_LENGTH_IN=10
- * - BOX_SM_WIDTH_IN=8
- * - BOX_SM_HEIGHT_IN=6
- *
- * Medium box (12x10x8):
- * - BOX_MD_LENGTH_IN=12
- * - BOX_MD_WIDTH_IN=10
- * - BOX_MD_HEIGHT_IN=8
- */
 function getShipFromAddress() {
   return {
     name: safeString(process.env.SHIP_FROM_NAME || "Kimora Co", 80) || "Kimora Co",
@@ -819,18 +736,11 @@ function numEnv(name: string, fallback: number) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-/**
- * Kimora packaging selector based on total pouch count.
- * Returns parcel dimensions + total weight in ounces.
- */
 function getParcelForPouchCount(pouchCount: number) {
   const count = Number.isFinite(pouchCount) ? Math.max(1, Math.floor(pouchCount)) : 1;
-
-  // Weight model: each pouch ~ 16 oz (1 lb) per your current assumption
   const weightOzPerPouch = numEnv("WEIGHT_OZ_PER_POUCH", 16);
   const totalWeightOz = Math.max(1, Math.round(count * weightOzPerPouch));
 
-  // 1–2 => mailer
   if (count <= 2) {
     return {
       weight: totalWeightOz,
@@ -841,7 +751,6 @@ function getParcelForPouchCount(pouchCount: number) {
     };
   }
 
-  // 3–4 => small box
   if (count <= 4) {
     return {
       weight: totalWeightOz,
@@ -852,7 +761,6 @@ function getParcelForPouchCount(pouchCount: number) {
     };
   }
 
-  // 5+ => medium box
   return {
     weight: totalWeightOz,
     length: numEnv("BOX_MD_LENGTH_IN", 12),
@@ -911,7 +819,6 @@ async function easyPostRequest(path: string, init?: RequestInit) {
 }
 
 function stripeAddrToEasyPost(toName: string | null | undefined, addr: any) {
-  // Stripe address keys: line1, line2, city, state, postal_code, country
   const name = safeString(toName || "", 80);
   const street1 = safeString(addr?.line1 || "", 100);
   const street2 = safeString(addr?.line2 || "", 100);
@@ -936,7 +843,6 @@ async function createAndBuyEasyPostShipment(args: {
   fromAddress: any;
   parcel: { weight: number; length: number; width: number; height: number };
 }) {
-  // Create shipment with PDF labels
   const created = await easyPostRequest("/v2/shipments", {
     method: "POST",
     body: JSON.stringify({
@@ -963,7 +869,6 @@ async function createAndBuyEasyPostShipment(args: {
   const rates: any[] = Array.isArray(shipment?.rates) ? shipment.rates : [];
   if (!rates.length) throw new Error("EasyPost: no rates returned for shipment");
 
-  // Pick lowest rate (sane default)
   const rate = rates
     .map((r) => ({
       id: r?.id,
@@ -987,7 +892,6 @@ async function createAndBuyEasyPostShipment(args: {
   const tracking = safeString(boughtShipment?.tracking_code || "", 120) || "";
   const carrier = safeString(boughtShipment?.selected_rate?.carrier || rate.carrier || "", 80) || "";
 
-  // EasyPost sometimes provides label_url OR label_pdf_url depending on account/settings
   const labelUrl =
     safeString(boughtShipment?.postage_label?.label_url || "", 1000) ||
     safeString(boughtShipment?.postage_label?.label_pdf_url || "", 1000) ||
@@ -1006,10 +910,6 @@ async function createAndBuyEasyPostShipment(args: {
   };
 }
 
-/**
- * Fetch a label PDF (bytes) from EasyPost's hosted labelUrl.
- * We keep it simple (no auth needed for label URLs typically).
- */
 async function fetchPdfBytes(url: string): Promise<Uint8Array> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch label PDF (${res.status})`);
@@ -1017,9 +917,6 @@ async function fetchPdfBytes(url: string): Promise<Uint8Array> {
   return new Uint8Array(ab);
 }
 
-/**
- * Merge multiple PDF byte arrays into a single multi-page PDF.
- */
 async function mergePdfs(pdfs: Uint8Array[]): Promise<Uint8Array> {
   const merged = await PDFDocument.create();
 
@@ -1033,40 +930,38 @@ async function mergePdfs(pdfs: Uint8Array[]): Promise<Uint8Array> {
   return new Uint8Array(out);
 }
 
-/**
- * Create a simple PDF page listing errors (so you still get a valid PDF to open/print).
- */
 async function appendErrorsPage(existing: Uint8Array, errors: Array<{ orderId: string; message: string }>) {
   const doc = await PDFDocument.load(existing);
-  const page = doc.addPage();
-  const { width, height } = page.getSize();
+  let page = doc.addPage();
+  let { width, height } = page.getSize();
 
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-  const title = `Label generation errors (${errors.length})`;
-  page.drawText(title, { x: 40, y: height - 60, size: 18, font: fontBold });
+  page.drawText(`Label generation errors (${errors.length})`, {
+    x: 40,
+    y: height - 60,
+    size: 18,
+    font: fontBold,
+  });
 
   let y = height - 90;
   const lineHeight = 14;
 
-  const lines: string[] = [];
   for (const e of errors) {
-    lines.push(`${e.orderId}: ${e.message}`);
-  }
-
-  for (const line of lines) {
-    // wrap roughly
+    const line = `${e.orderId}: ${e.message}`;
     const maxChars = 110;
     const chunks: string[] = [];
     for (let i = 0; i < line.length; i += maxChars) chunks.push(line.slice(i, i + maxChars));
+
     for (const c of chunks) {
+      if (y < 40) {
+        page = doc.addPage();
+        ({ width, height } = page.getSize());
+        y = height - 60;
+      }
       page.drawText(c, { x: 40, y, size: 10, font });
       y -= lineHeight;
-      if (y < 40) {
-        y = height - 60;
-        doc.addPage();
-      }
     }
   }
 
@@ -1077,9 +972,6 @@ async function appendErrorsPage(existing: Uint8Array, errors: Array<{ orderId: s
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-  // -----------------------------
-  // Admin: wholesale applications
-  // -----------------------------
   app.get("/api/admin/wholesale-applications", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
@@ -1131,9 +1023,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // -----------------------------
-  // Admin: orders + revenue
-  // -----------------------------
   app.get("/api/admin/summary", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
@@ -1178,7 +1067,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ✅ Orders list returns order-level fulfillment rollup fields:
   app.get("/api/admin/orders", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
@@ -1216,6 +1104,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
           shippingName: orders.shippingName,
           shippingAddress: orders.shippingAddress,
+
+          // ✅ order-level shipment data
+          shippingCarrier: orders.shippingCarrier,
+          shippingTrackingNumber: orders.shippingTrackingNumber,
+          shippingLabelUrl: orders.shippingLabelUrl,
+          shippingShipmentId: orders.shippingShipmentId,
         })
         .from(orders)
         .where(where as any)
@@ -1307,7 +1201,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ✅ Admin order-level fulfillment update (sets ALL items for the order)
   app.patch("/api/admin/orders/:id/fulfillment", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
@@ -1349,7 +1242,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ✅ Admin: per-item fulfillment update
   app.patch("/api/admin/order-items/:id/fulfillment", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
@@ -1399,216 +1291,52 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // -----------------------------
-  // ✅ Admin: batch create labels for PACKED orders (EasyPost)
-  // -----------------------------
   /**
-   * POST /api/admin/labels/batch
-   *
-   * Returns: application/pdf (merged multi-page PDF)
-   *
-   * Logic:
-   * - Finds orders that have items in "packed"
-   * - Only generates labels for orders that do NOT already have tracking_number on those packed items
-   * - Creates 1 shipment per order (not per item)
-   * - Chooses package size based on total pouch quantity in the order:
-   *      1–2 => mailer
-   *      3–4 => small box
-   *      5+  => medium box
-   * - Stamps all items in the order as shipped + tracking
-   * - Merges all label PDFs into one PDF
-   * - If some fail, appends an error page to the PDF (still a valid PDF)
+   * ✅ Returns the stored individual label URL for an order
    */
-  app.post("/api/admin/labels/batch", async (req, res) => {
+  app.get("/api/admin/orders/:id/label", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
 
     try {
-      const apiKey = String(process.env.EASYPOST_API_KEY || "").trim();
-      if (!apiKey) {
-        return res.status(500).json({ ok: false, message: "Missing EASYPOST_API_KEY" });
-      }
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
 
-      // Optional: limit to specific orderIds
-      const orderIdsIn: string[] = Array.isArray(req.body?.orderIds)
-        ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
-        : [];
-
-      const whereOrderIds =
-        orderIdsIn.length > 0 ? inArray(orderItems.orderId, orderIdsIn as any) : undefined;
-
-      // Find candidate orders:
-      // - at least one item is packed
-      // - those packed items do not have tracking yet
-      const packedAgg = await db
-        .select({
-          orderId: orderItems.orderId,
-          packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
-            Number
-          ),
-          packedWithoutTracking: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' and (${orderItems.trackingNumber} is null or ${orderItems.trackingNumber} = '') then 1 else 0 end)`.mapWith(
-            Number
-          ),
-        })
-        .from(orderItems)
-        .where(whereOrderIds as any)
-        .groupBy(orderItems.orderId);
-
-      const candidateOrderIds = (packedAgg || [])
-        .filter(
-          (r: any) =>
-            (Number(r.packedCount) || 0) > 0 && (Number(r.packedWithoutTracking) || 0) > 0
-        )
-        .map((r: any) => String(r.orderId || "").trim())
-        .filter(Boolean);
-
-      if (!candidateOrderIds.length) {
-        return res.status(404).json({
-          ok: false,
-          message: "No packed orders without tracking were found.",
-        });
-      }
-
-      // Load orders (shipping info)
-      const orderRows = await db
+      const row = await db
         .select({
           id: orders.id,
-          customerEmail: orders.customerEmail,
-          shippingName: orders.shippingName,
-          shippingAddress: orders.shippingAddress,
+          shippingLabelUrl: orders.shippingLabelUrl,
+          shippingTrackingNumber: orders.shippingTrackingNumber,
+          shippingCarrier: orders.shippingCarrier,
+          shippingShipmentId: orders.shippingShipmentId,
         })
         .from(orders)
-        .where(inArray(orders.id, candidateOrderIds as any))
-        .limit(500);
+        .where(eq(orders.id, id))
+        .limit(1);
 
-      const byId: Record<string, any> = {};
-      for (const o of orderRows as any[]) byId[String(o.id)] = o;
-
-      // Load total pouch quantity per order (sum of quantities)
-      const qtyAgg = await db
-        .select({
-          orderId: orderItems.orderId,
-          totalQty: sql<number>`sum(${orderItems.quantity})`.mapWith(Number),
-        })
-        .from(orderItems)
-        .where(inArray(orderItems.orderId, candidateOrderIds as any))
-        .groupBy(orderItems.orderId);
-
-      const qtyByOrderId: Record<string, number> = {};
-      for (const r of qtyAgg as any[]) {
-        const oid = String(r.orderId || "").trim();
-        if (!oid) continue;
-        qtyByOrderId[oid] = Math.max(1, Number(r.totalQty ?? 1) || 1);
+      const order = row?.[0];
+      if (!order) {
+        return res.status(404).json({ ok: false, message: "Order not found." });
       }
 
-      const fromAddress = getShipFromAddress();
-
-      const labelPdfs: Uint8Array[] = [];
-      const errors: Array<{ orderId: string; message: string }> = [];
-
-      // Process sequentially (safer + simpler)
-      for (const orderId of candidateOrderIds) {
-        const o = byId[String(orderId)];
-        if (!o) {
-          errors.push({ orderId, message: "Order not found." });
-          continue;
-        }
-
-        const shipAddr = o.shippingAddress;
-        if (!shipAddr || !shipAddr.line1 || !shipAddr.city || !shipAddr.state || !shipAddr.postal_code) {
-          errors.push({ orderId, message: "Missing shipping address on order." });
-          continue;
-        }
-
-        const toAddress = stripeAddrToEasyPost(o.shippingName || null, shipAddr);
-
-        // ✅ Choose package based on total pouches in the order
-        const pouchCount = qtyByOrderId[String(orderId)] ?? 1;
-        const parcel = getParcelForPouchCount(pouchCount);
-
-        try {
-          const result = await createAndBuyEasyPostShipment({
-            toAddress,
-            fromAddress,
-            parcel,
-          });
-
-          if (!result.labelUrl) {
-            errors.push({ orderId, message: "EasyPost returned no label URL." });
-            continue;
-          }
-
-          // Fetch the label PDF bytes and keep for merge
-          const pdfBytes = await fetchPdfBytes(result.labelUrl);
-          labelPdfs.push(pdfBytes);
-
-          const now = new Date();
-
-          // Stamp all items on that order
-          await db
-            .update(orderItems)
-            .set({
-              carrier: result.carrier || null,
-              trackingNumber: result.trackingNumber || null,
-              fulfillmentStatus: "shipped",
-              shippedAt: now,
-            } as any)
-            .where(eq(orderItems.orderId, orderId));
-
-          // Notify customer (best effort)
-          if (o.customerEmail) {
-            await sendShippingNotificationEmail({
-              customerEmail: String(o.customerEmail),
-              shippingName: o.shippingName ?? null,
-              orderId,
-              carrier: result.carrier || null,
-              trackingNumber: result.trackingNumber || null,
-            });
-          }
-        } catch (e: any) {
-          const s = safeErrSummary(e);
-          errors.push({ orderId, message: s.message || "Failed to create label." });
-          continue;
-        }
+      if (!order.shippingLabelUrl) {
+        return res.status(404).json({ ok: false, message: "No label found for this order." });
       }
 
-      if (!labelPdfs.length) {
-        return res.status(400).json({
-          ok: false,
-          message: errors.length
-            ? `No labels created. Example: ${errors[0].orderId}: ${errors[0].message}`
-            : "No labels created.",
-          errors,
-        });
-      }
-
-      // Merge into one PDF
-      let merged = await mergePdfs(labelPdfs);
-
-      // If any failures, append an error page so the PDF still opens and you can see what failed
-      if (errors.length) {
-        merged = await appendErrorsPage(merged, errors);
-        res.setHeader("X-Label-Errors", String(errors.length));
-      } else {
-        res.setHeader("X-Label-Errors", "0");
-      }
-
-      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-      const filename = `kimora-labels-packed-${stamp}.pdf`;
-
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      return res.status(200).send(Buffer.from(merged));
+      return res.json({
+        ok: true,
+        labelUrl: order.shippingLabelUrl,
+        trackingNumber: order.shippingTrackingNumber,
+        carrier: order.shippingCarrier,
+        shipmentId: order.shippingShipmentId,
+      });
     } catch (err: any) {
       const s = safeErrSummary(err);
-      console.error("POST /api/admin/labels/batch error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to create labels." });
+      console.error("GET /api/admin/orders/:id/label error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to load label." });
     }
   });
 
-  // -----------------------------
-  // Wholesale apply
-  // -----------------------------
   app.post("/api/wholesale/apply", async (req, res) => {
     try {
       const body: any = req.body ?? {};
@@ -1726,9 +1454,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           `Phone: ${phoneDigits}\n` +
           `Website/IG: ${websiteOrInstagram || "(not provided)"}\n` +
           `City/State: ${city}, ${state}\n` +
-          `Business type: ${businessType}${
-            businessType === "other" ? ` (${businessTypeOther})` : ""
-          }\n` +
+          `Business type: ${businessType}${businessType === "other" ? ` (${businessTypeOther})` : ""}\n` +
           `Member count: ${memberCount}\n` +
           `Retail setup: ${retailSetup || "(not provided)"}\n` +
           `Interested: onShelf=${interestedOnShelf}, coachAffiliate=${interestedCoachAffiliate}, eventSponsorship=${interestedEventSponsorship}\n\n` +
@@ -1849,9 +1575,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // -----------------------------
-  // Checkout session creation (shipping rules wired)
-  // -----------------------------
   app.post("/api/checkout", async (req, res) => {
     try {
       const emailRaw = String(req.body?.email ?? "");
@@ -1904,7 +1627,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }));
 
       const currency = "usd";
-
       const subtotalCents =
         mode === "payment" ? await computeCartSubtotalCentsFromStripePrices(line_items) : 0;
 
@@ -1919,9 +1641,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         success_url: successUrl,
         cancel_url: cancelUrl,
         allow_promotion_codes: false,
-
         shipping_address_collection: { allowed_countries: ["US"] },
-
         phone_number_collection: { enabled: true },
         automatic_tax: { enabled: true },
       };
@@ -1961,9 +1681,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // -----------------------------
-  // Checkout session fetch (OrderSuccess uses this)
-  // -----------------------------
   app.get("/api/checkout/session", async (req, res) => {
     try {
       const sessionId = String(req.query?.session_id ?? "").trim();
@@ -1987,9 +1704,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // -----------------------------
-  // Stripe webhook (DB write + order confirmation email)
-  // -----------------------------
   app.post("/api/stripe/webhook", async (req, res) => {
     try {
       const sig = req.headers["stripe-signature"];
@@ -2029,7 +1743,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             amountTotal: session.amount_total ?? null,
             isSubscription: session.mode === "subscription",
             status: session.payment_status || "paid",
-
             shippingName: resolvedShipping.shippingName ?? null,
             shippingAddress: resolvedShipping.shippingAddress ?? null,
           })
@@ -2103,7 +1816,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                 frequencyWeeks: mapped.frequencyWeeks,
                 quantity: qty,
                 unitAmount: li.price?.unit_amount ?? null,
-
                 fulfillmentStatus: "unfulfilled",
                 carrier: null,
                 trackingNumber: null,
@@ -2132,10 +1844,191 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  /**
-   * STEP 1: Request a magic link to manage subscription
-   * Body: { email }
-   */
+  app.post("/api/admin/labels/batch", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const apiKey = String(process.env.EASYPOST_API_KEY || "").trim();
+      if (!apiKey) {
+        return res.status(500).json({ ok: false, message: "Missing EASYPOST_API_KEY" });
+      }
+
+      const orderIdsIn: string[] = Array.isArray(req.body?.orderIds)
+        ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
+        : [];
+
+      const whereOrderIds =
+        orderIdsIn.length > 0 ? inArray(orderItems.orderId, orderIdsIn as any) : undefined;
+
+      const packedAgg = await db
+        .select({
+          orderId: orderItems.orderId,
+          packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
+            Number
+          ),
+          packedWithoutTracking: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' and (${orderItems.trackingNumber} is null or ${orderItems.trackingNumber} = '') then 1 else 0 end)`.mapWith(
+            Number
+          ),
+        })
+        .from(orderItems)
+        .where(whereOrderIds as any)
+        .groupBy(orderItems.orderId);
+
+      const candidateOrderIds = (packedAgg || [])
+        .filter(
+          (r: any) =>
+            (Number(r.packedCount) || 0) > 0 && (Number(r.packedWithoutTracking) || 0) > 0
+        )
+        .map((r: any) => String(r.orderId || "").trim())
+        .filter(Boolean);
+
+      if (!candidateOrderIds.length) {
+        return res.status(404).json({
+          ok: false,
+          message: "No packed orders without tracking were found.",
+        });
+      }
+
+      const orderRows = await db
+        .select({
+          id: orders.id,
+          customerEmail: orders.customerEmail,
+          shippingName: orders.shippingName,
+          shippingAddress: orders.shippingAddress,
+        })
+        .from(orders)
+        .where(inArray(orders.id, candidateOrderIds as any))
+        .limit(500);
+
+      const byId: Record<string, any> = {};
+      for (const o of orderRows as any[]) byId[String(o.id)] = o;
+
+      const qtyAgg = await db
+        .select({
+          orderId: orderItems.orderId,
+          totalQty: sql<number>`sum(${orderItems.quantity})`.mapWith(Number),
+        })
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, candidateOrderIds as any))
+        .groupBy(orderItems.orderId);
+
+      const qtyByOrderId: Record<string, number> = {};
+      for (const r of qtyAgg as any[]) {
+        const oid = String(r.orderId || "").trim();
+        if (!oid) continue;
+        qtyByOrderId[oid] = Math.max(1, Number(r.totalQty ?? 1) || 1);
+      }
+
+      const fromAddress = getShipFromAddress();
+
+      const labelPdfs: Uint8Array[] = [];
+      const errors: Array<{ orderId: string; message: string }> = [];
+
+      for (const orderId of candidateOrderIds) {
+        const o = byId[String(orderId)];
+        if (!o) {
+          errors.push({ orderId, message: "Order not found." });
+          continue;
+        }
+
+        const shipAddr = o.shippingAddress;
+        if (!shipAddr || !shipAddr.line1 || !shipAddr.city || !shipAddr.state || !shipAddr.postal_code) {
+          errors.push({ orderId, message: "Missing shipping address on order." });
+          continue;
+        }
+
+        const toAddress = stripeAddrToEasyPost(o.shippingName || null, shipAddr);
+        const pouchCount = qtyByOrderId[String(orderId)] ?? 1;
+        const parcel = getParcelForPouchCount(pouchCount);
+
+        try {
+          const result = await createAndBuyEasyPostShipment({
+            toAddress,
+            fromAddress,
+            parcel,
+          });
+
+          if (!result.labelUrl) {
+            errors.push({ orderId, message: "EasyPost returned no label URL." });
+            continue;
+          }
+
+          const pdfBytes = await fetchPdfBytes(result.labelUrl);
+          labelPdfs.push(pdfBytes);
+
+          const now = new Date();
+
+          // ✅ store shipment info on ORDER
+          await db
+            .update(orders)
+            .set({
+              shippingCarrier: result.carrier || null,
+              shippingTrackingNumber: result.trackingNumber || null,
+              shippingLabelUrl: result.labelUrl || null,
+              shippingShipmentId: result.shipmentId || null,
+            })
+            .where(eq(orders.id, orderId));
+
+          // keep item-level fields aligned too
+          await db
+            .update(orderItems)
+            .set({
+              carrier: result.carrier || null,
+              trackingNumber: result.trackingNumber || null,
+              fulfillmentStatus: "shipped",
+              shippedAt: now,
+            } as any)
+            .where(eq(orderItems.orderId, orderId));
+
+          if (o.customerEmail) {
+            await sendShippingNotificationEmail({
+              customerEmail: String(o.customerEmail),
+              shippingName: o.shippingName ?? null,
+              orderId,
+              carrier: result.carrier || null,
+              trackingNumber: result.trackingNumber || null,
+            });
+          }
+        } catch (e: any) {
+          const s = safeErrSummary(e);
+          errors.push({ orderId, message: s.message || "Failed to create label." });
+          continue;
+        }
+      }
+
+      if (!labelPdfs.length) {
+        return res.status(400).json({
+          ok: false,
+          message: errors.length
+            ? `No labels created. Example: ${errors[0].orderId}: ${errors[0].message}`
+            : "No labels created.",
+          errors,
+        });
+      }
+
+      let merged = await mergePdfs(labelPdfs);
+
+      if (errors.length) {
+        merged = await appendErrorsPage(merged, errors);
+        res.setHeader("X-Label-Errors", String(errors.length));
+      } else {
+        res.setHeader("X-Label-Errors", "0");
+      }
+
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const filename = `kimora-labels-packed-${stamp}.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.status(200).send(Buffer.from(merged));
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/admin/labels/batch error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to create labels." });
+    }
+  });
+
   app.post("/api/customer-portal/request", async (req, res) => {
     const genericOk = () =>
       res.json({
@@ -2226,9 +2119,6 @@ Need help? Reply to this email or contact support@kimoraco.com
     }
   });
 
-  /**
-   * STEP 2: Exchange token for a Stripe Billing Portal URL
-   */
   app.get("/api/customer-portal", async (req, res) => {
     try {
       const token = String((req.query as any)?.token ?? "").trim();

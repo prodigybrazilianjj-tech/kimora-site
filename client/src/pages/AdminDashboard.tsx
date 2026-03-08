@@ -136,17 +136,6 @@ function getApiBase() {
   return "";
 }
 
-function formatDateLabel(value: string) {
-  if (!value) return "Pick date";
-  const d = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 function openNativeDatePicker(input: HTMLInputElement | null) {
   if (!input) return;
   input.focus();
@@ -962,19 +951,18 @@ export default function AdminDashboard() {
                       type="date"
                       value={orderDateFrom}
                       onChange={(e) => setOrderDateFrom(e.target.value)}
-                      className="absolute inset-0 h-full w-full opacity-0 pointer-events-none"
-                      tabIndex={-1}
-                      aria-hidden="true"
+                      placeholder="YYYY-MM-DD"
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 pr-10 text-sm"
                     />
-                    <Button
+                    <button
                       type="button"
-                      variant="outline"
-                      className="h-10 w-full justify-start px-3 text-left font-normal"
                       onClick={() => openNativeDatePicker(fromDateInputRef.current)}
+                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                      aria-label="Open date picker for date from"
+                      title="Open calendar"
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formatDateLabel(orderDateFrom)}
-                    </Button>
+                      <CalendarIcon className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
 
@@ -986,19 +974,18 @@ export default function AdminDashboard() {
                       type="date"
                       value={orderDateTo}
                       onChange={(e) => setOrderDateTo(e.target.value)}
-                      className="absolute inset-0 h-full w-full opacity-0 pointer-events-none"
-                      tabIndex={-1}
-                      aria-hidden="true"
+                      placeholder="YYYY-MM-DD"
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 pr-10 text-sm"
                     />
-                    <Button
+                    <button
                       type="button"
-                      variant="outline"
-                      className="h-10 w-full justify-start px-3 text-left font-normal"
                       onClick={() => openNativeDatePicker(toDateInputRef.current)}
+                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                      aria-label="Open date picker for date to"
+                      title="Open calendar"
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formatDateLabel(orderDateTo)}
-                    </Button>
+                      <CalendarIcon className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </div>

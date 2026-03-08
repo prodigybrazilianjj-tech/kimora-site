@@ -1,4 +1,3 @@
-// client/src/pages/AdminDashboard.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -844,13 +843,11 @@ export default function AdminDashboard() {
             <div className="rounded-lg border border-border p-4">
               <div className="grid gap-3 md:grid-cols-6">
                 <div className="md:col-span-2">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Search
-                  </div>
+                  <div className="text-xs text-muted-foreground mb-1">Search</div>
                   <input
                     value={orderQ}
                     onChange={(e) => setOrderQ(e.target.value)}
-                    placeholder="Order #, email, tracking, name..."
+                    placeholder="Order #, email, name, tracking..."
                     className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
                   />
                 </div>
@@ -981,18 +978,20 @@ export default function AdminDashboard() {
               </div>
 
               <div className="overflow-auto">
-                <table className="w-full text-sm">
+                <table className="w-full table-fixed text-sm">
                   <thead className="bg-muted/40">
                     <tr>
-                      <th className="p-3 text-left">Created</th>
-                      <th className="p-3 text-left">Order #</th>
-                      <th className="p-3 text-left">Email</th>
-                      <th className="p-3 text-left">Type</th>
-                      <th className="p-3 text-left">Status</th>
-                      <th className="p-3 text-left">Fulfillment</th>
-                      <th className="p-3 text-left">Shipment</th>
-                      <th className="p-3 text-left">Total</th>
-                      <th className="p-3 text-left">Action</th>
+                      <th className="w-[135px] p-3 text-left">Created</th>
+                      <th className="w-[140px] p-3 text-left">Order #</th>
+                      <th className="w-[190px] p-3 text-left">Email</th>
+                      <th className="w-[100px] p-3 text-left">Type</th>
+                      <th className="w-[90px] p-3 text-left">Status</th>
+                      <th className="w-[280px] p-3 text-left">Fulfillment</th>
+                      <th className="w-[220px] p-3 text-left">Shipment</th>
+                      <th className="w-[100px] p-3 text-left">Total</th>
+                      <th className="sticky right-0 z-10 w-[90px] border-l border-border bg-muted/40 p-3 text-left">
+                        Action
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1004,64 +1003,64 @@ export default function AdminDashboard() {
                       const changed = edit !== original;
 
                       return (
-                        <tr key={o.id} className="border-t border-border">
-                          <td className="p-3">{fmtDate(o.createdAt)}</td>
-                          <td className="p-3 font-mono text-xs">
+                        <tr key={o.id} className="border-t border-border align-top">
+                          <td className="p-3 text-xs leading-5">{fmtDate(o.createdAt)}</td>
+                          <td className="p-3 font-mono text-[11px] break-all">
                             {o.orderNumber || "—"}
                           </td>
-                          <td className="p-3">{o.customerEmail || "—"}</td>
+                          <td className="p-3 break-words">{o.customerEmail || "—"}</td>
                           <td className="p-3">{o.isSubscription ? "Subscription" : "One-time"}</td>
                           <td className="p-3">{o.status || "—"}</td>
 
                           <td className="p-3">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <select
-                                value={edit}
-                                onChange={(e) =>
-                                  setOrderFulfillmentEdits((prev) => ({
-                                    ...prev,
-                                    [o.id]: e.target.value as FulfillmentStatus,
-                                  }))
-                                }
-                                className={`h-8 rounded-md border bg-background px-2 text-sm ${
-                                  changed ? "border-amber-500" : "border-border"
-                                }`}
-                                title="Sets ALL items in the order to this status"
-                              >
-                                {FULFILLMENT_STATUSES.map((s) => (
-                                  <option key={s} value={s}>
-                                    {s}
-                                  </option>
-                                ))}
-                              </select>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <select
+                                  value={edit}
+                                  onChange={(e) =>
+                                    setOrderFulfillmentEdits((prev) => ({
+                                      ...prev,
+                                      [o.id]: e.target.value as FulfillmentStatus,
+                                    }))
+                                  }
+                                  className={`h-8 rounded-md border bg-background px-2 text-sm ${
+                                    changed ? "border-amber-500" : "border-border"
+                                  }`}
+                                  title="Sets ALL items in the order to this status"
+                                >
+                                  {FULFILLMENT_STATUSES.map((s) => (
+                                    <option key={s} value={s}>
+                                      {s}
+                                    </option>
+                                  ))}
+                                </select>
 
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="h-8"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  saveOrderFulfillment(o.id);
-                                }}
-                              >
-                                Save
-                              </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="h-8"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    saveOrderFulfillment(o.id);
+                                  }}
+                                >
+                                  Save
+                                </Button>
 
-                              {changed && <div className="text-xs text-amber-400">Unsaved</div>}
+                                {changed && <div className="text-xs text-amber-400">Unsaved</div>}
+                              </div>
 
-                              {countsText ? (
-                                <div className="text-xs text-muted-foreground">{countsText}</div>
-                              ) : (
-                                <div className="text-xs text-muted-foreground">—</div>
-                              )}
+                              <div className="text-xs text-muted-foreground break-words">
+                                {countsText || "—"}
+                              </div>
                             </div>
                           </td>
 
                           <td className="p-3">
                             {o.shippingTrackingNumber ? (
-                              <div className="flex flex-col gap-1">
-                                <div className="text-xs">
+                              <div className="flex flex-col gap-2">
+                                <div className="text-xs break-words">
                                   {o.shippingCarrier || "Carrier"} • {o.shippingTrackingNumber}
                                 </div>
                                 <div className="flex gap-2 flex-wrap">
@@ -1093,11 +1092,11 @@ export default function AdminDashboard() {
                           </td>
 
                           <td className="p-3">{money(o.amountTotal, o.currency)}</td>
-                          <td className="p-3">
+                          <td className="sticky right-0 z-10 border-l border-border bg-background p-3">
                             <Button
                               type="button"
                               variant="outline"
-                              className="h-8"
+                              className="h-8 w-full"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -1177,7 +1176,7 @@ export default function AdminDashboard() {
 
                         <div className="rounded-md border border-border p-3">
                           <div className="text-xs text-muted-foreground">Order #</div>
-                          <div className="font-medium mt-1 font-mono text-sm">
+                          <div className="font-medium mt-1 font-mono text-sm break-all">
                             {selectedOrderDetail.orderNumber || "—"}
                           </div>
                         </div>
@@ -1213,7 +1212,7 @@ export default function AdminDashboard() {
                             selectedOrderDetail.shippingLabelUrl) && (
                             <div className="mt-3 flex items-center gap-2 flex-wrap">
                               {selectedOrderDetail.shippingTrackingNumber && (
-                                <div className="text-sm">
+                                <div className="text-sm break-all">
                                   {selectedOrderDetail.shippingCarrier || "Carrier"} •{" "}
                                   {selectedOrderDetail.shippingTrackingNumber}
                                 </div>

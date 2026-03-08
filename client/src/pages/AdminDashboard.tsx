@@ -256,6 +256,10 @@ export default function AdminDashboard() {
   const [orderFulfillmentEdits, setOrderFulfillmentEdits] = useState<
     Record<string, FulfillmentStatus>
   >({});
+  const [orderFulfillmentOriginals, setOrderFulfillmentOriginals] = useState<
+    Record<string, FulfillmentStatus>
+  >({});
+  const [savingAllOrders, setSavingAllOrders] = useState(false);
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<OrderRow | null>(null);
@@ -301,6 +305,7 @@ export default function AdminDashboard() {
     setOrders([]);
     setOrdersError(null);
     setOrderFulfillmentEdits({});
+    setOrderFulfillmentOriginals({});
     setWholesale([]);
     setWholesaleError(null);
     closeOrder();
@@ -342,6 +347,7 @@ export default function AdminDashboard() {
         seeded[r.id] = normalizeFulfillment(r.fulfillmentStatus);
       }
       setOrderFulfillmentEdits(seeded);
+      setOrderFulfillmentOriginals(seeded);
     } catch (e: any) {
       const msg = String(e?.message || "Failed to load orders.");
       setOrders([]);
@@ -491,6 +497,77 @@ export default function AdminDashboard() {
     }
   }
 
+  async function saveAllOrderFulfillmentChanges() {
+    if (!savedToken || savingAllOrders) return;
+
+    const changedOrderIds = orders
+      .map((o) => o.id)
+      .filter((id) => {
+        const current = orderFulfillmentEdits[id] || "unfulfilled";
+        const original = orderFulfillmentOriginals[id] || "unfulfilled";
+        return current !== original;
+      });
+
+    if (!changedOrderIds.length) {
+      toast({ title: "No changes", description: "No order fulfillment changes to save." });
+      return;
+    }
+
+    setSavingAllOrders(true);
+
+    try {
+      let successCount = 0;
+      const failures: Array<{ orderId: string; message: string }> = [];
+
+      for (const orderId of changedOrderIds) {
+        const status = orderFulfillmentEdits[orderId] || "unfulfilled";
+        try {
+          await api<{ ok: true }>(`/api/admin/orders/${orderId}/fulfillment`, savedToken, {
+            method: "PATCH",
+            body: JSON.stringify({ fulfillmentStatus: status }),
+          });
+          successCount += 1;
+        } catch (e: any) {
+          failures.push({
+            orderId,
+            message: String(e?.message || "Failed to update order."),
+          });
+        }
+      }
+
+      if (successCount > 0 && failures.length === 0) {
+        toast({
+          title: "Saved",
+          description: `Saved ${successCount} order fulfillment change${
+            successCount === 1 ? "" : "s"
+          }.`,
+        });
+      } else if (successCount > 0 && failures.length > 0) {
+        toast({
+          title: "Partially saved",
+          description: `${successCount} saved, ${failures.length} failed.`,
+        });
+      } else {
+        toast({
+          title: "Save failed",
+          description: failures[0]?.message || "Failed to save order fulfillment changes.",
+        });
+      }
+
+      await loadOrders();
+      if (selectedOrderId) {
+        await openOrder(selectedOrderId);
+      }
+    } finally {
+      setSavingAllOrders(false);
+    }
+  }
+
+  function resetOrderFulfillmentChanges() {
+    setOrderFulfillmentEdits(orderFulfillmentOriginals);
+    toast({ title: "Reset", description: "Unsaved order fulfillment changes were reset." });
+  }
+
   async function generatePackedLabels() {
     if (!savedToken || labelsLoading) return;
 
@@ -510,7 +587,9 @@ export default function AdminDashboard() {
         title: "Labels ready",
         description:
           errorCount > 0
-            ? `Label PDF opened/downloaded. ${errorCount} label error${errorCount === 1 ? "" : "s"} appended at the end.`
+            ? `Label PDF opened/downloaded. ${errorCount} label error${
+                errorCount === 1 ? "" : "s"
+              } appended at the end.`
             : "Label PDF opened/downloaded.",
       });
 
@@ -531,11 +610,7 @@ export default function AdminDashboard() {
       setPackingSlipsLoading(true);
       toast({ title: "Generating packing slips…", description: "This can take a few seconds." });
 
-      await downloadPdf(
-        "/api/admin/packing-slips/batch",
-        savedToken,
-        "kimora-packing-slips"
-      );
+      await downloadPdf("/api/admin/packing-slips/batch", savedToken, "kimora-packing-slips");
 
       toast({
         title: "Packing slips ready",
@@ -583,6 +658,16 @@ export default function AdminDashboard() {
     }
     return n;
   }, [orders]);
+
+  const changedOrderCount = useMemo(() => {
+    return orders
+      .map((o) => o.id)
+      .filter((id) => {
+        const current = orderFulfillmentEdits[id] || "unfulfilled";
+        const original = orderFulfillmentOriginals[id] || "unfulfilled";
+        return current !== original;
+      }).length;
+  }, [orders, orderFulfillmentEdits, orderFulfillmentOriginals]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -775,6 +860,36 @@ export default function AdminDashboard() {
                   Failed to load orders: {ordersError}
                 </div>
               )}
+
+              <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+                <div className="text-sm text-muted-foreground">
+                  {changedOrderCount > 0
+                    ? `${changedOrderCount} unsaved fulfillment change${
+                        changedOrderCount === 1 ? "" : "s"
+                      }`
+                    : "No unsaved fulfillment changes"}
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetOrderFulfillmentChanges}
+                    disabled={changedOrderCount === 0 || savingAllOrders}
+                  >
+                    Reset changes
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={saveAllOrderFulfillmentChanges}
+                    disabled={changedOrderCount === 0 || savingAllOrders}
+                  >
+                    {savingAllOrders
+                      ? "Saving changes…"
+                      : `Save all changes${changedOrderCount ? ` (${changedOrderCount})` : ""}`}
+                  </Button>
+                </div>
+              </div>
             </div>
 
             <div className="rounded-lg border border-border overflow-hidden">
@@ -801,6 +916,8 @@ export default function AdminDashboard() {
                       const edit =
                         orderFulfillmentEdits[o.id] || normalizeFulfillment(o.fulfillmentStatus);
                       const countsText = formatCounts(o.fulfillmentCounts);
+                      const original = orderFulfillmentOriginals[o.id] || "unfulfilled";
+                      const changed = edit !== original;
 
                       return (
                         <tr key={o.id} className="border-t border-border">
@@ -819,7 +936,9 @@ export default function AdminDashboard() {
                                     [o.id]: e.target.value as FulfillmentStatus,
                                   }))
                                 }
-                                className="h-8 rounded-md border border-border bg-background px-2 text-sm"
+                                className={`h-8 rounded-md border bg-background px-2 text-sm ${
+                                  changed ? "border-amber-500" : "border-border"
+                                }`}
                                 title="Sets ALL items in the order to this status"
                               >
                                 {FULFILLMENT_STATUSES.map((s) => (
@@ -841,6 +960,10 @@ export default function AdminDashboard() {
                               >
                                 Save
                               </Button>
+
+                              {changed && (
+                                <div className="text-xs text-amber-400">Unsaved</div>
+                              )}
 
                               {countsText ? (
                                 <div className="text-xs text-muted-foreground">{countsText}</div>
@@ -1064,7 +1187,9 @@ export default function AdminDashboard() {
                                   const label = titleizeSlug(it.flavor || "");
                                   const purchaseLabel =
                                     it.purchaseType === "subscribe"
-                                      ? `Subscription${it.frequencyWeeks ? ` • every ${it.frequencyWeeks}w` : ""}`
+                                      ? `Subscription${
+                                          it.frequencyWeeks ? ` • every ${it.frequencyWeeks}w` : ""
+                                        }`
                                       : "One-time";
 
                                   return (
@@ -1086,7 +1211,8 @@ export default function AdminDashboard() {
                                               ...prev,
                                               [it.id]: {
                                                 ...edit,
-                                                fulfillmentStatus: e.target.value as FulfillmentStatus,
+                                                fulfillmentStatus: e.target
+                                                  .value as FulfillmentStatus,
                                               },
                                             }))
                                           }
@@ -1121,7 +1247,10 @@ export default function AdminDashboard() {
                                             onChange={(e) =>
                                               setItemEdits((prev) => ({
                                                 ...prev,
-                                                [it.id]: { ...edit, trackingNumber: e.target.value },
+                                                [it.id]: {
+                                                  ...edit,
+                                                  trackingNumber: e.target.value,
+                                                },
                                               }))
                                             }
                                             placeholder="Tracking #"
@@ -1258,7 +1387,10 @@ export default function AdminDashboard() {
                           <select
                             value={r.status}
                             onChange={(e) =>
-                              updateWholesaleStatus(r.id, e.target.value as WholesaleRow["status"])
+                              updateWholesaleStatus(
+                                r.id,
+                                e.target.value as WholesaleRow["status"]
+                              )
                             }
                             className="h-8 rounded-md border border-border bg-background px-2 text-sm"
                           >

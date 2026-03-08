@@ -290,6 +290,7 @@ export default function AdminDashboard() {
 
   const [labelsLoading, setLabelsLoading] = useState(false);
   const [packingSlipsLoading, setPackingSlipsLoading] = useState(false);
+  const [singlePackingSlipOrderId, setSinglePackingSlipOrderId] = useState<string | null>(null);
 
   const canAuth = Boolean(savedToken);
 
@@ -646,6 +647,36 @@ export default function AdminDashboard() {
     }
   }
 
+  async function generateSinglePackingSlip(order: OrderRow) {
+    if (!savedToken) return;
+
+    const orderId = String(order.id || "").trim();
+    if (!orderId) return;
+
+    try {
+      setSinglePackingSlipOrderId(orderId);
+      toast({ title: "Generating packing slip…", description: "Opening single-order packing slip." });
+
+      const niceOrderNumber = String(order.orderNumber || orderId).trim();
+      await downloadPdf(
+        "/api/admin/packing-slips/batch",
+        savedToken,
+        `kimora-packing-slip-${niceOrderNumber}`,
+        { orderIds: [orderId] }
+      );
+
+      toast({
+        title: "Packing slip ready",
+        description: `Packing slip opened for order ${niceOrderNumber}.`,
+      });
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to generate packing slip.");
+      toast({ title: "Packing slip failed", description: msg });
+    } finally {
+      setSinglePackingSlipOrderId(null);
+    }
+  }
+
   useEffect(() => {
     if (!savedToken) return;
     loadSummary().catch(() => {});
@@ -989,7 +1020,7 @@ export default function AdminDashboard() {
                       <th className="w-[280px] p-3 text-left">Fulfillment</th>
                       <th className="w-[220px] p-3 text-left">Shipment</th>
                       <th className="w-[100px] p-3 text-left">Total</th>
-                      <th className="sticky right-0 z-10 w-[90px] border-l border-border bg-muted/40 p-3 text-left">
+                      <th className="sticky right-0 z-10 w-[160px] border-l border-border bg-muted/40 p-3 text-left">
                         Action
                       </th>
                     </tr>
@@ -1001,6 +1032,7 @@ export default function AdminDashboard() {
                       const countsText = formatCounts(o.fulfillmentCounts);
                       const original = orderFulfillmentOriginals[o.id] || "unfulfilled";
                       const changed = edit !== original;
+                      const packingSlipLoading = singlePackingSlipOrderId === o.id;
 
                       return (
                         <tr key={o.id} className="border-t border-border align-top">
@@ -1093,18 +1125,33 @@ export default function AdminDashboard() {
 
                           <td className="p-3">{money(o.amountTotal, o.currency)}</td>
                           <td className="sticky right-0 z-10 border-l border-border bg-background p-3">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="h-8 w-full"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                openOrder(o.id);
-                              }}
-                            >
-                              View
-                            </Button>
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-8 w-full"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openOrder(o.id);
+                                }}
+                              >
+                                View
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-8 w-full"
+                                disabled={packingSlipLoading}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  generateSinglePackingSlip(o);
+                                }}
+                              >
+                                {packingSlipLoading ? "Opening…" : "Packing slip"}
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1141,15 +1188,37 @@ export default function AdminDashboard() {
 
                     <div className="flex gap-2 flex-wrap">
                       {selectedOrderId && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-9"
-                          onClick={() => openOrder(selectedOrderId)}
-                          disabled={orderDetailLoading}
-                        >
-                          Refresh detail
-                        </Button>
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-9"
+                            onClick={() =>
+                              selectedOrderDetail
+                                ? generateSinglePackingSlip(selectedOrderDetail)
+                                : undefined
+                            }
+                            disabled={
+                              orderDetailLoading ||
+                              !selectedOrderDetail ||
+                              singlePackingSlipOrderId === selectedOrderId
+                            }
+                          >
+                            {singlePackingSlipOrderId === selectedOrderId
+                              ? "Opening slip…"
+                              : "Packing slip"}
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-9"
+                            onClick={() => openOrder(selectedOrderId)}
+                            disabled={orderDetailLoading}
+                          >
+                            Refresh detail
+                          </Button>
+                        </>
                       )}
                       <Button type="button" variant="outline" className="h-9" onClick={closeOrder}>
                         Close

@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Calendar as CalendarIcon } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -132,6 +134,30 @@ function titleizeSlug(value?: string | null) {
 
 function getApiBase() {
   return "";
+}
+
+function formatDateLabel(value: string) {
+  if (!value) return "Pick date";
+  const d = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function openNativeDatePicker(input: HTMLInputElement | null) {
+  if (!input) return;
+  input.focus();
+
+  const maybeShowPicker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
+  if (typeof maybeShowPicker === "function") {
+    maybeShowPicker.call(input);
+    return;
+  }
+
+  input.click();
 }
 
 async function api<T>(path: string, token: string, init?: RequestInit): Promise<T> {
@@ -291,6 +317,9 @@ export default function AdminDashboard() {
   const [labelsLoading, setLabelsLoading] = useState(false);
   const [packingSlipsLoading, setPackingSlipsLoading] = useState(false);
   const [singlePackingSlipOrderId, setSinglePackingSlipOrderId] = useState<string | null>(null);
+
+  const fromDateInputRef = useRef<HTMLInputElement | null>(null);
+  const toDateInputRef = useRef<HTMLInputElement | null>(null);
 
   const canAuth = Boolean(savedToken);
 
@@ -927,22 +956,50 @@ export default function AdminDashboard() {
 
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Date from</div>
-                  <input
-                    type="date"
-                    value={orderDateFrom}
-                    onChange={(e) => setOrderDateFrom(e.target.value)}
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
-                  />
+                  <div className="relative">
+                    <input
+                      ref={fromDateInputRef}
+                      type="date"
+                      value={orderDateFrom}
+                      onChange={(e) => setOrderDateFrom(e.target.value)}
+                      className="absolute inset-0 h-full w-full opacity-0 pointer-events-none"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 w-full justify-start px-3 text-left font-normal"
+                      onClick={() => openNativeDatePicker(fromDateInputRef.current)}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formatDateLabel(orderDateFrom)}
+                    </Button>
+                  </div>
                 </div>
 
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Date to</div>
-                  <input
-                    type="date"
-                    value={orderDateTo}
-                    onChange={(e) => setOrderDateTo(e.target.value)}
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
-                  />
+                  <div className="relative">
+                    <input
+                      ref={toDateInputRef}
+                      type="date"
+                      value={orderDateTo}
+                      onChange={(e) => setOrderDateTo(e.target.value)}
+                      className="absolute inset-0 h-full w-full opacity-0 pointer-events-none"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 w-full justify-start px-3 text-left font-normal"
+                      onClick={() => openNativeDatePicker(toDateInputRef.current)}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formatDateLabel(orderDateTo)}
+                    </Button>
+                  </div>
                 </div>
               </div>
 

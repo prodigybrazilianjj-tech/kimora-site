@@ -4,7 +4,7 @@ import type { Server } from "http";
 import { eq, desc, sql, and, or, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import { Resend } from "resend";
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 import { stripe } from "./stripe";
 import { db } from "./db";
@@ -57,6 +57,44 @@ function safeErrSummary(err: any) {
   return { code, message: shortMsg };
 }
 
+function titleizeSlug(value: string | null | undefined) {
+  return String(value || "")
+    .split("-")
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
+    .filter(Boolean)
+    .join(" ");
+}
+
+function trackingUrlFor(
+  carrier: string | null | undefined,
+  trackingNumber: string | null | undefined
+) {
+  const tracking = safeString(trackingNumber || "", 120);
+  if (!tracking) return null;
+
+  const carrierKey = safeString(carrier || "", 40).toLowerCase();
+
+  if (carrierKey.includes("usps")) {
+    return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(tracking)}`;
+  }
+
+  if (carrierKey.includes("ups")) {
+    return `https://www.ups.com/track?tracknum=${encodeURIComponent(tracking)}`;
+  }
+
+  if (carrierKey.includes("fedex")) {
+    return `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(tracking)}`;
+  }
+
+  if (carrierKey.includes("dhl")) {
+    return `https://www.dhl.com/us-en/home/tracking.html?tracking-id=${encodeURIComponent(
+      tracking
+    )}`;
+  }
+
+  return null;
+}
+
 function getPriceId(item: CheckoutItem) {
   const flavorKey = slugToEnvKey(item.flavor);
 
@@ -74,7 +112,11 @@ function getPriceId(item: CheckoutItem) {
   return priceId;
 }
 
-function envPriceId(flavor: string, type: "onetime" | "subscribe", frequency?: "2" | "4" | "6") {
+function envPriceId(
+  flavor: string,
+  type: "onetime" | "subscribe",
+  frequency?: "2" | "4" | "6"
+) {
   const flavorKey = slugToEnvKey(flavor);
   const envName =
     type === "onetime"
@@ -354,10 +396,7 @@ async function sendOrderConfirmationEmail(args: {
 
   const itemsText = lines
     .map((l: any) => {
-      const flavor = String(l.flavor || "")
-        .split("-")
-        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" ");
+      const flavor = titleizeSlug(l.flavor);
       const cadence =
         l.purchaseType === "subscribe" && l.frequencyWeeks
           ? ` (Subscription — every ${l.frequencyWeeks} weeks)`
@@ -383,12 +422,7 @@ async function sendOrderConfirmationEmail(args: {
 
   const itemsHtml = lines
     .map((l: any) => {
-      const flavor = escapeHtml(
-        String(l.flavor || "")
-          .split("-")
-          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" ")
-      );
+      const flavor = escapeHtml(titleizeSlug(l.flavor));
       const cadence =
         l.purchaseType === "subscribe" && l.frequencyWeeks
           ? ` <span style="color:#666;">(Subscription — every ${l.frequencyWeeks} weeks)</span>`
@@ -510,6 +544,7 @@ async function sendShippingNotificationEmail(args: {
   const carrier = safeString(args.carrier || "", 40);
   const tracking = safeString(args.trackingNumber || "", 120);
   const name = safeString(args.shippingName || "", 200);
+  const trackingUrl = trackingUrlFor(carrier, tracking);
 
   const subject = "Kimora Co — Your order is on the way";
 
@@ -522,6 +557,7 @@ async function sendShippingNotificationEmail(args: {
     `Hey${name ? ` ${name}` : ""}, your Kimora order has shipped.\n\n` +
     orderLine +
     trackingLine +
+    (trackingUrl ? `Track package: ${trackingUrl}\n` : "") +
     `\nNeed help? Reply to this email or contact ${supportEmail}.\n` +
     `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
 
@@ -543,6 +579,16 @@ async function sendShippingNotificationEmail(args: {
     <b>Tracking${carrier ? ` (${escapeHtml(carrier)})` : ""}:</b>
     ${tracking ? escapeHtml(tracking) : "(pending)"}
   </div>
+
+  ${
+    trackingUrl
+      ? `<div style="margin:0 0 14px;">
+          <a href="${trackingUrl}" style="display:inline-block;padding:12px 16px;border-radius:10px;background:#111;color:#fff;text-decoration:none;">
+            Track package
+          </a>
+        </div>`
+      : ""
+  }
 
   <div style="margin:16px 0 0;font-size:12px;color:#666;">
     Need help? Reply to this email or contact
@@ -566,6 +612,58 @@ async function sendShippingNotificationEmail(args: {
   } catch (e: any) {
     const s = safeErrSummary(e);
     console.error("[shipping-email] send failed:", s);
+  }
+}
+
+async function maybeSendShippingEmailForOrder(orderId: string) {
+  try {
+    const row = await db
+      .select({
+        id: orders.id,
+        customerEmail: orders.customerEmail,
+        shippingName: orders.shippingName,
+        shippingCarrier: orders.shippingCarrier,
+        shippingTrackingNumber: orders.shippingTrackingNumber,
+      })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    const order = row?.[0];
+    if (!order?.customerEmail) return;
+
+    if (order.shippingTrackingNumber) {
+      await sendShippingNotificationEmail({
+        customerEmail: order.customerEmail,
+        shippingName: order.shippingName ?? null,
+        orderId: order.id,
+        carrier: order.shippingCarrier ?? null,
+        trackingNumber: order.shippingTrackingNumber ?? null,
+      });
+      return;
+    }
+
+    const itemRow = await db
+      .select({
+        carrier: orderItems.carrier,
+        trackingNumber: orderItems.trackingNumber,
+      })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, orderId))
+      .limit(1);
+
+    const item = itemRow?.[0];
+    if (item?.trackingNumber) {
+      await sendShippingNotificationEmail({
+        customerEmail: order.customerEmail,
+        shippingName: order.shippingName ?? null,
+        orderId: order.id,
+        carrier: item.carrier ?? null,
+        trackingNumber: item.trackingNumber ?? null,
+      });
+    }
+  } catch (e) {
+    console.warn("[shipping-email] maybeSendShippingEmailForOrder failed:", safeErrSummary(e));
   }
 }
 
@@ -722,7 +820,8 @@ function getShipFromAddress() {
     street1: safeString(process.env.SHIP_FROM_STREET1 || "PO Box 20024", 80) || "PO Box 20024",
     street2: safeString(process.env.SHIP_FROM_STREET2 || "", 80) || undefined,
     city:
-      safeString(process.env.SHIP_FROM_CITY || "Village of Oak Creek", 60) || "Village of Oak Creek",
+      safeString(process.env.SHIP_FROM_CITY || "Village of Oak Creek", 60) ||
+      "Village of Oak Creek",
     state: safeString(process.env.SHIP_FROM_STATE || "AZ", 20) || "AZ",
     zip: safeString(process.env.SHIP_FROM_ZIP || "86341", 20) || "86341",
     country: safeString(process.env.SHIP_FROM_COUNTRY || "US", 2) || "US",
@@ -890,7 +989,8 @@ async function createAndBuyEasyPostShipment(args: {
 
   const boughtShipment = bought?.shipment ?? bought;
   const tracking = safeString(boughtShipment?.tracking_code || "", 120) || "";
-  const carrier = safeString(boughtShipment?.selected_rate?.carrier || rate.carrier || "", 80) || "";
+  const carrier =
+    safeString(boughtShipment?.selected_rate?.carrier || rate.carrier || "", 80) || "";
 
   const labelUrl =
     safeString(boughtShipment?.postage_label?.label_url || "", 1000) ||
@@ -930,10 +1030,13 @@ async function mergePdfs(pdfs: Uint8Array[]): Promise<Uint8Array> {
   return new Uint8Array(out);
 }
 
-async function appendErrorsPage(existing: Uint8Array, errors: Array<{ orderId: string; message: string }>) {
+async function appendErrorsPage(
+  existing: Uint8Array,
+  errors: Array<{ orderId: string; message: string }>
+) {
   const doc = await PDFDocument.load(existing);
   let page = doc.addPage();
-  let { width, height } = page.getSize();
+  let { height } = page.getSize();
 
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -957,12 +1060,199 @@ async function appendErrorsPage(existing: Uint8Array, errors: Array<{ orderId: s
     for (const c of chunks) {
       if (y < 40) {
         page = doc.addPage();
-        ({ width, height } = page.getSize());
+        ({ height } = page.getSize());
         y = height - 60;
       }
       page.drawText(c, { x: 40, y, size: 10, font });
       y -= lineHeight;
     }
+  }
+
+  const out = await doc.save();
+  return new Uint8Array(out);
+}
+
+async function buildPackingSlipsPdf(args: {
+  orderIds: string[];
+  byOrderId: Record<
+    string,
+    {
+      id: string;
+      createdAt?: Date | string | null;
+      customerEmail?: string | null;
+      shippingName?: string | null;
+      shippingAddress?: any | null;
+      amountTotal?: number | null;
+      currency?: string | null;
+      shippingCarrier?: string | null;
+      shippingTrackingNumber?: string | null;
+      isSubscription?: boolean | null;
+    }
+  >;
+}) {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+  for (const orderId of args.orderIds) {
+    const order = args.byOrderId[orderId];
+    if (!order) continue;
+
+    const items = await db
+      .select({
+        flavor: orderItems.flavor,
+        purchaseType: orderItems.purchaseType,
+        frequencyWeeks: orderItems.frequencyWeeks,
+        quantity: orderItems.quantity,
+        fulfillmentStatus: orderItems.fulfillmentStatus,
+      })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, orderId))
+      .orderBy(desc(orderItems.createdAt))
+      .limit(200);
+
+    let page = doc.addPage([612, 792]);
+    let y = 750;
+
+    const drawLine = () => {
+      page.drawLine({
+        start: { x: 40, y },
+        end: { x: 572, y },
+        thickness: 1,
+        color: rgb(0.82, 0.82, 0.82),
+      });
+      y -= 16;
+    };
+
+    page.drawText("Kimora Co. Packing Slip", { x: 40, y, size: 20, font: fontBold });
+    y -= 28;
+
+    page.drawText(`Order ID: ${orderId}`, { x: 40, y, size: 11, font: fontBold });
+    y -= 16;
+
+    page.drawText(`Created: ${order.createdAt ? new Date(order.createdAt).toLocaleString() : "—"}`, {
+      x: 40,
+      y,
+      size: 10,
+      font,
+    });
+    y -= 16;
+
+    page.drawText(`Customer Email: ${safeString(order.customerEmail || "—", 200)}`, {
+      x: 40,
+      y,
+      size: 10,
+      font,
+    });
+    y -= 16;
+
+    page.drawText(`Type: ${order.isSubscription ? "Subscription" : "One-time"}`, {
+      x: 40,
+      y,
+      size: 10,
+      font,
+    });
+    y -= 16;
+
+    page.drawText(
+      `Total: ${formatMoney(order.amountTotal ?? null, order.currency ?? "usd") || "—"}`,
+      {
+        x: 40,
+        y,
+        size: 10,
+        font,
+      }
+    );
+    y -= 12;
+    drawLine();
+
+    page.drawText("Ship To", { x: 40, y, size: 12, font: fontBold });
+    y -= 16;
+
+    page.drawText(safeString(order.shippingName || "—", 200), { x: 40, y, size: 10, font });
+    y -= 14;
+
+    const addrLines = [
+      safeString(order.shippingAddress?.line1 || "", 100),
+      safeString(order.shippingAddress?.line2 || "", 100),
+      [order.shippingAddress?.city, order.shippingAddress?.state, order.shippingAddress?.postal_code]
+        .map((x) => String(x || "").trim())
+        .filter(Boolean)
+        .join(", "),
+      safeString(order.shippingAddress?.country || "", 20),
+    ].filter(Boolean);
+
+    for (const line of addrLines) {
+      page.drawText(line, { x: 40, y, size: 10, font });
+      y -= 14;
+    }
+
+    y -= 4;
+    drawLine();
+
+    page.drawText("Items", { x: 40, y, size: 12, font: fontBold });
+    y -= 18;
+
+    page.drawText("Product", { x: 40, y, size: 10, font: fontBold });
+    page.drawText("Qty", { x: 300, y, size: 10, font: fontBold });
+    page.drawText("Type", { x: 350, y, size: 10, font: fontBold });
+    page.drawText("Status", { x: 470, y, size: 10, font: fontBold });
+    y -= 14;
+    drawLine();
+
+    for (const item of items) {
+      if (y < 80) {
+        page = doc.addPage([612, 792]);
+        y = 750;
+      }
+
+      const typeLabel =
+        item.purchaseType === "subscribe" && item.frequencyWeeks
+          ? `Subscription / ${item.frequencyWeeks}w`
+          : "One-time";
+
+      page.drawText(titleizeSlug(item.flavor), { x: 40, y, size: 10, font });
+      page.drawText(String(item.quantity ?? 1), { x: 300, y, size: 10, font });
+      page.drawText(typeLabel, { x: 350, y, size: 10, font });
+      page.drawText(normalizeFulfillment(item.fulfillmentStatus), { x: 470, y, size: 10, font });
+      y -= 16;
+    }
+
+    y -= 8;
+    drawLine();
+
+    const trackUrl = trackingUrlFor(order.shippingCarrier, order.shippingTrackingNumber);
+
+    page.drawText("Shipment", { x: 40, y, size: 12, font: fontBold });
+    y -= 16;
+
+    page.drawText(`Carrier: ${safeString(order.shippingCarrier || "—", 80) || "—"}`, {
+      x: 40,
+      y,
+      size: 10,
+      font,
+    });
+    y -= 14;
+
+    page.drawText(`Tracking: ${safeString(order.shippingTrackingNumber || "—", 120) || "—"}`, {
+      x: 40,
+      y,
+      size: 10,
+      font,
+    });
+    y -= 14;
+
+    if (trackUrl) {
+      page.drawText(`Track: ${trackUrl}`, { x: 40, y, size: 10, font });
+      y -= 14;
+    }
+
+    page.drawText("Thank you for training with Kimora Co.", {
+      x: 40,
+      y: 40,
+      size: 10,
+      font: fontBold,
+    });
   }
 
   const out = await doc.save();
@@ -1105,7 +1395,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           shippingName: orders.shippingName,
           shippingAddress: orders.shippingAddress,
 
-          // ✅ order-level shipment data
           shippingCarrier: orders.shippingCarrier,
           shippingTrackingNumber: orders.shippingTrackingNumber,
           shippingLabelUrl: orders.shippingLabelUrl,
@@ -1161,6 +1450,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           ...r,
           fulfillmentStatus: roll?.fulfillmentStatus ?? "unfulfilled",
           fulfillmentCounts: roll?.fulfillmentCounts ?? {},
+          trackingUrl: trackingUrlFor(r.shippingCarrier ?? null, r.shippingTrackingNumber ?? null),
         };
       });
 
@@ -1193,7 +1483,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         .orderBy(desc(orderItems.createdAt))
         .limit(200);
 
-      return res.json({ ok: true, order: order[0], items });
+      return res.json({
+        ok: true,
+        order: {
+          ...order[0],
+          trackingUrl: trackingUrlFor(
+            order[0]?.shippingCarrier ?? null,
+            order[0]?.shippingTrackingNumber ?? null
+          ),
+        },
+        items: items.map((it) => ({
+          ...it,
+          trackingUrl: trackingUrlFor(it.carrier ?? null, it.trackingNumber ?? null),
+        })),
+      });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/admin/orders/:id error:", s);
@@ -1232,6 +1535,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       if (!updated?.length) {
         return res.status(404).json({ ok: false, message: "No items found for that order." });
+      }
+
+      if (status === "shipped") {
+        await maybeSendShippingEmailForOrder(orderId);
       }
 
       return res.json({ ok: true });
@@ -1277,10 +1584,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         .update(orderItems)
         .set(set)
         .where(eq(orderItems.id, id))
-        .returning({ id: orderItems.id });
+        .returning({ id: orderItems.id, orderId: orderItems.orderId });
 
       if (!updated?.length) {
         return res.status(404).json({ ok: false, message: "Not found." });
+      }
+
+      if (status === "shipped") {
+        await maybeSendShippingEmailForOrder(String(updated[0].orderId));
       }
 
       return res.json({ ok: true });
@@ -1291,9 +1602,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  /**
-   * ✅ Returns the stored individual label URL for an order
-   */
   app.get("/api/admin/orders/:id/label", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;
@@ -1329,11 +1637,101 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         trackingNumber: order.shippingTrackingNumber,
         carrier: order.shippingCarrier,
         shipmentId: order.shippingShipmentId,
+        trackingUrl: trackingUrlFor(
+          order.shippingCarrier ?? null,
+          order.shippingTrackingNumber ?? null
+        ),
       });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/admin/orders/:id/label error:", s);
       return res.status(500).json({ ok: false, message: "Failed to load label." });
+    }
+  });
+
+  app.post("/api/admin/packing-slips/batch", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const orderIdsIn: string[] = Array.isArray(req.body?.orderIds)
+        ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
+        : [];
+
+      let selectedOrderIds: string[] = [];
+
+      if (orderIdsIn.length > 0) {
+        selectedOrderIds = orderIdsIn;
+      } else {
+        const packedAgg = await db
+          .select({
+            orderId: orderItems.orderId,
+            packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
+              Number
+            ),
+          })
+          .from(orderItems)
+          .groupBy(orderItems.orderId);
+
+        selectedOrderIds = (packedAgg || [])
+          .filter((r: any) => (Number(r.packedCount) || 0) > 0)
+          .map((r: any) => String(r.orderId || "").trim())
+          .filter(Boolean);
+      }
+
+      if (!selectedOrderIds.length) {
+        return res.status(404).json({
+          ok: false,
+          message: "No packed orders were found for packing slips.",
+        });
+      }
+
+      const orderRows = await db
+        .select({
+          id: orders.id,
+          createdAt: orders.createdAt,
+          customerEmail: orders.customerEmail,
+          shippingName: orders.shippingName,
+          shippingAddress: orders.shippingAddress,
+          amountTotal: orders.amountTotal,
+          currency: orders.currency,
+          shippingCarrier: orders.shippingCarrier,
+          shippingTrackingNumber: orders.shippingTrackingNumber,
+          isSubscription: orders.isSubscription,
+        })
+        .from(orders)
+        .where(inArray(orders.id, selectedOrderIds as any))
+        .orderBy(desc(orders.createdAt))
+        .limit(500);
+
+      const byOrderId: Record<string, any> = {};
+      for (const row of orderRows as any[]) {
+        byOrderId[String(row.id)] = row;
+      }
+
+      const orderedIds = selectedOrderIds.filter((id) => byOrderId[id]);
+      if (!orderedIds.length) {
+        return res.status(404).json({
+          ok: false,
+          message: "No matching orders found for packing slips.",
+        });
+      }
+
+      const pdf = await buildPackingSlipsPdf({
+        orderIds: orderedIds,
+        byOrderId,
+      });
+
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const filename = `kimora-packing-slips-${stamp}.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.status(200).send(Buffer.from(pdf));
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/admin/packing-slips/batch error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to generate packing slips." });
     }
   });
 
@@ -1454,7 +1852,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           `Phone: ${phoneDigits}\n` +
           `Website/IG: ${websiteOrInstagram || "(not provided)"}\n` +
           `City/State: ${city}, ${state}\n` +
-          `Business type: ${businessType}${businessType === "other" ? ` (${businessTypeOther})` : ""}\n` +
+          `Business type: ${businessType}${
+            businessType === "other" ? ` (${businessTypeOther})` : ""
+          }\n` +
           `Member count: ${memberCount}\n` +
           `Retail setup: ${retailSetup || "(not provided)"}\n` +
           `Interested: onShelf=${interestedOnShelf}, coachAffiliate=${interestedCoachAffiliate}, eventSponsorship=${interestedEventSponsorship}\n\n` +
@@ -1571,7 +1971,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
-      return res.status(500).json({ ok: false, message: "Failed to submit wholesale application." });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to submit wholesale application." });
     }
   });
 
@@ -1586,7 +1988,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const flavor = String(it?.flavor ?? "").trim();
           const type: CheckoutItem["type"] = it?.type === "subscribe" ? "subscribe" : "onetime";
           const frequency: CheckoutItem["frequency"] | undefined =
-            type === "subscribe" && (it?.frequency === "2" || it?.frequency === "4" || it?.frequency === "6")
+            type === "subscribe" &&
+            (it?.frequency === "2" || it?.frequency === "4" || it?.frequency === "6")
               ? it.frequency
               : undefined;
           const qRaw = Number(it?.quantity);
@@ -1933,7 +2336,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
 
         const shipAddr = o.shippingAddress;
-        if (!shipAddr || !shipAddr.line1 || !shipAddr.city || !shipAddr.state || !shipAddr.postal_code) {
+        if (
+          !shipAddr ||
+          !shipAddr.line1 ||
+          !shipAddr.city ||
+          !shipAddr.state ||
+          !shipAddr.postal_code
+        ) {
           errors.push({ orderId, message: "Missing shipping address on order." });
           continue;
         }
@@ -1959,7 +2368,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
           const now = new Date();
 
-          // ✅ store shipment info on ORDER
           await db
             .update(orders)
             .set({
@@ -1970,7 +2378,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             })
             .where(eq(orders.id, orderId));
 
-          // keep item-level fields aligned too
           await db
             .update(orderItems)
             .set({
@@ -2026,6 +2433,92 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const s = safeErrSummary(err);
       console.error("POST /api/admin/labels/batch error:", s);
       return res.status(500).json({ ok: false, message: "Failed to create labels." });
+    }
+  });
+
+  app.post("/api/admin/packing-slips/batch", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const orderIdsIn: string[] = Array.isArray(req.body?.orderIds)
+        ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
+        : [];
+
+      let selectedOrderIds: string[] = [];
+
+      if (orderIdsIn.length > 0) {
+        selectedOrderIds = orderIdsIn;
+      } else {
+        const packedAgg = await db
+          .select({
+            orderId: orderItems.orderId,
+            packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
+              Number
+            ),
+          })
+          .from(orderItems)
+          .groupBy(orderItems.orderId);
+
+        selectedOrderIds = (packedAgg || [])
+          .filter((r: any) => (Number(r.packedCount) || 0) > 0)
+          .map((r: any) => String(r.orderId || "").trim())
+          .filter(Boolean);
+      }
+
+      if (!selectedOrderIds.length) {
+        return res.status(404).json({
+          ok: false,
+          message: "No packed orders were found for packing slips.",
+        });
+      }
+
+      const orderRows = await db
+        .select({
+          id: orders.id,
+          createdAt: orders.createdAt,
+          customerEmail: orders.customerEmail,
+          shippingName: orders.shippingName,
+          shippingAddress: orders.shippingAddress,
+          amountTotal: orders.amountTotal,
+          currency: orders.currency,
+          shippingCarrier: orders.shippingCarrier,
+          shippingTrackingNumber: orders.shippingTrackingNumber,
+          isSubscription: orders.isSubscription,
+        })
+        .from(orders)
+        .where(inArray(orders.id, selectedOrderIds as any))
+        .orderBy(desc(orders.createdAt))
+        .limit(500);
+
+      const byOrderId: Record<string, any> = {};
+      for (const row of orderRows as any[]) {
+        byOrderId[String(row.id)] = row;
+      }
+
+      const orderedIds = selectedOrderIds.filter((id) => byOrderId[id]);
+      if (!orderedIds.length) {
+        return res.status(404).json({
+          ok: false,
+          message: "No matching orders found for packing slips.",
+        });
+      }
+
+      const pdf = await buildPackingSlipsPdf({
+        orderIds: orderedIds,
+        byOrderId,
+      });
+
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const filename = `kimora-packing-slips-${stamp}.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.status(200).send(Buffer.from(pdf));
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/admin/packing-slips/batch error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to generate packing slips." });
     }
   });
 

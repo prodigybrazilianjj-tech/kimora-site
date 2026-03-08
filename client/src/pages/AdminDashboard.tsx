@@ -49,7 +49,12 @@ type OrderRow = {
   shippingName?: string | null;
   shippingAddress?: any | null;
 
-  // order-level rollup coming from /api/admin/orders
+  shippingCarrier?: string | null;
+  shippingTrackingNumber?: string | null;
+  shippingLabelUrl?: string | null;
+  shippingShipmentId?: string | null;
+  trackingUrl?: string | null;
+
   fulfillmentStatus?: FulfillmentStatus | string | null;
   fulfillmentCounts?: Record<string, number> | null;
 };
@@ -76,10 +81,17 @@ type OrderItemRow = {
   fulfillmentStatus?: FulfillmentStatus | string;
   carrier?: string | null;
   trackingNumber?: string | null;
+  trackingUrl?: string | null;
   shippedAt?: string | null;
   deliveredAt?: string | null;
 
   createdAt?: string;
+};
+
+type OrderDetailResponse = {
+  ok: true;
+  order: OrderRow;
+  items: OrderItemRow[];
 };
 
 function money(cents?: number | null, currency?: string | null) {
@@ -108,6 +120,14 @@ function oneLineAddress(addr: any) {
     .map((x) => String(x || "").trim())
     .filter(Boolean);
   return parts.join(", ");
+}
+
+function titleizeSlug(value?: string | null) {
+  return String(value || "")
+    .split("-")
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
+    .filter(Boolean)
+    .join(" ");
 }
 
 function getApiBase() {
@@ -140,6 +160,47 @@ async function api<T>(path: string, token: string, init?: RequestInit): Promise<
   return json as T;
 }
 
+async function downloadPdf(path: string, token: string, filenamePrefix: string) {
+  const res = await fetch(getApiBase() + path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-token": token,
+    },
+    body: JSON.stringify({}),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = null;
+    }
+    throw new Error(json?.message || text || `Request failed (${res.status})`);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  const filename = `${filenamePrefix}-${stamp}.pdf`;
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  window.open(url, "_blank", "noopener,noreferrer");
+
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+  return res.headers;
+}
+
 type TabKey = "overview" | "orders" | "wholesale";
 
 const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
@@ -153,8 +214,12 @@ const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
 ];
 
 function normalizeFulfillment(s: any): FulfillmentStatus {
-  const v = String(s || "").trim().toLowerCase();
-  return (FULFILLMENT_STATUSES.includes(v as FulfillmentStatus) ? v : "unfulfilled") as FulfillmentStatus;
+  const v = String(s || "")
+    .trim()
+    .toLowerCase();
+  return (
+    FULFILLMENT_STATUSES.includes(v as FulfillmentStatus) ? v : "unfulfilled"
+  ) as FulfillmentStatus;
 }
 
 function formatCounts(counts?: Record<string, number> | null) {
@@ -165,20 +230,6 @@ function formatCounts(counts?: Record<string, number> | null) {
   }).filter(Boolean);
   return parts.join(" • ");
 }
-
-type BatchLabel = {
-  orderId: string;
-  carrier?: string | null;
-  trackingNumber?: string | null;
-  labelUrl?: string | null; // EasyPost-hosted PDF URL (usually)
-  selectedRate?: any | null;
-};
-
-type BatchLabelsResponse = {
-  ok: true;
-  labels: BatchLabel[];
-  errors: Array<{ orderId: string; message: string }>;
-};
 
 function openInNewTab(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
@@ -193,18 +244,21 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<TabKey>("overview");
 
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   const [orderQ, setOrderQ] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
   const [orderMode, setOrderMode] = useState("");
 
-  // order-level fulfillment edits
-  const [orderFulfillmentEdits, setOrderFulfillmentEdits] = useState<Record<string, FulfillmentStatus>>({});
+  const [orderFulfillmentEdits, setOrderFulfillmentEdits] = useState<
+    Record<string, FulfillmentStatus>
+  >({});
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(null);
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<OrderRow | null>(null);
   const [selectedOrderItems, setSelectedOrderItems] = useState<OrderItemRow[]>([]);
   const [orderDetailLoading, setOrderDetailLoading] = useState(false);
   const [orderDetailError, setOrderDetailError] = useState<string | null>(null);
@@ -215,11 +269,14 @@ export default function AdminDashboard() {
 
   const [wholesale, setWholesale] = useState<WholesaleRow[]>([]);
   const [wholesaleLoading, setWholesaleLoading] = useState(false);
+  const [wholesaleError, setWholesaleError] = useState<string | null>(null);
   const [wholesaleQ, setWholesaleQ] = useState("");
-  const [wholesaleStatusFilter, setWholesaleStatusFilter] = useState<"" | WholesaleRow["status"]>("");
+  const [wholesaleStatusFilter, setWholesaleStatusFilter] = useState<
+    "" | WholesaleRow["status"]
+  >("");
 
-  // Labels
   const [labelsLoading, setLabelsLoading] = useState(false);
+  const [packingSlipsLoading, setPackingSlipsLoading] = useState(false);
 
   const canAuth = Boolean(savedToken);
 
@@ -240,22 +297,36 @@ export default function AdminDashboard() {
     setToken("");
     setSavedToken("");
     setSummary(null);
+    setSummaryError(null);
     setOrders([]);
+    setOrdersError(null);
     setOrderFulfillmentEdits({});
     setWholesale([]);
+    setWholesaleError(null);
     closeOrder();
   }
 
-  async function loadSummary() {
+  async function loadSummary(showToast = false) {
     if (!savedToken) return;
-    const data = await api<{ ok: true; summary: Summary }>("/api/admin/summary", savedToken);
-    setSummary(data.summary);
+    try {
+      setSummaryError(null);
+      const data = await api<{ ok: true; summary: Summary }>("/api/admin/summary", savedToken);
+      setSummary(data.summary);
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to load summary.");
+      setSummaryError(msg);
+      if (showToast) {
+        toast({ title: "Overview load failed", description: msg });
+      }
+      throw e;
+    }
   }
 
-  async function loadOrders() {
+  async function loadOrders(showToast = false) {
     if (!savedToken) return;
     setOrdersLoading(true);
     try {
+      setOrdersError(null);
       const qs = new URLSearchParams();
       if (orderQ.trim()) qs.set("q", orderQ.trim());
       if (orderStatus.trim()) qs.set("status", orderStatus.trim());
@@ -266,23 +337,42 @@ export default function AdminDashboard() {
       const rows = (data.rows || []) as OrderRow[];
       setOrders(rows);
 
-      // seed edits from rollup
       const seeded: Record<string, FulfillmentStatus> = {};
       for (const r of rows) {
         seeded[r.id] = normalizeFulfillment(r.fulfillmentStatus);
       }
       setOrderFulfillmentEdits(seeded);
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to load orders.");
+      setOrders([]);
+      setOrdersError(msg);
+      if (showToast) {
+        toast({ title: "Orders load failed", description: msg });
+      }
+      throw e;
     } finally {
       setOrdersLoading(false);
     }
   }
 
-  async function loadWholesale() {
+  async function loadWholesale(showToast = false) {
     if (!savedToken) return;
     setWholesaleLoading(true);
     try {
-      const data = await api<{ ok: true; rows: WholesaleRow[] }>("/api/admin/wholesale-applications", savedToken);
+      setWholesaleError(null);
+      const data = await api<{ ok: true; rows: WholesaleRow[] }>(
+        "/api/admin/wholesale-applications",
+        savedToken
+      );
       setWholesale(data.rows || []);
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to load wholesale applications.");
+      setWholesale([]);
+      setWholesaleError(msg);
+      if (showToast) {
+        toast({ title: "Wholesale load failed", description: msg });
+      }
+      throw e;
     } finally {
       setWholesaleLoading(false);
     }
@@ -299,15 +389,17 @@ export default function AdminDashboard() {
     setItemEdits({});
 
     try {
-      const data = await api<{ ok: true; order: any; items: OrderItemRow[] }>(`/api/admin/orders/${id}`, savedToken);
+      const data = await api<OrderDetailResponse>(`/api/admin/orders/${id}`, savedToken);
 
       setSelectedOrderDetail(data.order);
 
       const items = (data.items || []) as OrderItemRow[];
       setSelectedOrderItems(items);
 
-      const seeded: Record<string, { fulfillmentStatus: FulfillmentStatus; carrier: string; trackingNumber: string }> =
-        {};
+      const seeded: Record<
+        string,
+        { fulfillmentStatus: FulfillmentStatus; carrier: string; trackingNumber: string }
+      > = {};
       for (const it of items) {
         const status = normalizeFulfillment(it.fulfillmentStatus);
         seeded[it.id] = {
@@ -338,12 +430,18 @@ export default function AdminDashboard() {
   async function updateWholesaleStatus(id: string, status: WholesaleRow["status"]) {
     if (!savedToken) return;
 
-    await api<{ ok: true }>(`/api/admin/wholesale-applications/${id}`, savedToken, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
+    try {
+      await api<{ ok: true }>(`/api/admin/wholesale-applications/${id}`, savedToken, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
 
-    await loadWholesale();
+      toast({ title: "Saved", description: `Wholesale status updated to ${status}` });
+      await loadWholesale();
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to update wholesale status.");
+      toast({ title: "Save failed", description: msg });
+    }
   }
 
   async function saveItemFulfillment(itemId: string) {
@@ -352,21 +450,26 @@ export default function AdminDashboard() {
     const edit = itemEdits[itemId];
     if (!edit) return;
 
-    await api<{ ok: true }>(`/api/admin/order-items/${itemId}/fulfillment`, savedToken, {
-      method: "PATCH",
-      body: JSON.stringify({
-        fulfillmentStatus: edit.fulfillmentStatus,
-        carrier: edit.carrier || null,
-        trackingNumber: edit.trackingNumber || null,
-      }),
-    });
+    try {
+      await api<{ ok: true }>(`/api/admin/order-items/${itemId}/fulfillment`, savedToken, {
+        method: "PATCH",
+        body: JSON.stringify({
+          fulfillmentStatus: edit.fulfillmentStatus,
+          carrier: edit.carrier || null,
+          trackingNumber: edit.trackingNumber || null,
+        }),
+      });
 
-    toast({ title: "Saved", description: `Item updated` });
+      toast({ title: "Saved", description: "Item updated" });
 
-    if (selectedOrderId) {
-      await openOrder(selectedOrderId);
+      if (selectedOrderId) {
+        await openOrder(selectedOrderId);
+      }
+      await loadOrders();
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to update item.");
+      toast({ title: "Save failed", description: msg });
     }
-    await loadOrders();
   }
 
   async function saveOrderFulfillment(orderId: string) {
@@ -388,57 +491,29 @@ export default function AdminDashboard() {
     }
   }
 
-  /**
-   * Generate labels for all PACKED orders.
-   * Server returns JSON: { ok, labels, errors }
-   * We open each labelUrl (PDF) in a new tab for print/download.
-   */
   async function generatePackedLabels() {
-    if (!savedToken) return;
-    if (labelsLoading) return;
+    if (!savedToken || labelsLoading) return;
 
     try {
       setLabelsLoading(true);
       toast({ title: "Generating labels…", description: "This can take a few seconds." });
 
-      const data = await api<BatchLabelsResponse>("/api/admin/labels/batch", savedToken, {
-        method: "POST",
-        body: JSON.stringify({}),
+      const headers = await downloadPdf(
+        "/api/admin/labels/batch",
+        savedToken,
+        "kimora-labels-packed"
+      );
+
+      const errorCount = Number(headers.get("X-Label-Errors") || "0") || 0;
+
+      toast({
+        title: "Labels ready",
+        description:
+          errorCount > 0
+            ? `Label PDF opened/downloaded. ${errorCount} label error${errorCount === 1 ? "" : "s"} appended at the end.`
+            : "Label PDF opened/downloaded.",
       });
 
-      const labels = data.labels || [];
-      const errors = data.errors || [];
-
-      const opened: string[] = [];
-      for (const l of labels) {
-        const url = String(l.labelUrl || "").trim();
-        if (url) {
-          openInNewTab(url);
-          opened.push(l.orderId);
-        }
-      }
-
-      if (!labels.length && !errors.length) {
-        toast({ title: "No labels to generate", description: "No packed orders without tracking were found." });
-        return;
-      }
-
-      if (opened.length) {
-        toast({
-          title: "Labels opened",
-          description: `Opened ${opened.length} label PDF${opened.length === 1 ? "" : "s"} in new tabs.`,
-        });
-      }
-
-      if (errors.length) {
-        const preview = errors.slice(0, 3).map((e) => `${e.orderId}: ${e.message}`).join(" • ");
-        toast({
-          title: "Some labels failed",
-          description: errors.length <= 3 ? preview : `${preview} • (+${errors.length - 3} more)`,
-        });
-      }
-
-      // refresh orders (server marks shipped / sets tracking)
       await loadOrders();
       if (selectedOrderId) await openOrder(selectedOrderId);
     } catch (e: any) {
@@ -446,6 +521,31 @@ export default function AdminDashboard() {
       toast({ title: "Labels failed", description: msg });
     } finally {
       setLabelsLoading(false);
+    }
+  }
+
+  async function generatePackingSlips() {
+    if (!savedToken || packingSlipsLoading) return;
+
+    try {
+      setPackingSlipsLoading(true);
+      toast({ title: "Generating packing slips…", description: "This can take a few seconds." });
+
+      await downloadPdf(
+        "/api/admin/packing-slips/batch",
+        savedToken,
+        "kimora-packing-slips"
+      );
+
+      toast({
+        title: "Packing slips ready",
+        description: "Packing slip PDF opened/downloaded.",
+      });
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to generate packing slips.");
+      toast({ title: "Packing slips failed", description: msg });
+    } finally {
+      setPackingSlipsLoading(false);
     }
   }
 
@@ -519,13 +619,25 @@ export default function AdminDashboard() {
         )}
 
         <div className="mt-8 flex gap-2 flex-wrap">
-          <Button type="button" variant={tab === "overview" ? "default" : "outline"} onClick={() => setTab("overview")}>
+          <Button
+            type="button"
+            variant={tab === "overview" ? "default" : "outline"}
+            onClick={() => setTab("overview")}
+          >
             Overview
           </Button>
-          <Button type="button" variant={tab === "orders" ? "default" : "outline"} onClick={() => setTab("orders")}>
+          <Button
+            type="button"
+            variant={tab === "orders" ? "default" : "outline"}
+            onClick={() => setTab("orders")}
+          >
             Orders
           </Button>
-          <Button type="button" variant={tab === "wholesale" ? "default" : "outline"} onClick={() => setTab("wholesale")}>
+          <Button
+            type="button"
+            variant={tab === "wholesale" ? "default" : "outline"}
+            onClick={() => setTab("wholesale")}
+          >
             Wholesale
           </Button>
 
@@ -533,37 +645,65 @@ export default function AdminDashboard() {
 
           {canAuth && (
             <div className="flex gap-2 flex-wrap">
-              <Button type="button" variant="outline" onClick={loadSummary}>
+              <Button type="button" variant="outline" onClick={() => loadSummary(true)}>
                 Refresh overview
               </Button>
-              <Button type="button" variant="outline" onClick={loadOrders}>
+              <Button type="button" variant="outline" onClick={() => loadOrders(true)}>
                 Refresh orders
               </Button>
-              <Button type="button" variant="outline" onClick={loadWholesale}>
+              <Button type="button" variant="outline" onClick={() => loadWholesale(true)}>
                 Refresh wholesale
               </Button>
 
-              {/* Label generator */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={generatePackingSlips}
+                disabled={packingSlipsLoading || packedCount === 0}
+                title={
+                  packedCount === 0
+                    ? "No packed orders yet"
+                    : "Generate a packing slips PDF for packed orders"
+                }
+              >
+                {packingSlipsLoading
+                  ? "Generating slips…"
+                  : `Packing slips${packedCount ? ` (${packedCount})` : ""}`}
+              </Button>
+
               <Button
                 type="button"
                 variant="default"
                 onClick={generatePackedLabels}
                 disabled={labelsLoading || packedCount === 0}
-                title={packedCount === 0 ? "No packed orders yet" : "Creates EasyPost labels for packed orders and opens PDFs"}
+                title={
+                  packedCount === 0
+                    ? "No packed orders yet"
+                    : "Creates EasyPost labels for packed orders and downloads a merged PDF"
+                }
               >
-                {labelsLoading ? "Generating…" : `Generate labels (packed${packedCount ? `: ${packedCount}` : ""})`}
+                {labelsLoading
+                  ? "Generating labels…"
+                  : `Generate labels${packedCount ? ` (${packedCount})` : ""}`}
               </Button>
             </div>
           )}
         </div>
 
-        {/* OVERVIEW */}
         {tab === "overview" && (
           <div className="mt-6 grid gap-4">
+            {summaryError && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+                Failed to load overview: {summaryError}
+              </div>
+            )}
+
             <div className="grid md:grid-cols-4 gap-4">
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Total revenue</div>
-                <div className="text-2xl font-bold mt-1">{summary ? money(summary.totalRevenueCents, "usd") : "—"}</div>
+                <div className="text-2xl font-bold mt-1">
+                  {summary ? money(summary.totalRevenueCents, "usd") : "—"}
+                </div>
               </div>
 
               <div className="rounded-lg border border-border p-4">
@@ -573,19 +713,24 @@ export default function AdminDashboard() {
 
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Avg order value</div>
-                <div className="text-2xl font-bold mt-1">{summary ? money(summary.aovCents, "usd") : "—"}</div>
+                <div className="text-2xl font-bold mt-1">
+                  {summary ? money(summary.aovCents, "usd") : "—"}
+                </div>
               </div>
 
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Paid vs Refunded</div>
-                <div className="text-lg font-semibold mt-2">{summary ? `${summary.paidOrders} paid` : "—"}</div>
-                <div className="text-sm text-muted-foreground">{summary ? `${summary.refundedOrders} refunded` : ""}</div>
+                <div className="text-lg font-semibold mt-2">
+                  {summary ? `${summary.paidOrders} paid` : "—"}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {summary ? `${summary.refundedOrders} refunded` : ""}
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* ORDERS */}
         {tab === "orders" && (
           <div className="mt-6 grid gap-4">
             <div className="rounded-lg border border-border p-4">
@@ -619,12 +764,17 @@ export default function AdminDashboard() {
                   <option value="subscription">Subscription</option>
                 </select>
 
-                <Button type="button" onClick={loadOrders} className="h-10">
+                <Button type="button" onClick={() => loadOrders(true)} className="h-10">
                   Apply
                 </Button>
               </div>
 
               {ordersLoading && <div className="mt-3 text-sm text-muted-foreground">Loading…</div>}
+              {ordersError && (
+                <div className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                  Failed to load orders: {ordersError}
+                </div>
+              )}
             </div>
 
             <div className="rounded-lg border border-border overflow-hidden">
@@ -641,13 +791,15 @@ export default function AdminDashboard() {
                       <th className="p-3 text-left">Type</th>
                       <th className="p-3 text-left">Status</th>
                       <th className="p-3 text-left">Fulfillment</th>
+                      <th className="p-3 text-left">Shipment</th>
                       <th className="p-3 text-left">Total</th>
                       <th className="p-3 text-left">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {orders.map((o) => {
-                      const edit = orderFulfillmentEdits[o.id] || normalizeFulfillment(o.fulfillmentStatus);
+                      const edit =
+                        orderFulfillmentEdits[o.id] || normalizeFulfillment(o.fulfillmentStatus);
                       const countsText = formatCounts(o.fulfillmentCounts);
 
                       return (
@@ -698,6 +850,40 @@ export default function AdminDashboard() {
                             </div>
                           </td>
 
+                          <td className="p-3">
+                            {o.shippingTrackingNumber ? (
+                              <div className="flex flex-col gap-1">
+                                <div className="text-xs">
+                                  {o.shippingCarrier || "Carrier"} • {o.shippingTrackingNumber}
+                                </div>
+                                <div className="flex gap-2 flex-wrap">
+                                  {o.trackingUrl && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="h-7 px-2 text-xs"
+                                      onClick={() => openInNewTab(o.trackingUrl!)}
+                                    >
+                                      Track
+                                    </Button>
+                                  )}
+                                  {o.shippingLabelUrl && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="h-7 px-2 text-xs"
+                                      onClick={() => openInNewTab(o.shippingLabelUrl!)}
+                                    >
+                                      Label
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </td>
+
                           <td className="p-3">{money(o.amountTotal, o.currency)}</td>
                           <td className="p-3">
                             <Button
@@ -717,9 +903,9 @@ export default function AdminDashboard() {
                       );
                     })}
 
-                    {!orders.length && (
+                    {!orders.length && !ordersLoading && !ordersError && (
                       <tr>
-                        <td className="p-4 text-muted-foreground" colSpan={7}>
+                        <td className="p-4 text-muted-foreground" colSpan={8}>
                           No orders found.
                         </td>
                       </tr>
@@ -731,12 +917,19 @@ export default function AdminDashboard() {
 
             {(selectedOrderId || orderDetailLoading || orderDetailError) && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-black/50" onClick={() => closeOrder()} role="button" tabIndex={-1} />
+                <div
+                  className="absolute inset-0 bg-black/50"
+                  onClick={() => closeOrder()}
+                  role="button"
+                  tabIndex={-1}
+                />
                 <div className="relative w-full max-w-5xl max-h-[85vh] overflow-auto rounded-xl border border-border bg-background shadow-lg">
                   <div className="sticky top-0 bg-background border-b border-border p-4 flex items-start justify-between gap-3 flex-wrap">
                     <div>
                       <div className="font-semibold">Order detail</div>
-                      <div className="text-sm text-muted-foreground">{selectedOrderId ? `ID: ${selectedOrderId}` : ""}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {selectedOrderId ? `ID: ${selectedOrderId}` : ""}
+                      </div>
                     </div>
 
                     <div className="flex gap-2 flex-wrap">
@@ -751,31 +944,46 @@ export default function AdminDashboard() {
                           Refresh detail
                         </Button>
                       )}
-                      <Button type="button" variant="outline" className="h-9" onClick={closeOrder}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9"
+                        onClick={closeOrder}
+                      >
                         Close
                       </Button>
                     </div>
                   </div>
 
                   <div className="p-4">
-                    {orderDetailLoading && <div className="text-sm text-muted-foreground">Loading order…</div>}
-                    {orderDetailError && <div className="text-sm text-red-400">{orderDetailError}</div>}
+                    {orderDetailLoading && (
+                      <div className="text-sm text-muted-foreground">Loading order…</div>
+                    )}
+                    {orderDetailError && (
+                      <div className="text-sm text-red-400">{orderDetailError}</div>
+                    )}
 
                     {selectedOrderDetail && (
                       <div className="mt-2 grid md:grid-cols-3 gap-4">
                         <div className="rounded-md border border-border p-3">
                           <div className="text-xs text-muted-foreground">Created</div>
-                          <div className="font-medium mt-1">{fmtDate(selectedOrderDetail.createdAt)}</div>
+                          <div className="font-medium mt-1">
+                            {fmtDate(selectedOrderDetail.createdAt)}
+                          </div>
                         </div>
 
                         <div className="rounded-md border border-border p-3">
                           <div className="text-xs text-muted-foreground">Customer</div>
-                          <div className="font-medium mt-1">{selectedOrderDetail.customerEmail || "—"}</div>
+                          <div className="font-medium mt-1">
+                            {selectedOrderDetail.customerEmail || "—"}
+                          </div>
                         </div>
 
                         <div className="rounded-md border border-border p-3">
                           <div className="text-xs text-muted-foreground">Total</div>
-                          <div className="font-medium mt-1">{money(selectedOrderDetail.amountTotal, selectedOrderDetail.currency)}</div>
+                          <div className="font-medium mt-1">
+                            {money(selectedOrderDetail.amountTotal, selectedOrderDetail.currency)}
+                          </div>
                           <div className="text-xs text-muted-foreground mt-1">
                             Status: {selectedOrderDetail.status || "—"} •{" "}
                             {selectedOrderDetail.isSubscription ? "Subscription" : "One-time"}
@@ -784,8 +992,48 @@ export default function AdminDashboard() {
 
                         <div className="md:col-span-3 rounded-md border border-border p-3">
                           <div className="text-xs text-muted-foreground">Shipping</div>
-                          <div className="font-medium mt-1">{selectedOrderDetail.shippingName || "—"}</div>
-                          <div className="text-sm text-muted-foreground mt-1">{oneLineAddress(selectedOrderDetail.shippingAddress)}</div>
+                          <div className="font-medium mt-1">
+                            {selectedOrderDetail.shippingName || "—"}
+                          </div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {oneLineAddress(selectedOrderDetail.shippingAddress)}
+                          </div>
+
+                          {(selectedOrderDetail.shippingTrackingNumber ||
+                            selectedOrderDetail.shippingLabelUrl) && (
+                            <div className="mt-3 flex items-center gap-2 flex-wrap">
+                              {selectedOrderDetail.shippingTrackingNumber && (
+                                <div className="text-sm">
+                                  {selectedOrderDetail.shippingCarrier || "Carrier"} •{" "}
+                                  {selectedOrderDetail.shippingTrackingNumber}
+                                </div>
+                              )}
+
+                              {selectedOrderDetail.trackingUrl && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="h-8"
+                                  onClick={() => openInNewTab(selectedOrderDetail.trackingUrl!)}
+                                >
+                                  Track package
+                                </Button>
+                              )}
+
+                              {selectedOrderDetail.shippingLabelUrl && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="h-8"
+                                  onClick={() =>
+                                    openInNewTab(selectedOrderDetail.shippingLabelUrl!)
+                                  }
+                                >
+                                  View label
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <div className="md:col-span-3 rounded-md border border-border p-3">
@@ -813,16 +1061,18 @@ export default function AdminDashboard() {
                                     trackingNumber: "",
                                   };
 
-                                  const label =
-                                    it.flavor || `${it.purchaseType}${it.frequencyWeeks ? ` (${it.frequencyWeeks}w)` : ""}`;
+                                  const label = titleizeSlug(it.flavor || "");
+                                  const purchaseLabel =
+                                    it.purchaseType === "subscribe"
+                                      ? `Subscription${it.frequencyWeeks ? ` • every ${it.frequencyWeeks}w` : ""}`
+                                      : "One-time";
 
                                   return (
                                     <tr key={it.id} className="border-t border-border">
                                       <td className="p-2">
-                                        <div className="font-medium">{label}</div>
+                                        <div className="font-medium">{label || "—"}</div>
                                         <div className="text-xs text-muted-foreground">
-                                          {it.purchaseType}
-                                          {it.frequencyWeeks ? ` • every ${it.frequencyWeeks}w` : ""}
+                                          {purchaseLabel}
                                         </div>
                                       </td>
 
@@ -865,24 +1115,45 @@ export default function AdminDashboard() {
                                       </td>
 
                                       <td className="p-2">
-                                        <input
-                                          value={edit.trackingNumber}
-                                          onChange={(e) =>
-                                            setItemEdits((prev) => ({
-                                              ...prev,
-                                              [it.id]: { ...edit, trackingNumber: e.target.value },
-                                            }))
-                                          }
-                                          placeholder="Tracking #"
-                                          className="h-8 w-[200px] rounded-md border border-border bg-background px-2 text-sm"
-                                        />
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <input
+                                            value={edit.trackingNumber}
+                                            onChange={(e) =>
+                                              setItemEdits((prev) => ({
+                                                ...prev,
+                                                [it.id]: { ...edit, trackingNumber: e.target.value },
+                                              }))
+                                            }
+                                            placeholder="Tracking #"
+                                            className="h-8 w-[200px] rounded-md border border-border bg-background px-2 text-sm"
+                                          />
+                                          {it.trackingUrl && (
+                                            <Button
+                                              type="button"
+                                              variant="outline"
+                                              className="h-8"
+                                              onClick={() => openInNewTab(it.trackingUrl!)}
+                                            >
+                                              Track
+                                            </Button>
+                                          )}
+                                        </div>
                                       </td>
 
-                                      <td className="p-2 text-muted-foreground">{it.shippedAt ? fmtDate(it.shippedAt) : "—"}</td>
-                                      <td className="p-2 text-muted-foreground">{it.deliveredAt ? fmtDate(it.deliveredAt) : "—"}</td>
+                                      <td className="p-2 text-muted-foreground">
+                                        {it.shippedAt ? fmtDate(it.shippedAt) : "—"}
+                                      </td>
+                                      <td className="p-2 text-muted-foreground">
+                                        {it.deliveredAt ? fmtDate(it.deliveredAt) : "—"}
+                                      </td>
 
                                       <td className="p-2">
-                                        <Button type="button" variant="outline" className="h-8" onClick={() => saveItemFulfillment(it.id)}>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          className="h-8"
+                                          onClick={() => saveItemFulfillment(it.id)}
+                                        >
                                           Save
                                         </Button>
                                       </td>
@@ -902,7 +1173,8 @@ export default function AdminDashboard() {
                           </div>
 
                           <div className="text-xs text-muted-foreground mt-2">
-                            Tip: setting to <code>shipped</code> stamps shippedAt. Setting to <code>delivered</code> stamps both.
+                            Tip: setting to <code>shipped</code> stamps shippedAt. Setting to{" "}
+                            <code>delivered</code> stamps both.
                           </div>
                         </div>
                       </div>
@@ -914,7 +1186,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* WHOLESALE */}
         {tab === "wholesale" && (
           <div className="mt-6 grid gap-4">
             <div className="rounded-lg border border-border p-4">
@@ -941,17 +1212,26 @@ export default function AdminDashboard() {
                   <option value="closed">closed</option>
                 </select>
 
-                <Button type="button" onClick={loadWholesale} className="h-10">
+                <Button type="button" onClick={() => loadWholesale(true)} className="h-10">
                   Refresh
                 </Button>
               </div>
 
-              {wholesaleLoading && <div className="mt-3 text-sm text-muted-foreground">Loading…</div>}
+              {wholesaleLoading && (
+                <div className="mt-3 text-sm text-muted-foreground">Loading…</div>
+              )}
+              {wholesaleError && (
+                <div className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                  Failed to load wholesale applications: {wholesaleError}
+                </div>
+              )}
             </div>
 
             <div className="rounded-lg border border-border overflow-hidden">
               <div className="p-4 border-b border-border">
-                <div className="font-semibold">Wholesale applications ({filteredWholesale.length})</div>
+                <div className="font-semibold">
+                  Wholesale applications ({filteredWholesale.length})
+                </div>
               </div>
 
               <div className="overflow-auto">
@@ -977,7 +1257,9 @@ export default function AdminDashboard() {
                         <td className="p-3">
                           <select
                             value={r.status}
-                            onChange={(e) => updateWholesaleStatus(r.id, e.target.value as any)}
+                            onChange={(e) =>
+                              updateWholesaleStatus(r.id, e.target.value as WholesaleRow["status"])
+                            }
                             className="h-8 rounded-md border border-border bg-background px-2 text-sm"
                           >
                             <option value="new">new</option>
@@ -990,7 +1272,7 @@ export default function AdminDashboard() {
                       </tr>
                     ))}
 
-                    {!filteredWholesale.length && (
+                    {!filteredWholesale.length && !wholesaleLoading && !wholesaleError && (
                       <tr>
                         <td className="p-4 text-muted-foreground" colSpan={5}>
                           No wholesale applications found.

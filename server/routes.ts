@@ -65,6 +65,11 @@ function titleizeSlug(value: string | null | undefined) {
     .join(" ");
 }
 
+function toOrderNumber(sessionId: string | null | undefined) {
+  const s = safeString(sessionId || "", 200);
+  return s.replace(/^cs_/, "");
+}
+
 function trackingUrlFor(
   carrier: string | null | undefined,
   trackingNumber: string | null | undefined
@@ -93,6 +98,15 @@ function trackingUrlFor(
   }
 
   return null;
+}
+
+function parseDateOnlyInput(value: any): Date | null {
+  const s = safeString(value, 32);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+
+  const d = new Date(`${s}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
 }
 
 function getPriceId(item: CheckoutItem) {
@@ -361,7 +375,7 @@ async function sendOrderConfirmationEmail(args: {
   const amountTotal = args.session?.amount_total ?? null;
 
   const sessionId = String(args.session?.id || "").trim();
-  const orderNumber = sessionId ? sessionId.replace(/^cs_/, "") : "";
+  const orderNumber = toOrderNumber(sessionId);
 
   const lines = (args.lineItems || []).map((li: any) => {
     const qty = Number(li?.quantity ?? 1) || 1;
@@ -768,11 +782,14 @@ function verifyToken<T>(token: string, secret: string): T | null {
 function pickOrderSearchWhere(q: string) {
   const needle = `%${q}%`;
   return or(
+    sql`${orders.id}::text ILIKE ${needle}`,
     sql`${orders.customerEmail} ILIKE ${needle}`,
     sql`${orders.stripeCheckoutSessionId} ILIKE ${needle}`,
+    sql`replace(${orders.stripeCheckoutSessionId}, 'cs_', '') ILIKE ${needle}`,
     sql`${orders.stripePaymentIntentId} ILIKE ${needle}`,
     sql`${orders.stripeSubscriptionId} ILIKE ${needle}`,
-    sql`${orders.shippingName} ILIKE ${needle}`
+    sql`${orders.shippingName} ILIKE ${needle}`,
+    sql`${orders.shippingTrackingNumber} ILIKE ${needle}`
   );
 }
 
@@ -1365,6 +1382,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const q = safeString(req.query?.q, 200).trim();
       const status = safeString(req.query?.status, 32).trim();
       const mode = safeString(req.query?.mode, 32).trim();
+      const fulfillment = safeString(req.query?.fulfillment, 32).trim().toLowerCase();
+      const dateFrom = parseDateOnlyInput(req.query?.dateFrom);
+      const dateTo = parseDateOnlyInput(req.query?.dateTo);
 
       const whereParts: any[] = [];
 
@@ -1373,6 +1393,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       if (mode === "subscription") whereParts.push(eq(orders.isSubscription, true));
       if (mode === "payment") whereParts.push(eq(orders.isSubscription, false));
+
+      if (dateFrom) {
+        whereParts.push(sql`${orders.createdAt} >= ${dateFrom.toISOString()}`);
+      }
+
+      if (dateTo) {
+        const endExclusive = new Date(dateTo);
+        endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+        whereParts.push(sql`${orders.createdAt} < ${endExclusive.toISOString()}`);
+      }
 
       const where = whereParts.length === 0 ? undefined : and(...whereParts);
 
@@ -1403,7 +1433,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         .from(orders)
         .where(where as any)
         .orderBy(desc(orders.createdAt))
-        .limit(500);
+        .limit(5000);
 
       const orderIds = rows.map((r) => r.id).filter(Boolean);
       const rollupByOrderId: Record<
@@ -1444,17 +1474,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
       }
 
-      const withRollup = rows.map((r) => {
+      let withRollup = rows.map((r) => {
         const roll = rollupByOrderId[String(r.id)] || null;
         return {
           ...r,
+          orderNumber: toOrderNumber(r.stripeCheckoutSessionId ?? null),
           fulfillmentStatus: roll?.fulfillmentStatus ?? "unfulfilled",
           fulfillmentCounts: roll?.fulfillmentCounts ?? {},
           trackingUrl: trackingUrlFor(r.shippingCarrier ?? null, r.shippingTrackingNumber ?? null),
         };
       });
 
-      return res.json({ ok: true, rows: withRollup });
+      if (fulfillment && ALLOWED_FULFILLMENT.has(fulfillment)) {
+        withRollup = withRollup.filter(
+          (r) => String(r.fulfillmentStatus || "").toLowerCase() === fulfillment
+        );
+      }
+
+      return res.json({ ok: true, rows: withRollup.slice(0, 500) });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/admin/orders error:", s);
@@ -1487,6 +1524,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         ok: true,
         order: {
           ...order[0],
+          orderNumber: toOrderNumber(order[0]?.stripeCheckoutSessionId ?? null),
           trackingUrl: trackingUrlFor(
             order[0]?.shippingCarrier ?? null,
             order[0]?.shippingTrackingNumber ?? null
@@ -1646,6 +1684,195 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const s = safeErrSummary(err);
       console.error("GET /api/admin/orders/:id/label error:", s);
       return res.status(500).json({ ok: false, message: "Failed to load label." });
+    }
+  });
+
+  app.post("/api/admin/labels/batch", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const apiKey = String(process.env.EASYPOST_API_KEY || "").trim();
+      if (!apiKey) {
+        return res.status(500).json({ ok: false, message: "Missing EASYPOST_API_KEY" });
+      }
+
+      const orderIdsIn: string[] = Array.isArray(req.body?.orderIds)
+        ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
+        : [];
+
+      const whereOrderIds =
+        orderIdsIn.length > 0 ? inArray(orderItems.orderId, orderIdsIn as any) : undefined;
+
+      const packedAgg = await db
+        .select({
+          orderId: orderItems.orderId,
+          packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
+            Number
+          ),
+          packedWithoutTracking: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' and (${orderItems.trackingNumber} is null or ${orderItems.trackingNumber} = '') then 1 else 0 end)`.mapWith(
+            Number
+          ),
+        })
+        .from(orderItems)
+        .where(whereOrderIds as any)
+        .groupBy(orderItems.orderId);
+
+      const candidateOrderIds = (packedAgg || [])
+        .filter(
+          (r: any) =>
+            (Number(r.packedCount) || 0) > 0 && (Number(r.packedWithoutTracking) || 0) > 0
+        )
+        .map((r: any) => String(r.orderId || "").trim())
+        .filter(Boolean);
+
+      if (!candidateOrderIds.length) {
+        return res.status(404).json({
+          ok: false,
+          message: "No packed orders without tracking were found.",
+        });
+      }
+
+      const orderRows = await db
+        .select({
+          id: orders.id,
+          customerEmail: orders.customerEmail,
+          shippingName: orders.shippingName,
+          shippingAddress: orders.shippingAddress,
+        })
+        .from(orders)
+        .where(inArray(orders.id, candidateOrderIds as any))
+        .limit(500);
+
+      const byId: Record<string, any> = {};
+      for (const o of orderRows as any[]) byId[String(o.id)] = o;
+
+      const qtyAgg = await db
+        .select({
+          orderId: orderItems.orderId,
+          totalQty: sql<number>`sum(${orderItems.quantity})`.mapWith(Number),
+        })
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, candidateOrderIds as any))
+        .groupBy(orderItems.orderId);
+
+      const qtyByOrderId: Record<string, number> = {};
+      for (const r of qtyAgg as any[]) {
+        const oid = String(r.orderId || "").trim();
+        if (!oid) continue;
+        qtyByOrderId[oid] = Math.max(1, Number(r.totalQty ?? 1) || 1);
+      }
+
+      const fromAddress = getShipFromAddress();
+
+      const labelPdfs: Uint8Array[] = [];
+      const errors: Array<{ orderId: string; message: string }> = [];
+
+      for (const orderId of candidateOrderIds) {
+        const o = byId[String(orderId)];
+        if (!o) {
+          errors.push({ orderId, message: "Order not found." });
+          continue;
+        }
+
+        const shipAddr = o.shippingAddress;
+        if (
+          !shipAddr ||
+          !shipAddr.line1 ||
+          !shipAddr.city ||
+          !shipAddr.state ||
+          !shipAddr.postal_code
+        ) {
+          errors.push({ orderId, message: "Missing shipping address on order." });
+          continue;
+        }
+
+        const toAddress = stripeAddrToEasyPost(o.shippingName || null, shipAddr);
+        const pouchCount = qtyByOrderId[String(orderId)] ?? 1;
+        const parcel = getParcelForPouchCount(pouchCount);
+
+        try {
+          const result = await createAndBuyEasyPostShipment({
+            toAddress,
+            fromAddress,
+            parcel,
+          });
+
+          if (!result.labelUrl) {
+            errors.push({ orderId, message: "EasyPost returned no label URL." });
+            continue;
+          }
+
+          const pdfBytes = await fetchPdfBytes(result.labelUrl);
+          labelPdfs.push(pdfBytes);
+
+          const now = new Date();
+
+          await db
+            .update(orders)
+            .set({
+              shippingCarrier: result.carrier || null,
+              shippingTrackingNumber: result.trackingNumber || null,
+              shippingLabelUrl: result.labelUrl || null,
+              shippingShipmentId: result.shipmentId || null,
+            })
+            .where(eq(orders.id, orderId));
+
+          await db
+            .update(orderItems)
+            .set({
+              carrier: result.carrier || null,
+              trackingNumber: result.trackingNumber || null,
+              fulfillmentStatus: "shipped",
+              shippedAt: now,
+            } as any)
+            .where(eq(orderItems.orderId, orderId));
+
+          if (o.customerEmail) {
+            await sendShippingNotificationEmail({
+              customerEmail: String(o.customerEmail),
+              shippingName: o.shippingName ?? null,
+              orderId,
+              carrier: result.carrier || null,
+              trackingNumber: result.trackingNumber || null,
+            });
+          }
+        } catch (e: any) {
+          const s = safeErrSummary(e);
+          errors.push({ orderId, message: s.message || "Failed to create label." });
+          continue;
+        }
+      }
+
+      if (!labelPdfs.length) {
+        return res.status(400).json({
+          ok: false,
+          message: errors.length
+            ? `No labels created. Example: ${errors[0].orderId}: ${errors[0].message}`
+            : "No labels created.",
+          errors,
+        });
+      }
+
+      let merged = await mergePdfs(labelPdfs);
+
+      if (errors.length) {
+        merged = await appendErrorsPage(merged, errors);
+        res.setHeader("X-Label-Errors", String(errors.length));
+      } else {
+        res.setHeader("X-Label-Errors", "0");
+      }
+
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const filename = `kimora-labels-packed-${stamp}.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.status(200).send(Buffer.from(merged));
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/admin/labels/batch error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to create labels." });
     }
   });
 
@@ -2244,281 +2471,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const s = safeErrSummary(err);
       console.error("Stripe webhook error:", s);
       return res.status(400).send("Webhook Error");
-    }
-  });
-
-  app.post("/api/admin/labels/batch", async (req, res) => {
-    const denied = requireAdmin(req, res);
-    if (denied) return;
-
-    try {
-      const apiKey = String(process.env.EASYPOST_API_KEY || "").trim();
-      if (!apiKey) {
-        return res.status(500).json({ ok: false, message: "Missing EASYPOST_API_KEY" });
-      }
-
-      const orderIdsIn: string[] = Array.isArray(req.body?.orderIds)
-        ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
-        : [];
-
-      const whereOrderIds =
-        orderIdsIn.length > 0 ? inArray(orderItems.orderId, orderIdsIn as any) : undefined;
-
-      const packedAgg = await db
-        .select({
-          orderId: orderItems.orderId,
-          packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
-            Number
-          ),
-          packedWithoutTracking: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' and (${orderItems.trackingNumber} is null or ${orderItems.trackingNumber} = '') then 1 else 0 end)`.mapWith(
-            Number
-          ),
-        })
-        .from(orderItems)
-        .where(whereOrderIds as any)
-        .groupBy(orderItems.orderId);
-
-      const candidateOrderIds = (packedAgg || [])
-        .filter(
-          (r: any) =>
-            (Number(r.packedCount) || 0) > 0 && (Number(r.packedWithoutTracking) || 0) > 0
-        )
-        .map((r: any) => String(r.orderId || "").trim())
-        .filter(Boolean);
-
-      if (!candidateOrderIds.length) {
-        return res.status(404).json({
-          ok: false,
-          message: "No packed orders without tracking were found.",
-        });
-      }
-
-      const orderRows = await db
-        .select({
-          id: orders.id,
-          customerEmail: orders.customerEmail,
-          shippingName: orders.shippingName,
-          shippingAddress: orders.shippingAddress,
-        })
-        .from(orders)
-        .where(inArray(orders.id, candidateOrderIds as any))
-        .limit(500);
-
-      const byId: Record<string, any> = {};
-      for (const o of orderRows as any[]) byId[String(o.id)] = o;
-
-      const qtyAgg = await db
-        .select({
-          orderId: orderItems.orderId,
-          totalQty: sql<number>`sum(${orderItems.quantity})`.mapWith(Number),
-        })
-        .from(orderItems)
-        .where(inArray(orderItems.orderId, candidateOrderIds as any))
-        .groupBy(orderItems.orderId);
-
-      const qtyByOrderId: Record<string, number> = {};
-      for (const r of qtyAgg as any[]) {
-        const oid = String(r.orderId || "").trim();
-        if (!oid) continue;
-        qtyByOrderId[oid] = Math.max(1, Number(r.totalQty ?? 1) || 1);
-      }
-
-      const fromAddress = getShipFromAddress();
-
-      const labelPdfs: Uint8Array[] = [];
-      const errors: Array<{ orderId: string; message: string }> = [];
-
-      for (const orderId of candidateOrderIds) {
-        const o = byId[String(orderId)];
-        if (!o) {
-          errors.push({ orderId, message: "Order not found." });
-          continue;
-        }
-
-        const shipAddr = o.shippingAddress;
-        if (
-          !shipAddr ||
-          !shipAddr.line1 ||
-          !shipAddr.city ||
-          !shipAddr.state ||
-          !shipAddr.postal_code
-        ) {
-          errors.push({ orderId, message: "Missing shipping address on order." });
-          continue;
-        }
-
-        const toAddress = stripeAddrToEasyPost(o.shippingName || null, shipAddr);
-        const pouchCount = qtyByOrderId[String(orderId)] ?? 1;
-        const parcel = getParcelForPouchCount(pouchCount);
-
-        try {
-          const result = await createAndBuyEasyPostShipment({
-            toAddress,
-            fromAddress,
-            parcel,
-          });
-
-          if (!result.labelUrl) {
-            errors.push({ orderId, message: "EasyPost returned no label URL." });
-            continue;
-          }
-
-          const pdfBytes = await fetchPdfBytes(result.labelUrl);
-          labelPdfs.push(pdfBytes);
-
-          const now = new Date();
-
-          await db
-            .update(orders)
-            .set({
-              shippingCarrier: result.carrier || null,
-              shippingTrackingNumber: result.trackingNumber || null,
-              shippingLabelUrl: result.labelUrl || null,
-              shippingShipmentId: result.shipmentId || null,
-            })
-            .where(eq(orders.id, orderId));
-
-          await db
-            .update(orderItems)
-            .set({
-              carrier: result.carrier || null,
-              trackingNumber: result.trackingNumber || null,
-              fulfillmentStatus: "shipped",
-              shippedAt: now,
-            } as any)
-            .where(eq(orderItems.orderId, orderId));
-
-          if (o.customerEmail) {
-            await sendShippingNotificationEmail({
-              customerEmail: String(o.customerEmail),
-              shippingName: o.shippingName ?? null,
-              orderId,
-              carrier: result.carrier || null,
-              trackingNumber: result.trackingNumber || null,
-            });
-          }
-        } catch (e: any) {
-          const s = safeErrSummary(e);
-          errors.push({ orderId, message: s.message || "Failed to create label." });
-          continue;
-        }
-      }
-
-      if (!labelPdfs.length) {
-        return res.status(400).json({
-          ok: false,
-          message: errors.length
-            ? `No labels created. Example: ${errors[0].orderId}: ${errors[0].message}`
-            : "No labels created.",
-          errors,
-        });
-      }
-
-      let merged = await mergePdfs(labelPdfs);
-
-      if (errors.length) {
-        merged = await appendErrorsPage(merged, errors);
-        res.setHeader("X-Label-Errors", String(errors.length));
-      } else {
-        res.setHeader("X-Label-Errors", "0");
-      }
-
-      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-      const filename = `kimora-labels-packed-${stamp}.pdf`;
-
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      return res.status(200).send(Buffer.from(merged));
-    } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("POST /api/admin/labels/batch error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to create labels." });
-    }
-  });
-
-  app.post("/api/admin/packing-slips/batch", async (req, res) => {
-    const denied = requireAdmin(req, res);
-    if (denied) return;
-
-    try {
-      const orderIdsIn: string[] = Array.isArray(req.body?.orderIds)
-        ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
-        : [];
-
-      let selectedOrderIds: string[] = [];
-
-      if (orderIdsIn.length > 0) {
-        selectedOrderIds = orderIdsIn;
-      } else {
-        const packedAgg = await db
-          .select({
-            orderId: orderItems.orderId,
-            packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
-              Number
-            ),
-          })
-          .from(orderItems)
-          .groupBy(orderItems.orderId);
-
-        selectedOrderIds = (packedAgg || [])
-          .filter((r: any) => (Number(r.packedCount) || 0) > 0)
-          .map((r: any) => String(r.orderId || "").trim())
-          .filter(Boolean);
-      }
-
-      if (!selectedOrderIds.length) {
-        return res.status(404).json({
-          ok: false,
-          message: "No packed orders were found for packing slips.",
-        });
-      }
-
-      const orderRows = await db
-        .select({
-          id: orders.id,
-          createdAt: orders.createdAt,
-          customerEmail: orders.customerEmail,
-          shippingName: orders.shippingName,
-          shippingAddress: orders.shippingAddress,
-          amountTotal: orders.amountTotal,
-          currency: orders.currency,
-          shippingCarrier: orders.shippingCarrier,
-          shippingTrackingNumber: orders.shippingTrackingNumber,
-          isSubscription: orders.isSubscription,
-        })
-        .from(orders)
-        .where(inArray(orders.id, selectedOrderIds as any))
-        .orderBy(desc(orders.createdAt))
-        .limit(500);
-
-      const byOrderId: Record<string, any> = {};
-      for (const row of orderRows as any[]) {
-        byOrderId[String(row.id)] = row;
-      }
-
-      const orderedIds = selectedOrderIds.filter((id) => byOrderId[id]);
-      if (!orderedIds.length) {
-        return res.status(404).json({
-          ok: false,
-          message: "No matching orders found for packing slips.",
-        });
-      }
-
-      const pdf = await buildPackingSlipsPdf({
-        orderIds: orderedIds,
-        byOrderId,
-      });
-
-      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-      const filename = `kimora-packing-slips-${stamp}.pdf`;
-
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      return res.status(200).send(Buffer.from(pdf));
-    } catch (err: any) {
-      const s = safeErrSummary(err);
-      console.error("POST /api/admin/packing-slips/batch error:", s);
-      return res.status(500).json({ ok: false, message: "Failed to generate packing slips." });
     }
   });
 

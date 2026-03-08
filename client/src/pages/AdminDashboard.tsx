@@ -55,6 +55,7 @@ type OrderRow = {
   shippingShipmentId?: string | null;
   trackingUrl?: string | null;
 
+  orderNumber?: string | null;
   fulfillmentStatus?: FulfillmentStatus | string | null;
   fulfillmentCounts?: Record<string, number> | null;
 };
@@ -160,14 +161,19 @@ async function api<T>(path: string, token: string, init?: RequestInit): Promise<
   return json as T;
 }
 
-async function downloadPdf(path: string, token: string, filenamePrefix: string) {
+async function downloadPdf(
+  path: string,
+  token: string,
+  filenamePrefix: string,
+  body?: Record<string, unknown>
+) {
   const res = await fetch(getApiBase() + path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-admin-token": token,
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify(body || {}),
   });
 
   if (!res.ok) {
@@ -249,9 +255,13 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+
   const [orderQ, setOrderQ] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
   const [orderMode, setOrderMode] = useState("");
+  const [orderFulfillmentFilter, setOrderFulfillmentFilter] = useState("");
+  const [orderDateFrom, setOrderDateFrom] = useState("");
+  const [orderDateTo, setOrderDateTo] = useState("");
 
   const [orderFulfillmentEdits, setOrderFulfillmentEdits] = useState<
     Record<string, FulfillmentStatus>
@@ -332,10 +342,14 @@ export default function AdminDashboard() {
     setOrdersLoading(true);
     try {
       setOrdersError(null);
+
       const qs = new URLSearchParams();
       if (orderQ.trim()) qs.set("q", orderQ.trim());
       if (orderStatus.trim()) qs.set("status", orderStatus.trim());
       if (orderMode.trim()) qs.set("mode", orderMode.trim());
+      if (orderFulfillmentFilter.trim()) qs.set("fulfillment", orderFulfillmentFilter.trim());
+      if (orderDateFrom.trim()) qs.set("dateFrom", orderDateFrom.trim());
+      if (orderDateTo.trim()) qs.set("dateTo", orderDateTo.trim());
 
       const url = `/api/admin/orders${qs.toString() ? `?${qs.toString()}` : ""}`;
       const data = await api<{ ok: true; rows: OrderRow[] }>(url, savedToken);
@@ -568,6 +582,15 @@ export default function AdminDashboard() {
     toast({ title: "Reset", description: "Unsaved order fulfillment changes were reset." });
   }
 
+  function clearOrderFilters() {
+    setOrderQ("");
+    setOrderStatus("");
+    setOrderMode("");
+    setOrderFulfillmentFilter("");
+    setOrderDateFrom("");
+    setOrderDateTo("");
+  }
+
   async function generatePackedLabels() {
     if (!savedToken || labelsLoading) return;
 
@@ -671,7 +694,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="max-w-6xl mx-auto px-4 py-10">
+      <div className="max-w-7xl mx-auto px-4 py-10">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
@@ -819,38 +842,98 @@ export default function AdminDashboard() {
         {tab === "orders" && (
           <div className="mt-6 grid gap-4">
             <div className="rounded-lg border border-border p-4">
-              <div className="flex gap-3 flex-wrap items-end">
-                <div className="flex-1 min-w-[220px]">
+              <div className="grid gap-3 md:grid-cols-6">
+                <div className="md:col-span-2">
+                  <div className="text-xs text-muted-foreground mb-1">
+                    Search
+                  </div>
                   <input
                     value={orderQ}
                     onChange={(e) => setOrderQ(e.target.value)}
-                    placeholder="Search orders..."
+                    placeholder="Order #, email, tracking, name..."
                     className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
                   />
                 </div>
 
-                <select
-                  value={orderStatus}
-                  onChange={(e) => setOrderStatus(e.target.value)}
-                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-                >
-                  <option value="">All</option>
-                  <option value="paid">paid</option>
-                  <option value="refunded">refunded</option>
-                </select>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Order status</div>
+                  <select
+                    value={orderStatus}
+                    onChange={(e) => setOrderStatus(e.target.value)}
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  >
+                    <option value="">All</option>
+                    <option value="paid">paid</option>
+                    <option value="refunded">refunded</option>
+                  </select>
+                </div>
 
-                <select
-                  value={orderMode}
-                  onChange={(e) => setOrderMode(e.target.value)}
-                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-                >
-                  <option value="">All</option>
-                  <option value="payment">One-time</option>
-                  <option value="subscription">Subscription</option>
-                </select>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Type</div>
+                  <select
+                    value={orderMode}
+                    onChange={(e) => setOrderMode(e.target.value)}
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  >
+                    <option value="">All</option>
+                    <option value="payment">One-time</option>
+                    <option value="subscription">Subscription</option>
+                  </select>
+                </div>
 
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Fulfillment</div>
+                  <select
+                    value={orderFulfillmentFilter}
+                    onChange={(e) => setOrderFulfillmentFilter(e.target.value)}
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  >
+                    <option value="">All</option>
+                    {FULFILLMENT_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Date from</div>
+                  <input
+                    type="date"
+                    value={orderDateFrom}
+                    onChange={(e) => setOrderDateFrom(e.target.value)}
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Date to</div>
+                  <input
+                    type="date"
+                    value={orderDateTo}
+                    onChange={(e) => setOrderDateTo(e.target.value)}
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-3 flex gap-2 flex-wrap">
                 <Button type="button" onClick={() => loadOrders(true)} className="h-10">
-                  Apply
+                  Apply filters
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    clearOrderFilters();
+                    setTimeout(() => {
+                      loadOrders(true);
+                    }, 0);
+                  }}
+                  className="h-10"
+                >
+                  Clear filters
                 </Button>
               </div>
 
@@ -902,6 +985,7 @@ export default function AdminDashboard() {
                   <thead className="bg-muted/40">
                     <tr>
                       <th className="p-3 text-left">Created</th>
+                      <th className="p-3 text-left">Order #</th>
                       <th className="p-3 text-left">Email</th>
                       <th className="p-3 text-left">Type</th>
                       <th className="p-3 text-left">Status</th>
@@ -922,6 +1006,9 @@ export default function AdminDashboard() {
                       return (
                         <tr key={o.id} className="border-t border-border">
                           <td className="p-3">{fmtDate(o.createdAt)}</td>
+                          <td className="p-3 font-mono text-xs">
+                            {o.orderNumber || "—"}
+                          </td>
                           <td className="p-3">{o.customerEmail || "—"}</td>
                           <td className="p-3">{o.isSubscription ? "Subscription" : "One-time"}</td>
                           <td className="p-3">{o.status || "—"}</td>
@@ -961,9 +1048,7 @@ export default function AdminDashboard() {
                                 Save
                               </Button>
 
-                              {changed && (
-                                <div className="text-xs text-amber-400">Unsaved</div>
-                              )}
+                              {changed && <div className="text-xs text-amber-400">Unsaved</div>}
 
                               {countsText ? (
                                 <div className="text-xs text-muted-foreground">{countsText}</div>
@@ -1028,7 +1113,7 @@ export default function AdminDashboard() {
 
                     {!orders.length && !ordersLoading && !ordersError && (
                       <tr>
-                        <td className="p-4 text-muted-foreground" colSpan={8}>
+                        <td className="p-4 text-muted-foreground" colSpan={9}>
                           No orders found.
                         </td>
                       </tr>
@@ -1067,12 +1152,7 @@ export default function AdminDashboard() {
                           Refresh detail
                         </Button>
                       )}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-9"
-                        onClick={closeOrder}
-                      >
+                      <Button type="button" variant="outline" className="h-9" onClick={closeOrder}>
                         Close
                       </Button>
                     </div>
@@ -1096,6 +1176,13 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="rounded-md border border-border p-3">
+                          <div className="text-xs text-muted-foreground">Order #</div>
+                          <div className="font-medium mt-1 font-mono text-sm">
+                            {selectedOrderDetail.orderNumber || "—"}
+                          </div>
+                        </div>
+
+                        <div className="rounded-md border border-border p-3">
                           <div className="text-xs text-muted-foreground">Customer</div>
                           <div className="font-medium mt-1">
                             {selectedOrderDetail.customerEmail || "—"}
@@ -1113,7 +1200,7 @@ export default function AdminDashboard() {
                           </div>
                         </div>
 
-                        <div className="md:col-span-3 rounded-md border border-border p-3">
+                        <div className="md:col-span-2 rounded-md border border-border p-3">
                           <div className="text-xs text-muted-foreground">Shipping</div>
                           <div className="font-medium mt-1">
                             {selectedOrderDetail.shippingName || "—"}

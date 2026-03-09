@@ -532,10 +532,12 @@ export default function AdminDashboard() {
   async function saveAllOrderFulfillmentChanges() {
     if (!savedToken || savingAllOrders) return;
 
+    const editSnapshot: Record<string, FulfillmentStatus> = { ...orderFulfillmentEdits };
+
     const changedOrderIds = orders
       .map((o) => o.id)
       .filter((id) => {
-        const current = orderFulfillmentEdits[id] || "unfulfilled";
+        const current = editSnapshot[id] || "unfulfilled";
         const original = orderFulfillmentOriginals[id] || "unfulfilled";
         return current !== original;
       });
@@ -550,21 +552,52 @@ export default function AdminDashboard() {
     try {
       let successCount = 0;
       const failures: Array<{ orderId: string; message: string }> = [];
+      const succeededOrderIdMap: Record<string, true> = {};
 
       for (const orderId of changedOrderIds) {
-        const status = orderFulfillmentEdits[orderId] || "unfulfilled";
+        const status = editSnapshot[orderId] || "unfulfilled";
         try {
           await api<{ ok: true }>(`/api/admin/orders/${orderId}/fulfillment`, savedToken, {
             method: "PATCH",
             body: JSON.stringify({ fulfillmentStatus: status }),
           });
           successCount += 1;
+          succeededOrderIdMap[orderId] = true;
         } catch (e: any) {
           failures.push({
             orderId,
             message: String(e?.message || "Failed to update order."),
           });
         }
+      }
+
+      if (successCount > 0) {
+        setOrders((prev) =>
+          prev.map((order) =>
+            succeededOrderIdMap[order.id]
+              ? {
+                  ...order,
+                  fulfillmentStatus: editSnapshot[order.id] || "unfulfilled",
+                }
+              : order
+          )
+        );
+
+        setOrderFulfillmentEdits((prev) => {
+          const next = { ...prev };
+          for (const orderId in succeededOrderIdMap) {
+            next[orderId] = editSnapshot[orderId] || "unfulfilled";
+          }
+          return next;
+        });
+
+        setOrderFulfillmentOriginals((prev) => {
+          const next = { ...prev };
+          for (const orderId in succeededOrderIdMap) {
+            next[orderId] = editSnapshot[orderId] || "unfulfilled";
+          }
+          return next;
+        });
       }
 
       if (successCount > 0 && failures.length === 0) {
@@ -586,8 +619,7 @@ export default function AdminDashboard() {
         });
       }
 
-      await loadOrders();
-      if (selectedOrderId) {
+      if (selectedOrderId && succeededOrderIdMap[selectedOrderId]) {
         await openOrder(selectedOrderId);
       }
     } finally {

@@ -1458,6 +1458,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/admin/inventory", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const rows = await db
+        .select({
+          id: inventoryItems.id,
+          sku: inventoryItems.sku,
+          flavor: inventoryItems.flavor,
+          productName: inventoryItems.productName,
+          isActive: inventoryItems.isActive,
+          onHandQuantity: inventoryItems.onHandQuantity,
+          reservedQuantity: inventoryItems.reservedQuantity,
+          reorderPoint: inventoryItems.reorderPoint,
+          createdAt: inventoryItems.createdAt,
+          updatedAt: inventoryItems.updatedAt,
+        })
+        .from(inventoryItems)
+        .orderBy(desc(inventoryItems.updatedAt), inventoryItems.sku)
+        .limit(500);
+
+      return res.json({ ok: true, rows });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("GET /api/admin/inventory error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to load inventory." });
+    }
+  });
+
   app.get("/api/admin/orders", async (req, res) => {
     const denied = requireAdmin(req, res);
     if (denied) return;

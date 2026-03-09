@@ -309,6 +309,7 @@ export default function AdminDashboard() {
 
   const fromDateInputRef = useRef<HTMLInputElement | null>(null);
   const toDateInputRef = useRef<HTMLInputElement | null>(null);
+  const orderFulfillmentEditsRef = useRef<Record<string, FulfillmentStatus>>({});
 
   const canAuth = Boolean(savedToken);
 
@@ -317,6 +318,22 @@ export default function AdminDashboard() {
     setToken(t);
     setSavedToken(t);
   }, []);
+
+  useEffect(() => {
+    orderFulfillmentEditsRef.current = orderFulfillmentEdits;
+  }, [orderFulfillmentEdits]);
+
+  function setOrderFulfillmentValue(orderId: string, status: FulfillmentStatus) {
+    orderFulfillmentEditsRef.current = {
+      ...orderFulfillmentEditsRef.current,
+      [orderId]: status,
+    };
+
+    setOrderFulfillmentEdits((prev) => ({
+      ...prev,
+      [orderId]: status,
+    }));
+  }
 
   function saveToken() {
     const t = token.trim();
@@ -334,6 +351,7 @@ export default function AdminDashboard() {
     setOrdersError(null);
     setOrderFulfillmentEdits({});
     setOrderFulfillmentOriginals({});
+    orderFulfillmentEditsRef.current = {};
     setWholesale([]);
     setWholesaleError(null);
     closeOrder();
@@ -380,6 +398,7 @@ export default function AdminDashboard() {
       }
       setOrderFulfillmentEdits(seeded);
       setOrderFulfillmentOriginals(seeded);
+      orderFulfillmentEditsRef.current = seeded;
     } catch (e: any) {
       const msg = String(e?.message || "Failed to load orders.");
       setOrders([]);
@@ -512,14 +531,31 @@ export default function AdminDashboard() {
 
   async function saveOrderFulfillment(orderId: string) {
     if (!savedToken) return;
-    const status = orderFulfillmentEdits[orderId] || "unfulfilled";
+    const status = orderFulfillmentEditsRef.current[orderId] || "unfulfilled";
     try {
       await api<{ ok: true }>(`/api/admin/orders/${orderId}/fulfillment`, savedToken, {
         method: "PATCH",
         body: JSON.stringify({ fulfillmentStatus: status }),
       });
+
+      setOrderFulfillmentOriginals((prev) => ({
+        ...prev,
+        [orderId]: status,
+      }));
+
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId
+            ? {
+                ...order,
+                fulfillmentStatus: status,
+              }
+            : order
+        )
+      );
+
       toast({ title: "Saved", description: `Order set to ${status}` });
-      await loadOrders();
+
       if (selectedOrderId === orderId) {
         await openOrder(orderId);
       }
@@ -532,7 +568,9 @@ export default function AdminDashboard() {
   async function saveAllOrderFulfillmentChanges() {
     if (!savedToken || savingAllOrders) return;
 
-    const editSnapshot: Record<string, FulfillmentStatus> = { ...orderFulfillmentEdits };
+    const editSnapshot: Record<string, FulfillmentStatus> = {
+      ...orderFulfillmentEditsRef.current,
+    };
 
     const changedOrderIds = orders
       .map((o) => o.id)
@@ -598,6 +636,17 @@ export default function AdminDashboard() {
           }
           return next;
         });
+
+        orderFulfillmentEditsRef.current = {
+          ...orderFulfillmentEditsRef.current,
+          ...Object.keys(succeededOrderIdMap).reduce<Record<string, FulfillmentStatus>>(
+            (acc, orderId) => {
+              acc[orderId] = editSnapshot[orderId] || "unfulfilled";
+              return acc;
+            },
+            {}
+          ),
+        };
       }
 
       if (successCount > 0 && failures.length === 0) {
@@ -629,6 +678,7 @@ export default function AdminDashboard() {
 
   function resetOrderFulfillmentChanges() {
     setOrderFulfillmentEdits(orderFulfillmentOriginals);
+    orderFulfillmentEditsRef.current = { ...orderFulfillmentOriginals };
     toast({ title: "Reset", description: "Unsaved order fulfillment changes were reset." });
   }
 
@@ -1126,10 +1176,10 @@ export default function AdminDashboard() {
                                 <select
                                   value={edit}
                                   onChange={(e) =>
-                                    setOrderFulfillmentEdits((prev) => ({
-                                      ...prev,
-                                      [o.id]: e.target.value as FulfillmentStatus,
-                                    }))
+                                    setOrderFulfillmentValue(
+                                      o.id,
+                                      e.target.value as FulfillmentStatus
+                                    )
                                   }
                                   className={`h-8 rounded-md border bg-background px-2 text-sm ${
                                     changed ? "border-amber-500" : "border-border"

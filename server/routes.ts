@@ -1,14 +1,20 @@
 // server/routes.ts
 import type { Express } from "express";
 import type { Server } from "http";
-import { eq, desc, sql, and, or, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, or, inArray, gte } from "drizzle-orm";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 import { stripe } from "./stripe";
 import { db } from "./db";
-import { orders, orderItems, wholesaleApplications } from "../shared/schema";
+import {
+  orders,
+  orderItems,
+  wholesaleApplications,
+  inventoryItems,
+  inventoryTransactions,
+} from "../shared/schema";
 
 type CheckoutItem = {
   flavor: string;
@@ -1276,6 +1282,84 @@ async function buildPackingSlipsPdf(args: {
   return new Uint8Array(out);
 }
 
+async function applyInventoryForOrderItem(args: {
+  orderId: string;
+  orderItemId: string;
+  flavor: string;
+  quantity: number;
+}) {
+  const flavor = safeString(args.flavor, 120);
+  const quantity = Number(args.quantity ?? 0);
+
+  if (!flavor || !Number.isFinite(quantity) || quantity <= 0) return;
+
+  const inventoryRow = await db
+    .select({
+      id: inventoryItems.id,
+      flavor: inventoryItems.flavor,
+      onHandQuantity: inventoryItems.onHandQuantity,
+    })
+    .from(inventoryItems)
+    .where(eq(inventoryItems.flavor, flavor))
+    .limit(1);
+
+  const inventoryItem = inventoryRow?.[0];
+  if (!inventoryItem?.id) {
+    console.warn(
+      "[inventory] no inventory item found for flavor:",
+      flavor,
+      "order:",
+      args.orderId,
+      "orderItem:",
+      args.orderItemId
+    );
+    return;
+  }
+
+  try {
+    const updated = await db
+      .update(inventoryItems)
+      .set({
+        onHandQuantity: sql`${inventoryItems.onHandQuantity} - ${quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(inventoryItems.id, inventoryItem.id), gte(inventoryItems.onHandQuantity, quantity)))
+      .returning({
+        id: inventoryItems.id,
+      });
+
+    if (!updated?.length) {
+      console.warn(
+        "[inventory] insufficient on-hand quantity for flavor:",
+        flavor,
+        "requested:",
+        quantity,
+        "order:",
+        args.orderId,
+        "orderItem:",
+        args.orderItemId
+      );
+      return;
+    }
+
+    await db.insert(inventoryTransactions).values({
+      inventoryItemId: inventoryItem.id,
+      orderId: args.orderId,
+      orderItemId: args.orderItemId,
+      transactionType: "fulfillment",
+      quantityDelta: -quantity,
+      reservedDelta: 0,
+      note: `Order webhook deduction for ${flavor}`,
+      metadata: {
+        source: "stripe_webhook",
+        reason: "checkout.session.completed",
+      },
+    });
+  } catch (e) {
+    console.warn("[inventory] applyInventoryForOrderItem failed:", safeErrSummary(e));
+  }
+}
+
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
@@ -2422,6 +2506,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
         }
 
+        const wasNewInsert = Boolean(inserted?.length);
+
         if (orderId) {
           for (const li of lineItems.data) {
             const priceId = li.price?.id ?? null;
@@ -2435,7 +2521,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                   frequencyWeeks: null,
                 };
 
-            await db
+            const insertedOrderItem = await db
               .insert(orderItems)
               .values({
                 orderId,
@@ -2452,11 +2538,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                 shippedAt: null,
                 deliveredAt: null,
               })
-              .onConflictDoNothing();
+              .onConflictDoNothing()
+              .returning({ id: orderItems.id });
+
+            if (wasNewInsert && insertedOrderItem?.[0]?.id) {
+              await applyInventoryForOrderItem({
+                orderId,
+                orderItemId: insertedOrderItem[0].id,
+                flavor: mapped.flavor,
+                quantity: qty,
+              });
+            }
           }
         }
 
-        const wasNewInsert = Boolean(inserted?.length);
         if (wasNewInsert) {
           await sendOrderConfirmationEmail({
             session,

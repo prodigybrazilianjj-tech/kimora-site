@@ -71,6 +71,19 @@ type Summary = {
   onetimeOrders: number;
 };
 
+type InventoryRow = {
+  id: string;
+  sku: string;
+  flavor: string;
+  productName: string;
+  isActive?: boolean | null;
+  onHandQuantity: number;
+  reservedQuantity: number;
+  reorderPoint: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
 type OrderItemRow = {
   id: string;
   orderId: string;
@@ -221,7 +234,7 @@ async function downloadPdf(
   return res.headers;
 }
 
-type TabKey = "overview" | "orders" | "wholesale";
+type TabKey = "overview" | "orders" | "inventory" | "wholesale";
 
 const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
   "unfulfilled",
@@ -269,6 +282,10 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  const [inventory, setInventory] = useState<InventoryRow[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
 
   const [orderQ, setOrderQ] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
@@ -349,6 +366,8 @@ export default function AdminDashboard() {
     setSummaryError(null);
     setOrders([]);
     setOrdersError(null);
+    setInventory([]);
+    setInventoryError(null);
     setOrderFulfillmentEdits({});
     setOrderFulfillmentOriginals({});
     orderFulfillmentEditsRef.current = {};
@@ -409,6 +428,26 @@ export default function AdminDashboard() {
       throw e;
     } finally {
       setOrdersLoading(false);
+    }
+  }
+
+  async function loadInventory(showToast = false) {
+    if (!savedToken) return;
+    setInventoryLoading(true);
+    try {
+      setInventoryError(null);
+      const data = await api<{ ok: true; rows: InventoryRow[] }>("/api/admin/inventory", savedToken);
+      setInventory(data.rows || []);
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to load inventory.");
+      setInventory([]);
+      setInventoryError(msg);
+      if (showToast) {
+        toast({ title: "Inventory load failed", description: msg });
+      }
+      throw e;
+    } finally {
+      setInventoryLoading(false);
     }
   }
 
@@ -781,6 +820,7 @@ export default function AdminDashboard() {
     if (!savedToken) return;
     loadSummary().catch(() => {});
     loadOrders().catch(() => {});
+    loadInventory().catch(() => {});
     loadWholesale().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedToken]);
@@ -822,13 +862,40 @@ export default function AdminDashboard() {
       }).length;
   }, [orders, orderFulfillmentEdits, orderFulfillmentOriginals]);
 
+  const inventoryStats = useMemo(() => {
+    let totalOnHand = 0;
+    let totalReserved = 0;
+    let lowStockCount = 0;
+
+    for (const row of inventory) {
+      const onHand = Number(row.onHandQuantity ?? 0) || 0;
+      const reserved = Number(row.reservedQuantity ?? 0) || 0;
+      const reorderPoint = Number(row.reorderPoint ?? 0) || 0;
+      const available = onHand - reserved;
+
+      totalOnHand += onHand;
+      totalReserved += reserved;
+
+      if (available <= reorderPoint) {
+        lowStockCount += 1;
+      }
+    }
+
+    return {
+      totalOnHand,
+      totalReserved,
+      totalAvailable: totalOnHand - totalReserved,
+      lowStockCount,
+    };
+  }, [inventory]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-7xl mx-auto px-4 py-10">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground mt-2">Orders • Revenue • Wholesale</p>
+            <p className="text-muted-foreground mt-2">Orders • Revenue • Inventory • Wholesale</p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -873,6 +940,13 @@ export default function AdminDashboard() {
           </Button>
           <Button
             type="button"
+            variant={tab === "inventory" ? "default" : "outline"}
+            onClick={() => setTab("inventory")}
+          >
+            Inventory
+          </Button>
+          <Button
+            type="button"
             variant={tab === "wholesale" ? "default" : "outline"}
             onClick={() => setTab("wholesale")}
           >
@@ -888,6 +962,9 @@ export default function AdminDashboard() {
               </Button>
               <Button type="button" variant="outline" onClick={() => loadOrders(true)}>
                 Refresh orders
+              </Button>
+              <Button type="button" variant="outline" onClick={() => loadInventory(true)}>
+                Refresh inventory
               </Button>
               <Button type="button" variant="outline" onClick={() => loadWholesale(true)}>
                 Refresh wholesale
@@ -1593,6 +1670,112 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {tab === "inventory" && (
+          <div className="mt-6 grid gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Total on hand</div>
+                <div className="text-2xl font-bold mt-1">{inventoryStats.totalOnHand}</div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Reserved</div>
+                <div className="text-2xl font-bold mt-1">{inventoryStats.totalReserved}</div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Available</div>
+                <div className="text-2xl font-bold mt-1">{inventoryStats.totalAvailable}</div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Low stock items</div>
+                <div className="text-2xl font-bold mt-1">{inventoryStats.lowStockCount}</div>
+              </div>
+            </div>
+
+            {inventoryLoading && (
+              <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+                Loading inventory…
+              </div>
+            )}
+
+            {inventoryError && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+                Failed to load inventory: {inventoryError}
+              </div>
+            )}
+
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+                <div className="font-semibold">Inventory ({inventory.length})</div>
+                <div className="text-sm text-muted-foreground">
+                  Available = on hand - reserved
+                </div>
+              </div>
+
+              <div className="overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40">
+                    <tr>
+                      <th className="p-3 text-left">SKU</th>
+                      <th className="p-3 text-left">Product</th>
+                      <th className="p-3 text-left">Flavor</th>
+                      <th className="p-3 text-left">On hand</th>
+                      <th className="p-3 text-left">Reserved</th>
+                      <th className="p-3 text-left">Available</th>
+                      <th className="p-3 text-left">Reorder point</th>
+                      <th className="p-3 text-left">Status</th>
+                      <th className="p-3 text-left">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inventory.map((row) => {
+                      const onHand = Number(row.onHandQuantity ?? 0) || 0;
+                      const reserved = Number(row.reservedQuantity ?? 0) || 0;
+                      const reorderPoint = Number(row.reorderPoint ?? 0) || 0;
+                      const available = onHand - reserved;
+                      const lowStock = available <= reorderPoint;
+
+                      return (
+                        <tr key={row.id} className="border-t border-border">
+                          <td className="p-3 font-mono text-xs">{row.sku || "—"}</td>
+                          <td className="p-3">{row.productName || "—"}</td>
+                          <td className="p-3">{titleizeSlug(row.flavor) || "—"}</td>
+                          <td className="p-3">{onHand}</td>
+                          <td className="p-3">{reserved}</td>
+                          <td className="p-3 font-medium">{available}</td>
+                          <td className="p-3">{reorderPoint}</td>
+                          <td className="p-3">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-1 text-xs ${
+                                lowStock
+                                  ? "bg-amber-500/15 text-amber-300"
+                                  : "bg-emerald-500/15 text-emerald-300"
+                              }`}
+                            >
+                              {lowStock ? "Low stock" : "OK"}
+                            </span>
+                          </td>
+                          <td className="p-3 text-muted-foreground">{fmtDate(row.updatedAt)}</td>
+                        </tr>
+                      );
+                    })}
+
+                    {!inventory.length && !inventoryLoading && !inventoryError && (
+                      <tr>
+                        <td className="p-4 text-muted-foreground" colSpan={9}>
+                          No inventory items found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 

@@ -141,6 +141,126 @@ export const orderItems = pgTable(
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = typeof orderItems.$inferInsert;
 
+/** INVENTORY ITEMS
+ *
+ * Phase 1 inventory:
+ * - one row per sellable pouch/SKU
+ * - onHandQuantity = physical units available in stock
+ * - reservedQuantity = units committed but not yet fully relieved from reservation flow
+ * - available quantity should be computed as (onHandQuantity - reservedQuantity)
+ */
+export const inventoryItems = pgTable(
+  "inventory_items",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    sku: varchar("sku", { length: 128 }).notNull(),
+    flavor: text("flavor").notNull(),
+    productName: text("product_name").notNull(),
+
+    isActive: boolean("is_active").notNull().default(true),
+
+    onHandQuantity: integer("on_hand_quantity").notNull().default(0),
+    reservedQuantity: integer("reserved_quantity").notNull().default(0),
+    reorderPoint: integer("reorder_point").notNull().default(0),
+
+    metadata: jsonb("metadata").$type<{
+      notes?: string | null;
+      externalId?: string | null;
+      unit?: string | null;
+    }>(),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    inventorySkuUnique: uniqueIndex("inventory_items_sku_unique").on(t.sku),
+    inventoryFlavorIdx: index("inventory_items_flavor_idx").on(t.flavor),
+    inventoryActiveIdx: index("inventory_items_is_active_idx").on(t.isActive),
+
+    inventoryOnHandNonNegativeChk: check(
+      "inventory_items_on_hand_non_negative_chk",
+      sql`${t.onHandQuantity} >= 0`,
+    ),
+    inventoryReservedNonNegativeChk: check(
+      "inventory_items_reserved_non_negative_chk",
+      sql`${t.reservedQuantity} >= 0`,
+    ),
+    inventoryReorderPointNonNegativeChk: check(
+      "inventory_items_reorder_point_non_negative_chk",
+      sql`${t.reorderPoint} >= 0`,
+    ),
+    inventoryReservedLteOnHandChk: check(
+      "inventory_items_reserved_lte_on_hand_chk",
+      sql`${t.reservedQuantity} <= ${t.onHandQuantity}`,
+    ),
+  }),
+);
+
+export type InventoryItem = typeof inventoryItems.$inferSelect;
+export type InsertInventoryItem = typeof inventoryItems.$inferInsert;
+
+/** INVENTORY TRANSACTIONS
+ *
+ * Audit trail for inventory changes.
+ * Examples:
+ * - "manual_adjustment"
+ * - "reservation"
+ * - "release_reservation"
+ * - "fulfillment"
+ * - "restock"
+ * - "correction"
+ */
+export const inventoryTransactions = pgTable(
+  "inventory_transactions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    inventoryItemId: varchar("inventory_item_id")
+      .notNull()
+      .references(() => inventoryItems.id, { onDelete: "cascade" }),
+
+    orderId: varchar("order_id").references(() => orders.id, { onDelete: "set null" }),
+    orderItemId: varchar("order_item_id").references(() => orderItems.id, {
+      onDelete: "set null",
+    }),
+
+    transactionType: varchar("transaction_type", { length: 64 }).notNull(),
+
+    quantityDelta: integer("quantity_delta").notNull().default(0),
+    reservedDelta: integer("reserved_delta").notNull().default(0),
+
+    note: text("note"),
+
+    metadata: jsonb("metadata").$type<{
+      reason?: string | null;
+      actor?: string | null;
+      source?: string | null;
+    }>(),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    inventoryTransactionsItemIdx: index("inventory_transactions_item_idx").on(t.inventoryItemId),
+    inventoryTransactionsOrderIdx: index("inventory_transactions_order_idx").on(t.orderId),
+    inventoryTransactionsOrderItemIdx: index("inventory_transactions_order_item_idx").on(
+      t.orderItemId,
+    ),
+    inventoryTransactionsTypeIdx: index("inventory_transactions_type_idx").on(
+      t.transactionType,
+    ),
+  }),
+);
+
+export type InventoryTransaction = typeof inventoryTransactions.$inferSelect;
+export type InsertInventoryTransaction = typeof inventoryTransactions.$inferInsert;
+
 /**
  * PORTAL TOKENS
  */

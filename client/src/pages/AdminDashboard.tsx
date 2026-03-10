@@ -162,6 +162,17 @@ function openNativeDatePicker(input: HTMLInputElement | null) {
   input.click();
 }
 
+function inventoryAvailable(row: InventoryRow) {
+  const onHand = Number(row.onHandQuantity ?? 0) || 0;
+  const reserved = Number(row.reservedQuantity ?? 0) || 0;
+  return onHand - reserved;
+}
+
+function inventoryIsLow(row: InventoryRow) {
+  const reorderPoint = Number(row.reorderPoint ?? 0) || 0;
+  return inventoryAvailable(row) <= reorderPoint;
+}
+
 async function api<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const res = await fetch(getApiBase() + path, {
     ...(init || {}),
@@ -235,6 +246,14 @@ async function downloadPdf(
 }
 
 type TabKey = "overview" | "orders" | "inventory" | "wholesale";
+type InventoryFilterKey = "all" | "low" | "active" | "inactive";
+type InventorySortKey =
+  | "product-asc"
+  | "product-desc"
+  | "available-asc"
+  | "available-desc"
+  | "updated-desc"
+  | "updated-asc";
 
 const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
   "unfulfilled",
@@ -286,6 +305,9 @@ export default function AdminDashboard() {
   const [inventory, setInventory] = useState<InventoryRow[]>([]);
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
+  const [inventoryQ, setInventoryQ] = useState("");
+  const [inventoryFilter, setInventoryFilter] = useState<InventoryFilterKey>("all");
+  const [inventorySort, setInventorySort] = useState<InventorySortKey>("available-asc");
 
   const [orderQ, setOrderQ] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
@@ -730,6 +752,12 @@ export default function AdminDashboard() {
     setOrderDateTo("");
   }
 
+  function clearInventoryFilters() {
+    setInventoryQ("");
+    setInventoryFilter("all");
+    setInventorySort("available-asc");
+  }
+
   async function generatePackedLabels() {
     if (!savedToken || labelsLoading) return;
 
@@ -866,18 +894,21 @@ export default function AdminDashboard() {
     let totalOnHand = 0;
     let totalReserved = 0;
     let lowStockCount = 0;
+    let inactiveCount = 0;
 
     for (const row of inventory) {
       const onHand = Number(row.onHandQuantity ?? 0) || 0;
       const reserved = Number(row.reservedQuantity ?? 0) || 0;
-      const reorderPoint = Number(row.reorderPoint ?? 0) || 0;
-      const available = onHand - reserved;
 
       totalOnHand += onHand;
       totalReserved += reserved;
 
-      if (available <= reorderPoint) {
+      if (inventoryIsLow(row)) {
         lowStockCount += 1;
+      }
+
+      if (!row.isActive) {
+        inactiveCount += 1;
       }
     }
 
@@ -886,8 +917,52 @@ export default function AdminDashboard() {
       totalReserved,
       totalAvailable: totalOnHand - totalReserved,
       lowStockCount,
+      inactiveCount,
     };
   }, [inventory]);
+
+  const filteredInventory = useMemo(() => {
+    let rows = [...inventory];
+
+    const q = inventoryQ.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((row) => {
+        const hay = [row.sku, row.productName, row.flavor]
+          .map((x) => String(x || "").toLowerCase())
+          .join(" | ");
+        return hay.includes(q);
+      });
+    }
+
+    if (inventoryFilter === "low") {
+      rows = rows.filter((row) => inventoryIsLow(row));
+    } else if (inventoryFilter === "active") {
+      rows = rows.filter((row) => Boolean(row.isActive));
+    } else if (inventoryFilter === "inactive") {
+      rows = rows.filter((row) => !row.isActive);
+    }
+
+    rows.sort((a, b) => {
+      if (inventorySort === "product-asc") {
+        return String(a.productName || "").localeCompare(String(b.productName || ""));
+      }
+      if (inventorySort === "product-desc") {
+        return String(b.productName || "").localeCompare(String(a.productName || ""));
+      }
+      if (inventorySort === "available-asc") {
+        return inventoryAvailable(a) - inventoryAvailable(b);
+      }
+      if (inventorySort === "available-desc") {
+        return inventoryAvailable(b) - inventoryAvailable(a);
+      }
+      if (inventorySort === "updated-asc") {
+        return new Date(a.updatedAt || 0).getTime() - new Date(b.updatedAt || 0).getTime();
+      }
+      return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+    });
+
+    return rows;
+  }, [inventory, inventoryQ, inventoryFilter, inventorySort]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -1675,7 +1750,7 @@ export default function AdminDashboard() {
 
         {tab === "inventory" && (
           <div className="mt-6 grid gap-4">
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid md:grid-cols-5 gap-4">
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Total on hand</div>
                 <div className="text-2xl font-bold mt-1">{inventoryStats.totalOnHand}</div>
@@ -1695,6 +1770,69 @@ export default function AdminDashboard() {
                 <div className="text-sm text-muted-foreground">Low stock items</div>
                 <div className="text-2xl font-bold mt-1">{inventoryStats.lowStockCount}</div>
               </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Inactive items</div>
+                <div className="text-2xl font-bold mt-1">{inventoryStats.inactiveCount}</div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border p-4">
+              <div className="grid gap-3 md:grid-cols-4">
+                <div className="md:col-span-2">
+                  <div className="text-xs text-muted-foreground mb-1">Search inventory</div>
+                  <input
+                    value={inventoryQ}
+                    onChange={(e) => setInventoryQ(e.target.value)}
+                    placeholder="SKU, product, flavor..."
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Filter</div>
+                  <select
+                    value={inventoryFilter}
+                    onChange={(e) => setInventoryFilter(e.target.value as InventoryFilterKey)}
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  >
+                    <option value="all">All</option>
+                    <option value="low">Low stock only</option>
+                    <option value="active">Active only</option>
+                    <option value="inactive">Inactive only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Sort</div>
+                  <select
+                    value={inventorySort}
+                    onChange={(e) => setInventorySort(e.target.value as InventorySortKey)}
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  >
+                    <option value="available-asc">Available: low to high</option>
+                    <option value="available-desc">Available: high to low</option>
+                    <option value="updated-desc">Updated: newest first</option>
+                    <option value="updated-asc">Updated: oldest first</option>
+                    <option value="product-asc">Product: A to Z</option>
+                    <option value="product-desc">Product: Z to A</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-3 flex gap-2 flex-wrap">
+                <Button type="button" variant="outline" onClick={() => loadInventory(true)} className="h-10">
+                  Refresh inventory
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={clearInventoryFilters}
+                  className="h-10"
+                >
+                  Clear filters
+                </Button>
+              </div>
             </div>
 
             {inventoryLoading && (
@@ -1711,7 +1849,7 @@ export default function AdminDashboard() {
 
             <div className="rounded-lg border border-border overflow-hidden">
               <div className="p-4 border-b border-border flex items-center justify-between gap-3 flex-wrap">
-                <div className="font-semibold">Inventory ({inventory.length})</div>
+                <div className="font-semibold">Inventory ({filteredInventory.length})</div>
                 <div className="text-sm text-muted-foreground">
                   Available = on hand - reserved
                 </div>
@@ -1733,39 +1871,53 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {inventory.map((row) => {
+                    {filteredInventory.map((row) => {
                       const onHand = Number(row.onHandQuantity ?? 0) || 0;
                       const reserved = Number(row.reservedQuantity ?? 0) || 0;
                       const reorderPoint = Number(row.reorderPoint ?? 0) || 0;
-                      const available = onHand - reserved;
-                      const lowStock = available <= reorderPoint;
+                      const available = inventoryAvailable(row);
+                      const lowStock = inventoryIsLow(row);
 
                       return (
                         <tr key={row.id} className="border-t border-border">
                           <td className="p-3 font-mono text-xs">{row.sku || "—"}</td>
-                          <td className="p-3">{row.productName || "—"}</td>
+                          <td className="p-3">
+                            <div className="font-medium">{row.productName || "—"}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {row.isActive ? "Active" : "Inactive"}
+                            </div>
+                          </td>
                           <td className="p-3">{titleizeSlug(row.flavor) || "—"}</td>
                           <td className="p-3">{onHand}</td>
                           <td className="p-3">{reserved}</td>
-                          <td className="p-3 font-medium">{available}</td>
+                          <td className={`p-3 font-medium ${lowStock ? "text-amber-300" : ""}`}>
+                            {available}
+                          </td>
                           <td className="p-3">{reorderPoint}</td>
                           <td className="p-3">
-                            <span
-                              className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                                lowStock
-                                  ? "bg-amber-500/15 text-amber-300"
-                                  : "bg-emerald-500/15 text-emerald-300"
-                              }`}
-                            >
-                              {lowStock ? "Low stock" : "OK"}
-                            </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-1 text-xs ${
+                                  lowStock
+                                    ? "bg-amber-500/15 text-amber-300"
+                                    : "bg-emerald-500/15 text-emerald-300"
+                                }`}
+                              >
+                                {lowStock ? "Low stock" : "OK"}
+                              </span>
+                              {!row.isActive && (
+                                <span className="inline-flex rounded-full bg-zinc-500/15 px-2 py-1 text-xs text-zinc-300">
+                                  Inactive
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="p-3 text-muted-foreground">{fmtDate(row.updatedAt)}</td>
                         </tr>
                       );
                     })}
 
-                    {!inventory.length && !inventoryLoading && !inventoryError && (
+                    {!filteredInventory.length && !inventoryLoading && !inventoryError && (
                       <tr>
                         <td className="p-4 text-muted-foreground" colSpan={9}>
                           No inventory items found.

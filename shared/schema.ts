@@ -36,12 +36,10 @@ export const orders = pgTable(
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
 
-    // Stripe identifiers
     stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull(),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
 
-    // Stripe customer id (needed for portal)
     stripeCustomerId: text("stripe_customer_id"),
 
     customerEmail: text("customer_email"),
@@ -56,7 +54,6 @@ export const orders = pgTable(
     shippingName: text("shipping_name"),
     shippingAddress: jsonb("shipping_address"),
 
-    // ✅ Order-level shipment storage
     shippingCarrier: text("shipping_carrier"),
     shippingTrackingNumber: text("shipping_tracking_number"),
     shippingLabelUrl: text("shipping_label_url"),
@@ -67,18 +64,15 @@ export const orders = pgTable(
       .defaultNow(),
   },
   (t) => ({
-    // Webhook idempotency: one order per checkout session
     checkoutSessionUnique: uniqueIndex("orders_checkout_session_unique").on(
       t.stripeCheckoutSessionId,
     ),
 
-    // Performance indexes
     paymentIntentIdx: index("orders_payment_intent_idx").on(t.stripePaymentIntentId),
     subscriptionIdx: index("orders_subscription_idx").on(t.stripeSubscriptionId),
     customerEmailIdx: index("orders_customer_email_idx").on(t.customerEmail),
     stripeCustomerIdx: index("orders_stripe_customer_idx").on(t.stripeCustomerId),
 
-    // ✅ shipment indexes
     shippingTrackingIdx: index("orders_shipping_tracking_idx").on(t.shippingTrackingNumber),
     shippingShipmentIdx: index("orders_shipping_shipment_idx").on(t.shippingShipmentId),
   }),
@@ -97,18 +91,16 @@ export const orderItems = pgTable(
       .notNull()
       .references(() => orders.id, { onDelete: "cascade" }),
 
-    // Stripe identifiers
     stripePriceId: text("stripe_price_id"),
     stripeLineItemId: text("stripe_line_item_id"),
 
     flavor: text("flavor").notNull(),
-    purchaseType: text("purchase_type").notNull(), // "onetime" | "subscribe"
+    purchaseType: text("purchase_type").notNull(),
     frequencyWeeks: integer("frequency_weeks"),
     quantity: integer("quantity").notNull().default(1),
 
     unitAmount: integer("unit_amount"),
 
-    // Fulfillment tracking (per item)
     fulfillmentStatus: text("fulfillment_status")
       .notNull()
       .default("unfulfilled"),
@@ -124,13 +116,11 @@ export const orderItems = pgTable(
   (t) => ({
     orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
 
-    // Fallback uniqueness: one price per order (if priceId exists)
     orderPriceUnique: uniqueIndex("order_items_order_price_unique").on(
       t.orderId,
       t.stripePriceId,
     ),
 
-    // More specific uniqueness when line item id exists
     orderLineItemUnique: uniqueIndex("order_items_order_line_item_unique").on(
       t.orderId,
       t.stripeLineItemId,
@@ -141,14 +131,7 @@ export const orderItems = pgTable(
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = typeof orderItems.$inferInsert;
 
-/** INVENTORY ITEMS
- *
- * Phase 1 inventory:
- * - one row per sellable pouch/SKU
- * - onHandQuantity = physical units available in stock
- * - reservedQuantity = units committed but not yet fully relieved from reservation flow
- * - available quantity should be computed as (onHandQuantity - reservedQuantity)
- */
+/** INVENTORY ITEMS */
 export const inventoryItems = pgTable(
   "inventory_items",
   {
@@ -204,17 +187,7 @@ export const inventoryItems = pgTable(
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type InsertInventoryItem = typeof inventoryItems.$inferInsert;
 
-/** INVENTORY TRANSACTIONS
- *
- * Audit trail for inventory changes.
- * Examples:
- * - "manual_adjustment"
- * - "reservation"
- * - "release_reservation"
- * - "fulfillment"
- * - "restock"
- * - "correction"
- */
+/** INVENTORY TRANSACTIONS */
 export const inventoryTransactions = pgTable(
   "inventory_transactions",
   {
@@ -240,6 +213,10 @@ export const inventoryTransactions = pgTable(
       reason?: string | null;
       actor?: string | null;
       source?: string | null;
+      reorderPointFrom?: number | null;
+      reorderPointTo?: number | null;
+      quantityFrom?: number | null;
+      quantityTo?: number | null;
     }>(),
 
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -261,9 +238,7 @@ export const inventoryTransactions = pgTable(
 export type InventoryTransaction = typeof inventoryTransactions.$inferSelect;
 export type InsertInventoryTransaction = typeof inventoryTransactions.$inferInsert;
 
-/**
- * PORTAL TOKENS
- */
+/** PORTAL TOKENS */
 export const portalTokens = pgTable(
   "portal_tokens",
   {
@@ -301,7 +276,6 @@ export const wholesaleApplications = pgTable(
     contactName: text("contact_name").notNull(),
 
     email: varchar("email", { length: 320 }).notNull(),
-
     phone: varchar("phone", { length: 32 }).notNull(),
 
     websiteOrInstagram: text("website_or_instagram"),

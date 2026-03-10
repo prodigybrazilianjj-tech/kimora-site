@@ -84,6 +84,24 @@ type InventoryRow = {
   updatedAt?: string | null;
 };
 
+type InventoryTransactionRow = {
+  id: string;
+  createdAt?: string | null;
+  transactionType?: string | null;
+  quantityDelta?: number | null;
+  reservedDelta?: number | null;
+  note?: string | null;
+  orderId?: string | null;
+  orderItemId?: string | null;
+  metadata?: any | null;
+};
+
+type InventoryDetailResponse = {
+  ok: true;
+  item: InventoryRow;
+  transactions: InventoryTransactionRow[];
+};
+
 type OrderItemRow = {
   id: string;
   orderId: string;
@@ -171,6 +189,11 @@ function inventoryAvailable(row: InventoryRow) {
 function inventoryIsLow(row: InventoryRow) {
   const reorderPoint = Number(row.reorderPoint ?? 0) || 0;
   return inventoryAvailable(row) <= reorderPoint;
+}
+
+function safeNum(value: unknown, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 async function api<T>(path: string, token: string, init?: RequestInit): Promise<T> {
@@ -309,6 +332,19 @@ export default function AdminDashboard() {
   const [inventoryFilter, setInventoryFilter] = useState<InventoryFilterKey>("all");
   const [inventorySort, setInventorySort] = useState<InventorySortKey>("available-asc");
 
+  const [selectedInventoryId, setSelectedInventoryId] = useState<string | null>(null);
+  const [selectedInventoryRow, setSelectedInventoryRow] = useState<InventoryRow | null>(null);
+  const [selectedInventoryTransactions, setSelectedInventoryTransactions] = useState<
+    InventoryTransactionRow[]
+  >([]);
+  const [inventoryDetailLoading, setInventoryDetailLoading] = useState(false);
+  const [inventoryDetailError, setInventoryDetailError] = useState<string | null>(null);
+  const [inventoryAdjustmentLoading, setInventoryAdjustmentLoading] = useState(false);
+  const [inventoryAdjustOnHandDelta, setInventoryAdjustOnHandDelta] = useState("0");
+  const [inventoryAdjustReservedDelta, setInventoryAdjustReservedDelta] = useState("0");
+  const [inventoryAdjustReorderPoint, setInventoryAdjustReorderPoint] = useState("");
+  const [inventoryAdjustNote, setInventoryAdjustNote] = useState("");
+
   const [orderQ, setOrderQ] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
   const [orderMode, setOrderMode] = useState("");
@@ -390,11 +426,16 @@ export default function AdminDashboard() {
     setOrdersError(null);
     setInventory([]);
     setInventoryError(null);
+    setSelectedInventoryId(null);
+    setSelectedInventoryRow(null);
+    setSelectedInventoryTransactions([]);
+    setInventoryDetailError(null);
     setOrderFulfillmentEdits({});
     setOrderFulfillmentOriginals({});
     orderFulfillmentEditsRef.current = {};
     setWholesale([]);
     setWholesaleError(null);
+    closeInventory();
     closeOrder();
   }
 
@@ -493,6 +534,90 @@ export default function AdminDashboard() {
       throw e;
     } finally {
       setWholesaleLoading(false);
+    }
+  }
+
+  async function openInventory(id: string) {
+    if (!savedToken) return;
+
+    setSelectedInventoryId(id);
+    setSelectedInventoryRow(null);
+    setSelectedInventoryTransactions([]);
+    setInventoryDetailError(null);
+    setInventoryDetailLoading(true);
+    setInventoryAdjustOnHandDelta("0");
+    setInventoryAdjustReservedDelta("0");
+    setInventoryAdjustReorderPoint("");
+    setInventoryAdjustNote("");
+
+    try {
+      const data = await api<InventoryDetailResponse>(`/api/admin/inventory/${id}`, savedToken);
+      setSelectedInventoryRow(data.item);
+      setSelectedInventoryTransactions(data.transactions || []);
+      setInventoryAdjustReorderPoint(String(data.item?.reorderPoint ?? 0));
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to load inventory item.");
+      setInventoryDetailError(msg);
+      toast({ title: "Inventory load failed", description: msg });
+    } finally {
+      setInventoryDetailLoading(false);
+    }
+  }
+
+  function closeInventory() {
+    setSelectedInventoryId(null);
+    setSelectedInventoryRow(null);
+    setSelectedInventoryTransactions([]);
+    setInventoryDetailError(null);
+    setInventoryDetailLoading(false);
+    setInventoryAdjustmentLoading(false);
+    setInventoryAdjustOnHandDelta("0");
+    setInventoryAdjustReservedDelta("0");
+    setInventoryAdjustReorderPoint("");
+    setInventoryAdjustNote("");
+  }
+
+  async function saveInventoryAdjustment() {
+    if (!savedToken || !selectedInventoryId || !selectedInventoryRow) return;
+
+    const onHandDelta = Math.trunc(safeNum(inventoryAdjustOnHandDelta, 0));
+    const reservedDelta = Math.trunc(safeNum(inventoryAdjustReservedDelta, 0));
+    const reorderPoint = Math.max(0, Math.trunc(safeNum(inventoryAdjustReorderPoint, 0)));
+    const note = inventoryAdjustNote.trim();
+
+    const nothingChanged =
+      onHandDelta === 0 &&
+      reservedDelta === 0 &&
+      reorderPoint === Number(selectedInventoryRow.reorderPoint ?? 0) &&
+      !note;
+
+    if (nothingChanged) {
+      toast({ title: "No changes", description: "There is nothing to save." });
+      return;
+    }
+
+    try {
+      setInventoryAdjustmentLoading(true);
+
+      await api<{ ok: true }>(`/api/admin/inventory/${selectedInventoryId}/adjust`, savedToken, {
+        method: "POST",
+        body: JSON.stringify({
+          onHandDelta,
+          reservedDelta,
+          reorderPoint,
+          note: note || null,
+        }),
+      });
+
+      toast({ title: "Saved", description: "Inventory adjustment recorded." });
+
+      await loadInventory();
+      await openInventory(selectedInventoryId);
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to save inventory adjustment.");
+      toast({ title: "Save failed", description: msg });
+    } finally {
+      setInventoryAdjustmentLoading(false);
     }
   }
 
@@ -1868,15 +1993,16 @@ export default function AdminDashboard() {
                       <th className="p-3 text-left">Reorder point</th>
                       <th className="p-3 text-left">Status</th>
                       <th className="p-3 text-left">Updated</th>
+                      <th className="p-3 text-left">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredInventory.map((row) => {
                       const onHand = Number(row.onHandQuantity ?? 0) || 0;
                       const reserved = Number(row.reservedQuantity ?? 0) || 0;
-                      const reorderPoint = Number(row.reorderPoint ?? 0) || 0;
                       const available = inventoryAvailable(row);
                       const lowStock = inventoryIsLow(row);
+                      const viewingThis = selectedInventoryId === row.id;
 
                       return (
                         <tr key={row.id} className="border-t border-border">
@@ -1893,7 +2019,7 @@ export default function AdminDashboard() {
                           <td className={`p-3 font-medium ${lowStock ? "text-amber-300" : ""}`}>
                             {available}
                           </td>
-                          <td className="p-3">{reorderPoint}</td>
+                          <td className="p-3">{row.reorderPoint}</td>
                           <td className="p-3">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span
@@ -1913,13 +2039,23 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="p-3 text-muted-foreground">{fmtDate(row.updatedAt)}</td>
+                          <td className="p-3">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-8"
+                              onClick={() => openInventory(row.id)}
+                            >
+                              {viewingThis ? "Viewing…" : "View / adjust"}
+                            </Button>
+                          </td>
                         </tr>
                       );
                     })}
 
                     {!filteredInventory.length && !inventoryLoading && !inventoryError && (
                       <tr>
-                        <td className="p-4 text-muted-foreground" colSpan={9}>
+                        <td className="p-4 text-muted-foreground" colSpan={10}>
                           No inventory items found.
                         </td>
                       </tr>
@@ -1928,6 +2064,245 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </div>
+
+            {(selectedInventoryId || inventoryDetailLoading || inventoryDetailError) && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div
+                  className="absolute inset-0 bg-black/50"
+                  onClick={() => closeInventory()}
+                  role="button"
+                  tabIndex={-1}
+                />
+                <div className="relative w-full max-w-6xl max-h-[85vh] overflow-auto rounded-xl border border-border bg-background shadow-lg">
+                  <div className="sticky top-0 bg-background border-b border-border p-4 flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <div className="font-semibold">Inventory detail</div>
+                      <div className="text-sm text-muted-foreground">
+                        {selectedInventoryId ? `ID: ${selectedInventoryId}` : ""}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 flex-wrap">
+                      {selectedInventoryId && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-9"
+                          onClick={() => openInventory(selectedInventoryId)}
+                          disabled={inventoryDetailLoading || inventoryAdjustmentLoading}
+                        >
+                          Refresh detail
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9"
+                        onClick={closeInventory}
+                      >
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="p-4">
+                    {inventoryDetailLoading && (
+                      <div className="text-sm text-muted-foreground">Loading inventory item…</div>
+                    )}
+                    {inventoryDetailError && (
+                      <div className="text-sm text-red-400">{inventoryDetailError}</div>
+                    )}
+
+                    {selectedInventoryRow && (
+                      <div className="grid gap-4">
+                        <div className="grid md:grid-cols-4 gap-4">
+                          <div className="rounded-md border border-border p-3">
+                            <div className="text-xs text-muted-foreground">Product</div>
+                            <div className="font-medium mt-1">
+                              {selectedInventoryRow.productName || "—"}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {selectedInventoryRow.isActive ? "Active" : "Inactive"}
+                            </div>
+                          </div>
+
+                          <div className="rounded-md border border-border p-3">
+                            <div className="text-xs text-muted-foreground">SKU / Flavor</div>
+                            <div className="font-medium mt-1 font-mono text-sm">
+                              {selectedInventoryRow.sku || "—"}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {titleizeSlug(selectedInventoryRow.flavor) || "—"}
+                            </div>
+                          </div>
+
+                          <div className="rounded-md border border-border p-3">
+                            <div className="text-xs text-muted-foreground">Available</div>
+                            <div
+                              className={`text-2xl font-bold mt-1 ${
+                                inventoryIsLow(selectedInventoryRow) ? "text-amber-300" : ""
+                              }`}
+                            >
+                              {inventoryAvailable(selectedInventoryRow)}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              On hand {selectedInventoryRow.onHandQuantity} • Reserved{" "}
+                              {selectedInventoryRow.reservedQuantity}
+                            </div>
+                          </div>
+
+                          <div className="rounded-md border border-border p-3">
+                            <div className="text-xs text-muted-foreground">Reorder point</div>
+                            <div className="text-2xl font-bold mt-1">
+                              {selectedInventoryRow.reorderPoint}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Updated {fmtDate(selectedInventoryRow.updatedAt)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-md border border-border p-4">
+                          <div className="font-semibold">Manual adjustment</div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            Use positive or negative values. Every save should create a transaction
+                            record.
+                          </div>
+
+                          <div className="mt-4 grid gap-3 md:grid-cols-4">
+                            <div>
+                              <div className="text-xs text-muted-foreground mb-1">On-hand delta</div>
+                              <input
+                                type="number"
+                                step="1"
+                                value={inventoryAdjustOnHandDelta}
+                                onChange={(e) => setInventoryAdjustOnHandDelta(e.target.value)}
+                                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                              />
+                            </div>
+
+                            <div>
+                              <div className="text-xs text-muted-foreground mb-1">
+                                Reserved delta
+                              </div>
+                              <input
+                                type="number"
+                                step="1"
+                                value={inventoryAdjustReservedDelta}
+                                onChange={(e) => setInventoryAdjustReservedDelta(e.target.value)}
+                                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                              />
+                            </div>
+
+                            <div>
+                              <div className="text-xs text-muted-foreground mb-1">Reorder point</div>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={inventoryAdjustReorderPoint}
+                                onChange={(e) => setInventoryAdjustReorderPoint(e.target.value)}
+                                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                              />
+                            </div>
+
+                            <div className="flex items-end">
+                              <Button
+                                type="button"
+                                className="h-10 w-full"
+                                onClick={saveInventoryAdjustment}
+                                disabled={inventoryAdjustmentLoading}
+                              >
+                                {inventoryAdjustmentLoading ? "Saving…" : "Save adjustment"}
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="mt-3">
+                            <div className="text-xs text-muted-foreground mb-1">Note / reason</div>
+                            <textarea
+                              value={inventoryAdjustNote}
+                              onChange={(e) => setInventoryAdjustNote(e.target.value)}
+                              placeholder="Ex: received 500 units from manufacturer, corrected count, damaged stock removed, etc."
+                              rows={3}
+                              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="rounded-md border border-border p-4">
+                          <div className="font-semibold">Recent transactions</div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            Latest inventory history for this item.
+                          </div>
+
+                          <div className="mt-3 overflow-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-muted/40">
+                                <tr>
+                                  <th className="p-2 text-left">Created</th>
+                                  <th className="p-2 text-left">Type</th>
+                                  <th className="p-2 text-left">On-hand Δ</th>
+                                  <th className="p-2 text-left">Reserved Δ</th>
+                                  <th className="p-2 text-left">Order</th>
+                                  <th className="p-2 text-left">Note</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedInventoryTransactions.map((tx) => (
+                                  <tr key={tx.id} className="border-t border-border">
+                                    <td className="p-2 text-muted-foreground">
+                                      {fmtDate(tx.createdAt)}
+                                    </td>
+                                    <td className="p-2">
+                                      <code>{String(tx.transactionType || "—")}</code>
+                                    </td>
+                                    <td
+                                      className={`p-2 font-medium ${
+                                        safeNum(tx.quantityDelta, 0) < 0
+                                          ? "text-red-300"
+                                          : safeNum(tx.quantityDelta, 0) > 0
+                                          ? "text-emerald-300"
+                                          : ""
+                                      }`}
+                                    >
+                                      {safeNum(tx.quantityDelta, 0)}
+                                    </td>
+                                    <td
+                                      className={`p-2 font-medium ${
+                                        safeNum(tx.reservedDelta, 0) < 0
+                                          ? "text-red-300"
+                                          : safeNum(tx.reservedDelta, 0) > 0
+                                          ? "text-emerald-300"
+                                          : ""
+                                      }`}
+                                    >
+                                      {safeNum(tx.reservedDelta, 0)}
+                                    </td>
+                                    <td className="p-2 font-mono text-xs break-all">
+                                      {tx.orderId || "—"}
+                                    </td>
+                                    <td className="p-2">{tx.note || "—"}</td>
+                                  </tr>
+                                ))}
+
+                                {!selectedInventoryTransactions.length && (
+                                  <tr>
+                                    <td className="p-3 text-muted-foreground" colSpan={6}>
+                                      No transactions found for this inventory item.
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

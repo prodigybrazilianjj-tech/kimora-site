@@ -1305,65 +1305,64 @@ async function applyInventoryForOrderItem(args: {
       id: inventoryItems.id,
       flavor: inventoryItems.flavor,
       onHandQuantity: inventoryItems.onHandQuantity,
+      reservedQuantity: inventoryItems.reservedQuantity,
     })
     .from(inventoryItems)
     .where(eq(inventoryItems.flavor, flavor))
     .limit(1);
 
   const inventoryItem = inventoryRow?.[0];
+
   if (!inventoryItem?.id) {
     console.warn(
       "[inventory] no inventory item found for flavor:",
       flavor,
       "order:",
-      args.orderId,
-      "orderItem:",
-      args.orderItemId
+      args.orderId
     );
     return;
   }
 
   try {
-    const updated = await db
-      .update(inventoryItems)
-      .set({
-        onHandQuantity: sql`${inventoryItems.onHandQuantity} - ${quantity}`,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(inventoryItems.id, inventoryItem.id), gte(inventoryItems.onHandQuantity, quantity)))
-      .returning({
-        id: inventoryItems.id,
-      });
+    const available =
+      Number(inventoryItem.onHandQuantity ?? 0) -
+      Number(inventoryItem.reservedQuantity ?? 0);
 
-    if (!updated?.length) {
+    if (available < quantity) {
       console.warn(
-        "[inventory] insufficient on-hand quantity for flavor:",
+        "[inventory] insufficient available inventory for reservation:",
         flavor,
-        "requested:",
+        "needed:",
         quantity,
-        "order:",
-        args.orderId,
-        "orderItem:",
-        args.orderItemId
+        "available:",
+        available
       );
       return;
     }
+
+    await db
+      .update(inventoryItems)
+      .set({
+        reservedQuantity: sql`${inventoryItems.reservedQuantity} + ${quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(inventoryItems.id, inventoryItem.id));
 
     await db.insert(inventoryTransactions).values({
       inventoryItemId: inventoryItem.id,
       orderId: args.orderId,
       orderItemId: args.orderItemId,
-      transactionType: "fulfillment",
-      quantityDelta: -quantity,
-      reservedDelta: 0,
-      note: `Order webhook deduction for ${flavor}`,
+      transactionType: "reservation",
+      quantityDelta: 0,
+      reservedDelta: quantity,
+      note: `Inventory reserved for order`,
       metadata: {
         source: "stripe_webhook",
         reason: "checkout.session.completed",
       },
     });
   } catch (e) {
-    console.warn("[inventory] applyInventoryForOrderItem failed:", safeErrSummary(e));
+    console.warn("[inventory] reservation failed:", safeErrSummary(e));
   }
 }
 
@@ -1839,7 +1838,50 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const now = new Date();
       const set: any = { fulfillmentStatus: status };
 
-      if (status === "shipped") set.shippedAt = now;
+      if (status === "shipped") {
+  const items = await db
+    .select({
+      id: orderItems.id,
+      flavor: orderItems.flavor,
+      quantity: orderItems.quantity,
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+
+  for (const item of items) {
+    const inv = await db
+      .select({
+        id: inventoryItems.id,
+      })
+      .from(inventoryItems)
+      .where(eq(inventoryItems.flavor, item.flavor))
+      .limit(1);
+
+    if (!inv?.[0]?.id) continue;
+
+    await db
+      .update(inventoryItems)
+      .set({
+        onHandQuantity: sql`${inventoryItems.onHandQuantity} - ${item.quantity}`,
+        reservedQuantity: sql`${inventoryItems.reservedQuantity} - ${item.quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(inventoryItems.id, inv[0].id));
+
+    await db.insert(inventoryTransactions).values({
+      inventoryItemId: inv[0].id,
+      orderId,
+      orderItemId: item.id,
+      transactionType: "fulfillment",
+      quantityDelta: -item.quantity,
+      reservedDelta: -item.quantity,
+      note: "Inventory fulfilled on shipment",
+      metadata: { source: "admin_fulfillment" },
+    });
+  }
+
+  await maybeSendShippingEmailForOrder(orderId);
+}
       if (status === "delivered") set.deliveredAt = now;
 
       const updated = await db

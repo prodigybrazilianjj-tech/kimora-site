@@ -2743,5 +2743,129 @@ Need help? Reply to this email or contact support@kimoraco.com
     }
   });
 
+
+    app.post("/api/admin/inventory/:id/add", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const id = String(req.params.id || "").trim();
+      const qty = Number(req.body?.quantity ?? 0);
+
+      if (!id || !Number.isFinite(qty) || qty <= 0) {
+        return res.status(400).json({ ok: false, message: "Invalid quantity." });
+      }
+
+      const updated = await db
+        .update(inventoryItems)
+        .set({
+          onHandQuantity: sql`${inventoryItems.onHandQuantity} + ${qty}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(inventoryItems.id, id))
+        .returning({
+          id: inventoryItems.id,
+          onHandQuantity: inventoryItems.onHandQuantity,
+        });
+
+      if (!updated?.length) {
+        return res.status(404).json({ ok: false, message: "Inventory item not found." });
+      }
+
+      await db.insert(inventoryTransactions).values({
+        inventoryItemId: id,
+        transactionType: "adjustment_add",
+        quantityDelta: qty,
+        reservedDelta: 0,
+        note: "Manual inventory add from admin",
+      });
+
+      return res.json({ ok: true, item: updated[0] });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/admin/inventory/:id/add error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to add inventory." });
+    }
+  });
+
+  app.post("/api/admin/inventory/:id/remove", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const id = String(req.params.id || "").trim();
+      const qty = Number(req.body?.quantity ?? 0);
+
+      if (!id || !Number.isFinite(qty) || qty <= 0) {
+        return res.status(400).json({ ok: false, message: "Invalid quantity." });
+      }
+
+      const updated = await db
+        .update(inventoryItems)
+        .set({
+          onHandQuantity: sql`${inventoryItems.onHandQuantity} - ${qty}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(inventoryItems.id, id))
+        .returning({
+          id: inventoryItems.id,
+          onHandQuantity: inventoryItems.onHandQuantity,
+        });
+
+      if (!updated?.length) {
+        return res.status(404).json({ ok: false, message: "Inventory item not found." });
+      }
+
+      await db.insert(inventoryTransactions).values({
+        inventoryItemId: id,
+        transactionType: "adjustment_remove",
+        quantityDelta: -qty,
+        reservedDelta: 0,
+        note: "Manual inventory removal from admin",
+      });
+
+      return res.json({ ok: true, item: updated[0] });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/admin/inventory/:id/remove error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to remove inventory." });
+    }
+  });
+
+  app.patch("/api/admin/inventory/:id/reorder-point", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const id = String(req.params.id || "").trim();
+      const reorderPoint = Number(req.body?.reorderPoint ?? 0);
+
+      if (!id || !Number.isFinite(reorderPoint) || reorderPoint < 0) {
+        return res.status(400).json({ ok: false, message: "Invalid reorder point." });
+      }
+
+      const updated = await db
+        .update(inventoryItems)
+        .set({
+          reorderPoint,
+          updatedAt: new Date(),
+        })
+        .where(eq(inventoryItems.id, id))
+        .returning({
+          id: inventoryItems.id,
+          reorderPoint: inventoryItems.reorderPoint,
+        });
+
+      if (!updated?.length) {
+        return res.status(404).json({ ok: false, message: "Inventory item not found." });
+      }
+
+      return res.json({ ok: true, item: updated[0] });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("PATCH /api/admin/inventory/:id/reorder-point error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to update reorder point." });
+    }
+  });
   return httpServer;
 }

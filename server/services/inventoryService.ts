@@ -1,6 +1,6 @@
 // server/services/inventoryService.ts
 import type { Request, Response } from "express";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 import { db } from "../db";
 import { inventoryItems, inventoryTransactions } from "../../shared/schema";
@@ -71,6 +71,7 @@ export async function applyInventoryForOrderItem(args: {
       id: inventoryItems.id,
       flavor: inventoryItems.flavor,
       onHandQuantity: inventoryItems.onHandQuantity,
+      reservedQuantity: inventoryItems.reservedQuantity,
     })
     .from(inventoryItems)
     .where(eq(inventoryItems.flavor, flavor))
@@ -93,14 +94,11 @@ export async function applyInventoryForOrderItem(args: {
     const updated = await db
       .update(inventoryItems)
       .set({
-        onHandQuantity: sql`${inventoryItems.onHandQuantity} - ${quantity}`,
+        reservedQuantity: sql`${inventoryItems.reservedQuantity} + ${quantity}`,
         updatedAt: new Date(),
       })
       .where(
-        and(
-          eq(inventoryItems.id, inventoryItem.id),
-          gte(inventoryItems.onHandQuantity, quantity)
-        )
+        sql`${inventoryItems.id} = ${inventoryItem.id} and (${inventoryItems.onHandQuantity} - ${inventoryItems.reservedQuantity}) >= ${quantity}`
       )
       .returning({
         id: inventoryItems.id,
@@ -108,7 +106,7 @@ export async function applyInventoryForOrderItem(args: {
 
     if (!updated?.length) {
       console.warn(
-        "[inventory] insufficient on-hand quantity for flavor:",
+        "[inventory] insufficient available quantity for flavor:",
         flavor,
         "requested:",
         quantity,
@@ -124,10 +122,10 @@ export async function applyInventoryForOrderItem(args: {
       inventoryItemId: inventoryItem.id,
       orderId: args.orderId,
       orderItemId: args.orderItemId,
-      transactionType: "fulfillment",
-      quantityDelta: -quantity,
-      reservedDelta: 0,
-      note: `Order webhook deduction for ${flavor}`,
+      transactionType: "reservation",
+      quantityDelta: 0,
+      reservedDelta: quantity,
+      note: `Order reservation for ${flavor}`,
       metadata: {
         source: "stripe_webhook",
         reason: "checkout.session.completed",

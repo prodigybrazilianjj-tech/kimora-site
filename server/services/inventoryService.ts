@@ -3,10 +3,7 @@ import type { Request, Response } from "express";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 
 import { db } from "../db";
-import {
-  inventoryItems,
-  inventoryTransactions,
-} from "../../shared/schema";
+import { inventoryItems, inventoryTransactions } from "../../shared/schema";
 
 function safeString(v: any, maxLen = 20000) {
   const s = String(v ?? "").trim();
@@ -236,9 +233,15 @@ export async function adjustAdminInventoryHandler(req: Request, res: Response) {
     const existingRows = await db
       .select({
         id: inventoryItems.id,
+        sku: inventoryItems.sku,
+        flavor: inventoryItems.flavor,
+        productName: inventoryItems.productName,
+        isActive: inventoryItems.isActive,
         onHandQuantity: inventoryItems.onHandQuantity,
         reservedQuantity: inventoryItems.reservedQuantity,
         reorderPoint: inventoryItems.reorderPoint,
+        createdAt: inventoryItems.createdAt,
+        updatedAt: inventoryItems.updatedAt,
       })
       .from(inventoryItems)
       .where(eq(inventoryItems.id, id))
@@ -323,7 +326,7 @@ export async function adjustAdminInventoryHandler(req: Request, res: Response) {
         source: "admin_dashboard",
         actor: "admin",
         reason: "manual_adjustment",
-      } as any,
+      },
     });
 
     return res.json({ ok: true, item: updated });

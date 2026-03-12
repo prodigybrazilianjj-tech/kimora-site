@@ -1,4 +1,3 @@
-// server/services/inventoryService.ts
 import type { Request, Response } from "express";
 import { desc, eq, sql } from "drizzle-orm";
 
@@ -53,6 +52,16 @@ function requireAdmin(req: Request, res: Response) {
   }
 
   return null;
+}
+
+function normalizeFulfillmentStatus(value: any) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function statusHoldsReservation(status: string) {
+  return status === "unfulfilled" || status === "allocated" || status === "packed";
 }
 
 export async function applyInventoryForOrderItem(args: {
@@ -133,6 +142,114 @@ export async function applyInventoryForOrderItem(args: {
     });
   } catch (e) {
     console.warn("[inventory] applyInventoryForOrderItem failed:", safeErrSummary(e));
+  }
+}
+
+export async function reconcileInventoryReservationForOrderItem(args: {
+  orderId: string;
+  orderItemId: string;
+  flavor: string;
+  quantity: number;
+  fromStatus: string | null | undefined;
+  toStatus: string | null | undefined;
+}) {
+  const flavor = safeString(args.flavor, 120);
+  const quantity = Number(args.quantity ?? 0);
+  const fromStatus = normalizeFulfillmentStatus(args.fromStatus);
+  const toStatus = normalizeFulfillmentStatus(args.toStatus);
+
+  if (!flavor || !Number.isFinite(quantity) || quantity <= 0) return;
+  if (!fromStatus || !toStatus || fromStatus === toStatus) return;
+
+  const heldBefore = statusHoldsReservation(fromStatus);
+  const heldAfter = statusHoldsReservation(toStatus);
+
+  if (heldBefore === heldAfter) return;
+
+  const reservedDelta = heldAfter ? quantity : -quantity;
+
+  const inventoryRow = await db
+    .select({
+      id: inventoryItems.id,
+      flavor: inventoryItems.flavor,
+      onHandQuantity: inventoryItems.onHandQuantity,
+      reservedQuantity: inventoryItems.reservedQuantity,
+    })
+    .from(inventoryItems)
+    .where(eq(inventoryItems.flavor, flavor))
+    .limit(1);
+
+  const inventoryItem = inventoryRow?.[0];
+  if (!inventoryItem?.id) {
+    console.warn(
+      "[inventory] no inventory item found for reservation reconciliation, flavor:",
+      flavor,
+      "order:",
+      args.orderId,
+      "orderItem:",
+      args.orderItemId,
+      "from:",
+      fromStatus,
+      "to:",
+      toStatus
+    );
+    return;
+  }
+
+  try {
+    const updated = await db
+      .update(inventoryItems)
+      .set({
+        reservedQuantity: sql`${inventoryItems.reservedQuantity} + ${reservedDelta}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        reservedDelta < 0
+          ? sql`${inventoryItems.id} = ${inventoryItem.id} and ${inventoryItems.reservedQuantity} >= ${Math.abs(
+              reservedDelta
+            )}`
+          : sql`${inventoryItems.id} = ${inventoryItem.id} and (${inventoryItems.onHandQuantity} - ${inventoryItems.reservedQuantity}) >= ${reservedDelta}`
+      )
+      .returning({
+        id: inventoryItems.id,
+      });
+
+    if (!updated?.length) {
+      console.warn(
+        "[inventory] reservation reconciliation failed for flavor:",
+        flavor,
+        "delta:",
+        reservedDelta,
+        "order:",
+        args.orderId,
+        "orderItem:",
+        args.orderItemId,
+        "from:",
+        fromStatus,
+        "to:",
+        toStatus
+      );
+      return;
+    }
+
+    await db.insert(inventoryTransactions).values({
+      inventoryItemId: inventoryItem.id,
+      orderId: args.orderId,
+      orderItemId: args.orderItemId,
+      transactionType: "reservation",
+      quantityDelta: 0,
+      reservedDelta,
+      note: `Fulfillment status changed ${fromStatus} -> ${toStatus} for ${flavor}`,
+      metadata: {
+        source: "admin_fulfillment",
+        reason: "fulfillment_status_transition",
+      },
+    });
+  } catch (e) {
+    console.warn(
+      "[inventory] reconcileInventoryReservationForOrderItem failed:",
+      safeErrSummary(e)
+    );
   }
 }
 
@@ -319,7 +436,7 @@ export async function adjustAdminInventoryHandler(req: Request, res: Response) {
         note ||
         `Manual admin adjustment (onHand ${onHandDelta >= 0 ? "+" : ""}${onHandDelta}, reserved ${
           reservedDelta >= 0 ? "+" : ""
-        }${reservedDelta}, reorder ${currentReorderPoint}→${nextReorderPoint})`,
+        }${reservedDelta}, reorder ${currentReorderPoint}->${nextReorderPoint})`,
       metadata: {
         source: "admin_dashboard",
         actor: "admin",

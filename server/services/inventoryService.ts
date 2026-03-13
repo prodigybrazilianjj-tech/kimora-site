@@ -172,8 +172,13 @@ export async function reconcileInventoryReservationForOrderItem(args: {
   const consumedBefore = statusConsumesPhysicalInventory(fromStatus);
   const consumedAfter = statusConsumesPhysicalInventory(toStatus);
 
-  const reservedDelta = heldAfter ? quantity : heldBefore ? -quantity : 0;
-  const onHandDelta = consumedAfter ? (consumedBefore ? 0 : -quantity) : 0;
+  let reservedDelta = 0;
+  if (!heldBefore && heldAfter) reservedDelta = quantity;
+  else if (heldBefore && !heldAfter) reservedDelta = -quantity;
+
+  let onHandDelta = 0;
+  if (!consumedBefore && consumedAfter) onHandDelta = -quantity;
+  else if (consumedBefore && !consumedAfter) onHandDelta = quantity;
 
   if (reservedDelta === 0 && onHandDelta === 0) return;
 
@@ -206,9 +211,7 @@ export async function reconcileInventoryReservationForOrderItem(args: {
   }
 
   try {
-    const whereClauseParts = [
-      sql`${inventoryItems.id} = ${inventoryItem.id}`,
-    ];
+    const whereClauseParts = [sql`${inventoryItems.id} = ${inventoryItem.id}`];
 
     if (reservedDelta < 0) {
       whereClauseParts.push(

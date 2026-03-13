@@ -7,6 +7,7 @@ import { Resend } from "resend";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import {
   applyInventoryForOrderItem,
+  reconcileInventoryReservationForOrderItem,
   getAdminInventoryHandler,
   getAdminInventoryItemHandler,
   adjustAdminInventoryHandler,
@@ -1571,6 +1572,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
+      const existingItems = await db
+        .select({
+          id: orderItems.id,
+          orderId: orderItems.orderId,
+          flavor: orderItems.flavor,
+          quantity: orderItems.quantity,
+          fulfillmentStatus: orderItems.fulfillmentStatus,
+        })
+        .from(orderItems)
+        .where(eq(orderItems.orderId, orderId))
+        .limit(500);
+
+      if (!existingItems?.length) {
+        return res.status(404).json({ ok: false, message: "No items found for that order." });
+      }
+
       const now = new Date();
       const set: any = { fulfillmentStatus: status };
 
@@ -1585,6 +1602,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       if (!updated?.length) {
         return res.status(404).json({ ok: false, message: "No items found for that order." });
+      }
+
+      for (const item of existingItems) {
+        await reconcileInventoryReservationForOrderItem({
+          orderId,
+          orderItemId: String(item.id),
+          flavor: String(item.flavor || ""),
+          quantity: Number(item.quantity ?? 0) || 0,
+          fromStatus: item.fulfillmentStatus,
+          toStatus: status,
+        });
       }
 
       if (status === "shipped") {
@@ -1619,6 +1647,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
+      const existingRows = await db
+        .select({
+          id: orderItems.id,
+          orderId: orderItems.orderId,
+          flavor: orderItems.flavor,
+          quantity: orderItems.quantity,
+          fulfillmentStatus: orderItems.fulfillmentStatus,
+        })
+        .from(orderItems)
+        .where(eq(orderItems.id, id))
+        .limit(1);
+
+      const existing = existingRows?.[0];
+      if (!existing) {
+        return res.status(404).json({ ok: false, message: "Not found." });
+      }
+
       const now = new Date();
 
       const set: any = {
@@ -1639,6 +1684,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!updated?.length) {
         return res.status(404).json({ ok: false, message: "Not found." });
       }
+
+      await reconcileInventoryReservationForOrderItem({
+        orderId: String(existing.orderId),
+        orderItemId: String(existing.id),
+        flavor: String(existing.flavor || ""),
+        quantity: Number(existing.quantity ?? 0) || 0,
+        fromStatus: existing.fulfillmentStatus,
+        toStatus: status,
+      });
 
       if (status === "shipped") {
         await maybeSendShippingEmailForOrder(String(updated[0].orderId));
@@ -1804,6 +1858,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const parcel = getParcelForPouchCount(pouchCount);
 
         try {
+          const existingItems = await db
+            .select({
+              id: orderItems.id,
+              orderId: orderItems.orderId,
+              flavor: orderItems.flavor,
+              quantity: orderItems.quantity,
+              fulfillmentStatus: orderItems.fulfillmentStatus,
+            })
+            .from(orderItems)
+            .where(eq(orderItems.orderId, orderId))
+            .limit(500);
+
           const result = await createAndBuyEasyPostShipment({
             toAddress,
             fromAddress,
@@ -1839,6 +1905,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               shippedAt: now,
             } as any)
             .where(eq(orderItems.orderId, orderId));
+
+          for (const item of existingItems) {
+            await reconcileInventoryReservationForOrderItem({
+              orderId,
+              orderItemId: String(item.id),
+              flavor: String(item.flavor || ""),
+              quantity: Number(item.quantity ?? 0) || 0,
+              fromStatus: item.fulfillmentStatus,
+              toStatus: "shipped",
+            });
+          }
 
           if (o.customerEmail) {
             await sendShippingNotificationEmail({

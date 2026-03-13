@@ -1,3 +1,4 @@
+// server/services/inventoryService.ts
 import type { Request, Response } from "express";
 import { desc, eq, sql } from "drizzle-orm";
 
@@ -62,6 +63,10 @@ function normalizeFulfillmentStatus(value: any) {
 
 function statusHoldsReservation(status: string) {
   return status === "unfulfilled" || status === "allocated" || status === "packed";
+}
+
+function statusConsumesPhysicalInventory(status: string) {
+  return status === "shipped" || status === "delivered";
 }
 
 export async function applyInventoryForOrderItem(args: {
@@ -164,9 +169,13 @@ export async function reconcileInventoryReservationForOrderItem(args: {
   const heldBefore = statusHoldsReservation(fromStatus);
   const heldAfter = statusHoldsReservation(toStatus);
 
-  if (heldBefore === heldAfter) return;
+  const consumedBefore = statusConsumesPhysicalInventory(fromStatus);
+  const consumedAfter = statusConsumesPhysicalInventory(toStatus);
 
-  const reservedDelta = heldAfter ? quantity : -quantity;
+  const reservedDelta = heldAfter ? quantity : heldBefore ? -quantity : 0;
+  const onHandDelta = consumedAfter ? (consumedBefore ? 0 : -quantity) : 0;
+
+  if (reservedDelta === 0 && onHandDelta === 0) return;
 
   const inventoryRow = await db
     .select({
@@ -182,7 +191,7 @@ export async function reconcileInventoryReservationForOrderItem(args: {
   const inventoryItem = inventoryRow?.[0];
   if (!inventoryItem?.id) {
     console.warn(
-      "[inventory] no inventory item found for reservation reconciliation, flavor:",
+      "[inventory] no inventory item found for fulfillment reconciliation, flavor:",
       flavor,
       "order:",
       args.orderId,
@@ -197,29 +206,44 @@ export async function reconcileInventoryReservationForOrderItem(args: {
   }
 
   try {
+    const whereClauseParts = [
+      sql`${inventoryItems.id} = ${inventoryItem.id}`,
+    ];
+
+    if (reservedDelta < 0) {
+      whereClauseParts.push(
+        sql`${inventoryItems.reservedQuantity} >= ${Math.abs(reservedDelta)}`
+      );
+    } else if (reservedDelta > 0) {
+      whereClauseParts.push(
+        sql`(${inventoryItems.onHandQuantity} - ${inventoryItems.reservedQuantity}) >= ${reservedDelta}`
+      );
+    }
+
+    if (onHandDelta < 0) {
+      whereClauseParts.push(sql`${inventoryItems.onHandQuantity} >= ${Math.abs(onHandDelta)}`);
+    }
+
     const updated = await db
       .update(inventoryItems)
       .set({
+        onHandQuantity: sql`${inventoryItems.onHandQuantity} + ${onHandDelta}`,
         reservedQuantity: sql`${inventoryItems.reservedQuantity} + ${reservedDelta}`,
         updatedAt: new Date(),
       })
-      .where(
-        reservedDelta < 0
-          ? sql`${inventoryItems.id} = ${inventoryItem.id} and ${inventoryItems.reservedQuantity} >= ${Math.abs(
-              reservedDelta
-            )}`
-          : sql`${inventoryItems.id} = ${inventoryItem.id} and (${inventoryItems.onHandQuantity} - ${inventoryItems.reservedQuantity}) >= ${reservedDelta}`
-      )
+      .where(sql.join(whereClauseParts, sql` and `))
       .returning({
         id: inventoryItems.id,
       });
 
     if (!updated?.length) {
       console.warn(
-        "[inventory] reservation reconciliation failed for flavor:",
+        "[inventory] fulfillment reconciliation failed for flavor:",
         flavor,
-        "delta:",
+        "reservedDelta:",
         reservedDelta,
+        "onHandDelta:",
+        onHandDelta,
         "order:",
         args.orderId,
         "orderItem:",
@@ -236,8 +260,8 @@ export async function reconcileInventoryReservationForOrderItem(args: {
       inventoryItemId: inventoryItem.id,
       orderId: args.orderId,
       orderItemId: args.orderItemId,
-      transactionType: "reservation",
-      quantityDelta: 0,
+      transactionType: "fulfillment",
+      quantityDelta: onHandDelta,
       reservedDelta,
       note: `Fulfillment status changed ${fromStatus} -> ${toStatus} for ${flavor}`,
       metadata: {

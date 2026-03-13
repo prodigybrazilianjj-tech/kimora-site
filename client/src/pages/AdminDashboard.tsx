@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -189,6 +189,17 @@ function inventoryAvailable(row: InventoryRow) {
 function inventoryIsLow(row: InventoryRow) {
   const reorderPoint = Number(row.reorderPoint ?? 0) || 0;
   return inventoryAvailable(row) <= reorderPoint;
+}
+
+function inventoryIsOut(row: InventoryRow) {
+  return inventoryAvailable(row) <= 0;
+}
+
+function inventoryHealthLabel(row: InventoryRow) {
+  if (!row.isActive) return "Inactive";
+  if (inventoryIsOut(row)) return "Out";
+  if (inventoryIsLow(row)) return "Low stock";
+  return "OK";
 }
 
 function safeNum(value: unknown, fallback = 0) {
@@ -709,6 +720,8 @@ export default function AdminDashboard() {
         await openOrder(selectedOrderId);
       }
       await loadOrders();
+      await loadInventory();
+      if (selectedInventoryId) await openInventory(selectedInventoryId);
     } catch (e: any) {
       const msg = String(e?.message || "Failed to update item.");
       toast({ title: "Save failed", description: msg });
@@ -745,6 +758,8 @@ export default function AdminDashboard() {
       if (selectedOrderId === orderId) {
         await openOrder(orderId);
       }
+      await loadInventory();
+      if (selectedInventoryId) await openInventory(selectedInventoryId);
     } catch (e: any) {
       const msg = String(e?.message || "Failed to update order fulfillment.");
       toast({ title: "Save failed", description: msg });
@@ -857,6 +872,10 @@ export default function AdminDashboard() {
       if (selectedOrderId && succeededOrderIdMap[selectedOrderId]) {
         await openOrder(selectedOrderId);
       }
+      if (successCount > 0) {
+        await loadInventory();
+        if (selectedInventoryId) await openInventory(selectedInventoryId);
+      }
     } finally {
       setSavingAllOrders(false);
     }
@@ -909,7 +928,9 @@ export default function AdminDashboard() {
       });
 
       await loadOrders();
+      await loadInventory();
       if (selectedOrderId) await openOrder(selectedOrderId);
+      if (selectedInventoryId) await openInventory(selectedInventoryId);
     } catch (e: any) {
       const msg = String(e?.message || "Failed to generate labels.");
       toast({ title: "Labels failed", description: msg });
@@ -1019,6 +1040,7 @@ export default function AdminDashboard() {
     let totalOnHand = 0;
     let totalReserved = 0;
     let lowStockCount = 0;
+    let outOfStockCount = 0;
     let inactiveCount = 0;
 
     for (const row of inventory) {
@@ -1028,7 +1050,11 @@ export default function AdminDashboard() {
       totalOnHand += onHand;
       totalReserved += reserved;
 
-      if (inventoryIsLow(row)) {
+      if (row.isActive && inventoryIsOut(row)) {
+        outOfStockCount += 1;
+      }
+
+      if (row.isActive && inventoryIsLow(row)) {
         lowStockCount += 1;
       }
 
@@ -1042,8 +1068,20 @@ export default function AdminDashboard() {
       totalReserved,
       totalAvailable: totalOnHand - totalReserved,
       lowStockCount,
+      outOfStockCount,
       inactiveCount,
     };
+  }, [inventory]);
+
+  const lowStockRows = useMemo(() => {
+    return [...inventory]
+      .filter((row) => Boolean(row.isActive) && inventoryIsLow(row))
+      .sort((a, b) => {
+        const aAvail = inventoryAvailable(a);
+        const bAvail = inventoryAvailable(b);
+        if (aAvail !== bAvail) return aAvail - bAvail;
+        return String(a.productName || "").localeCompare(String(b.productName || ""));
+      });
   }, [inventory]);
 
   const filteredInventory = useMemo(() => {
@@ -1213,6 +1251,28 @@ export default function AdminDashboard() {
               </div>
             )}
 
+            {inventoryStats.lowStockCount > 0 && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-300" />
+                  <div>
+                    <div className="font-semibold text-amber-200">Inventory attention needed</div>
+                    <div className="mt-1 text-sm text-amber-100/90">
+                      {inventoryStats.outOfStockCount > 0
+                        ? `${inventoryStats.outOfStockCount} out-of-stock item${
+                            inventoryStats.outOfStockCount === 1 ? "" : "s"
+                          } and ${inventoryStats.lowStockCount} low-stock item${
+                            inventoryStats.lowStockCount === 1 ? "" : "s"
+                          } detected.`
+                        : `${inventoryStats.lowStockCount} low-stock item${
+                            inventoryStats.lowStockCount === 1 ? "" : "s"
+                          } detected.`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid md:grid-cols-4 gap-4">
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Total revenue</div>
@@ -1243,6 +1303,94 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+
+            <div className="grid md:grid-cols-4 gap-4">
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Inventory available</div>
+                <div className="text-2xl font-bold mt-1">{inventoryStats.totalAvailable}</div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Reserved units</div>
+                <div className="text-2xl font-bold mt-1">{inventoryStats.totalReserved}</div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Low stock items</div>
+                <div
+                  className={`text-2xl font-bold mt-1 ${
+                    inventoryStats.lowStockCount > 0 ? "text-amber-300" : ""
+                  }`}
+                >
+                  {inventoryStats.lowStockCount}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Out of stock</div>
+                <div
+                  className={`text-2xl font-bold mt-1 ${
+                    inventoryStats.outOfStockCount > 0 ? "text-red-300" : ""
+                  }`}
+                >
+                  {inventoryStats.outOfStockCount}
+                </div>
+              </div>
+            </div>
+
+            {lowStockRows.length > 0 && (
+              <div className="rounded-lg border border-border overflow-hidden">
+                <div className="border-b border-border p-4">
+                  <div className="font-semibold">Low stock watchlist</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Prioritized by lowest available quantity.
+                  </div>
+                </div>
+
+                <div className="overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40">
+                      <tr>
+                        <th className="p-3 text-left">Product</th>
+                        <th className="p-3 text-left">Flavor</th>
+                        <th className="p-3 text-left">SKU</th>
+                        <th className="p-3 text-left">Available</th>
+                        <th className="p-3 text-left">Reorder point</th>
+                        <th className="p-3 text-left">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lowStockRows.slice(0, 8).map((row) => (
+                        <tr key={row.id} className="border-t border-border">
+                          <td className="p-3 font-medium">{row.productName || "—"}</td>
+                          <td className="p-3">{titleizeSlug(row.flavor) || "—"}</td>
+                          <td className="p-3 font-mono text-xs">{row.sku || "—"}</td>
+                          <td
+                            className={`p-3 font-semibold ${
+                              inventoryIsOut(row) ? "text-red-300" : "text-amber-300"
+                            }`}
+                          >
+                            {inventoryAvailable(row)}
+                          </td>
+                          <td className="p-3">{row.reorderPoint}</td>
+                          <td className="p-3">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-1 text-xs ${
+                                inventoryIsOut(row)
+                                  ? "bg-red-500/15 text-red-300"
+                                  : "bg-amber-500/15 text-amber-300"
+                              }`}
+                            >
+                              {inventoryHealthLabel(row)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1893,7 +2041,13 @@ export default function AdminDashboard() {
 
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Low stock items</div>
-                <div className="text-2xl font-bold mt-1">{inventoryStats.lowStockCount}</div>
+                <div
+                  className={`text-2xl font-bold mt-1 ${
+                    inventoryStats.lowStockCount > 0 ? "text-amber-300" : ""
+                  }`}
+                >
+                  {inventoryStats.lowStockCount}
+                </div>
               </div>
 
               <div className="rounded-lg border border-border p-4">
@@ -1901,6 +2055,32 @@ export default function AdminDashboard() {
                 <div className="text-2xl font-bold mt-1">{inventoryStats.inactiveCount}</div>
               </div>
             </div>
+
+            {lowStockRows.length > 0 && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-300" />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-amber-200">
+                      {inventoryStats.outOfStockCount > 0
+                        ? "Out-of-stock and low-stock items"
+                        : "Low-stock items"}
+                    </div>
+                    <div className="mt-1 text-sm text-amber-100/90">
+                      {lowStockRows
+                        .slice(0, 5)
+                        .map(
+                          (row) =>
+                            `${row.productName} (${titleizeSlug(row.flavor)}: ${inventoryAvailable(
+                              row
+                            )} available)`
+                        )
+                        .join(" • ")}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="rounded-lg border border-border p-4">
               <div className="grid gap-3 md:grid-cols-4">
@@ -2002,6 +2182,7 @@ export default function AdminDashboard() {
                       const reserved = Number(row.reservedQuantity ?? 0) || 0;
                       const available = inventoryAvailable(row);
                       const lowStock = inventoryIsLow(row);
+                      const outOfStock = inventoryIsOut(row);
                       const viewingThis = selectedInventoryId === row.id;
 
                       return (
@@ -2016,7 +2197,11 @@ export default function AdminDashboard() {
                           <td className="p-3">{titleizeSlug(row.flavor) || "—"}</td>
                           <td className="p-3">{onHand}</td>
                           <td className="p-3">{reserved}</td>
-                          <td className={`p-3 font-medium ${lowStock ? "text-amber-300" : ""}`}>
+                          <td
+                            className={`p-3 font-medium ${
+                              outOfStock ? "text-red-300" : lowStock ? "text-amber-300" : ""
+                            }`}
+                          >
                             {available}
                           </td>
                           <td className="p-3">{row.reorderPoint}</td>
@@ -2024,18 +2209,17 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <span
                                 className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                                  lowStock
+                                  !row.isActive
+                                    ? "bg-zinc-500/15 text-zinc-300"
+                                    : outOfStock
+                                    ? "bg-red-500/15 text-red-300"
+                                    : lowStock
                                     ? "bg-amber-500/15 text-amber-300"
                                     : "bg-emerald-500/15 text-emerald-300"
                                 }`}
                               >
-                                {lowStock ? "Low stock" : "OK"}
+                                {inventoryHealthLabel(row)}
                               </span>
-                              {!row.isActive && (
-                                <span className="inline-flex rounded-full bg-zinc-500/15 px-2 py-1 text-xs text-zinc-300">
-                                  Inactive
-                                </span>
-                              )}
                             </div>
                           </td>
                           <td className="p-3 text-muted-foreground">{fmtDate(row.updatedAt)}</td>
@@ -2140,7 +2324,11 @@ export default function AdminDashboard() {
                             <div className="text-xs text-muted-foreground">Available</div>
                             <div
                               className={`text-2xl font-bold mt-1 ${
-                                inventoryIsLow(selectedInventoryRow) ? "text-amber-300" : ""
+                                inventoryIsOut(selectedInventoryRow)
+                                  ? "text-red-300"
+                                  : inventoryIsLow(selectedInventoryRow)
+                                  ? "text-amber-300"
+                                  : ""
                               }`}
                             >
                               {inventoryAvailable(selectedInventoryRow)}

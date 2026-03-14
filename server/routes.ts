@@ -2420,32 +2420,46 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const cancelUrl = `${siteUrl}/checkout?canceled=1`;
 
       const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
+      
       for (const item of items) {
-  const flavorName = titleizeSlug(item.flavor);
+  const flavor = String(item.flavor || "").trim();
+  const requestedQty = Math.max(1, Math.trunc(Number(item.quantity ?? 0) || 0));
 
-  const inv = await db.execute(sql`
-    select
-      coalesce(sum(on_hand_delta),0) as on_hand,
-      coalesce(sum(reserved_delta),0) as reserved
-    from inventory_events
-    where flavor = ${item.flavor}
-  `);
+  const invRows = await db
+    .select({
+      id: inventoryItems.id,
+      flavor: inventoryItems.flavor,
+      onHandQuantity: inventoryItems.onHandQuantity,
+      reservedQuantity: inventoryItems.reservedQuantity,
+      isActive: inventoryItems.isActive,
+    })
+    .from(inventoryItems)
+    .where(eq(inventoryItems.flavor, flavor))
+    .limit(1);
 
-  const row = inv.rows?.[0] ?? { on_hand: 0, reserved: 0 };
+  const inv = invRows?.[0];
 
-  const onHand = Number(row.on_hand ?? 0);
-  const reserved = Number(row.reserved ?? 0);
-  const available = onHand - reserved;
+  if (!inv || !inv.isActive) {
+    return res.status(400).json({
+      message: `${titleizeSlug(flavor)} is not currently available.`,
+    });
+  }
 
-  if (available < item.quantity) {
+  const onHand = Number(inv.onHandQuantity ?? 0) || 0;
+  const reserved = Number(inv.reservedQuantity ?? 0) || 0;
+  const available = Math.max(0, onHand - reserved);
+
+  if (available < requestedQty) {
     if (available <= 0) {
       return res.status(400).json({
-        message: `${flavorName} is currently out of stock.`,
+        message: `${titleizeSlug(flavor)} is currently out of stock.`,
       });
     }
 
     return res.status(400).json({
-      message: `Only ${available} ${flavorName} left in stock. Please adjust your cart.`,
+      message: `Only ${available} ${titleizeSlug(
+        flavor
+      )} left in stock. Please adjust your cart.`,
     });
   }
 }

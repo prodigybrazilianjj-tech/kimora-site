@@ -28,6 +28,15 @@ function slugToEnvKey(slug: string) {
   return slug.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 
+function normalizeFlavorSlug(value: string) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function getSiteUrl() {
   return (
     process.env.PUBLIC_SITE_URL ||
@@ -66,7 +75,7 @@ function safeErrSummary(err: any) {
 
 function titleizeSlug(value: string | null | undefined) {
   return String(value || "")
-    .split("-")
+    .split(/[-\s]+/g)
     .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
     .filter(Boolean)
     .join(" ");
@@ -117,7 +126,7 @@ function parseDateOnlyInput(value: any): Date | null {
 }
 
 function getPriceId(item: CheckoutItem) {
-  const flavorKey = slugToEnvKey(item.flavor);
+  const flavorKey = slugToEnvKey(normalizeFlavorSlug(item.flavor));
 
   if (item.type === "onetime") {
     const envName = `STRIPE_PRICE_${flavorKey}_ONETIME`;
@@ -138,7 +147,7 @@ function envPriceId(
   type: "onetime" | "subscribe",
   frequency?: "2" | "4" | "6"
 ) {
-  const flavorKey = slugToEnvKey(flavor);
+  const flavorKey = slugToEnvKey(normalizeFlavorSlug(flavor));
   const envName =
     type === "onetime"
       ? `STRIPE_PRICE_${flavorKey}_ONETIME`
@@ -717,7 +726,7 @@ async function computeCartSubtotalCentsFromStripePrices(
 async function assertInventoryAvailableForCheckout(items: CheckoutItem[]) {
   const normalized = items
     .map((it) => ({
-      flavor: safeString(it.flavor, 120),
+      flavor: normalizeFlavorSlug(safeString(it.flavor, 120)),
       quantity: Number(it.quantity ?? 0),
     }))
     .filter((it) => it.flavor && Number.isFinite(it.quantity) && it.quantity > 0);
@@ -753,7 +762,7 @@ async function assertInventoryAvailableForCheckout(items: CheckoutItem[]) {
   >();
 
   for (const row of rows) {
-    byFlavor.set(String(row.flavor || "").trim(), row);
+    byFlavor.set(normalizeFlavorSlug(String(row.flavor || "").trim()), row);
   }
 
   const failures: string[] = [];
@@ -2384,7 +2393,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const itemsRaw: any[] = Array.isArray(req.body?.items) ? req.body.items : [];
       const items: CheckoutItem[] = itemsRaw
         .map((it: any) => {
-          const flavor = String(it?.flavor ?? "").trim();
+          const flavor = normalizeFlavorSlug(String(it?.flavor ?? ""));
           const type: CheckoutItem["type"] = it?.type === "subscribe" ? "subscribe" : "onetime";
           const frequency: CheckoutItem["frequency"] | undefined =
             type === "subscribe" &&

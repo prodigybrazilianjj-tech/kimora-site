@@ -186,9 +186,20 @@ function inventoryAvailable(row: InventoryRow) {
   return onHand - reserved;
 }
 
-function inventoryIsLow(row: InventoryRow) {
+function inventoryLowThreshold(row: InventoryRow) {
+  const reorderPoint = Number(row.reorderPoint ?? 0) || 0;
+  return reorderPoint * 2;
+}
+
+function inventoryIsCritical(row: InventoryRow) {
   const reorderPoint = Number(row.reorderPoint ?? 0) || 0;
   return inventoryAvailable(row) <= reorderPoint;
+}
+
+function inventoryIsLow(row: InventoryRow) {
+  const available = inventoryAvailable(row);
+  const lowThreshold = inventoryLowThreshold(row);
+  return available <= lowThreshold;
 }
 
 function inventoryIsOut(row: InventoryRow) {
@@ -198,8 +209,9 @@ function inventoryIsOut(row: InventoryRow) {
 function inventoryHealthLabel(row: InventoryRow) {
   if (!row.isActive) return "Inactive";
   if (inventoryIsOut(row)) return "Out";
+  if (inventoryIsCritical(row)) return "Critical";
   if (inventoryIsLow(row)) return "Low stock";
-  return "OK";
+  return "Healthy";
 }
 
 function safeNum(value: unknown, fallback = 0) {
@@ -1040,6 +1052,7 @@ export default function AdminDashboard() {
     let totalOnHand = 0;
     let totalReserved = 0;
     let lowStockCount = 0;
+    let criticalCount = 0;
     let outOfStockCount = 0;
     let inactiveCount = 0;
 
@@ -1052,6 +1065,10 @@ export default function AdminDashboard() {
 
       if (row.isActive && inventoryIsOut(row)) {
         outOfStockCount += 1;
+      }
+
+      if (row.isActive && inventoryIsCritical(row)) {
+        criticalCount += 1;
       }
 
       if (row.isActive && inventoryIsLow(row)) {
@@ -1068,6 +1085,7 @@ export default function AdminDashboard() {
       totalReserved,
       totalAvailable: totalOnHand - totalReserved,
       lowStockCount,
+      criticalCount,
       outOfStockCount,
       inactiveCount,
     };
@@ -1261,6 +1279,14 @@ export default function AdminDashboard() {
                       {inventoryStats.outOfStockCount > 0
                         ? `${inventoryStats.outOfStockCount} out-of-stock item${
                             inventoryStats.outOfStockCount === 1 ? "" : "s"
+                          }, ${inventoryStats.criticalCount} critical item${
+                            inventoryStats.criticalCount === 1 ? "" : "s"
+                          }, and ${inventoryStats.lowStockCount} low-stock item${
+                            inventoryStats.lowStockCount === 1 ? "" : "s"
+                          } detected.`
+                        : inventoryStats.criticalCount > 0
+                        ? `${inventoryStats.criticalCount} critical item${
+                            inventoryStats.criticalCount === 1 ? "" : "s"
                           } and ${inventoryStats.lowStockCount} low-stock item${
                             inventoryStats.lowStockCount === 1 ? "" : "s"
                           } detected.`
@@ -1304,7 +1330,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid md:grid-cols-5 gap-4">
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Inventory available</div>
                 <div className="text-2xl font-bold mt-1">{inventoryStats.totalAvailable}</div>
@@ -1324,6 +1350,19 @@ export default function AdminDashboard() {
                 >
                   {inventoryStats.lowStockCount}
                 </div>
+                <div className="mt-1 text-xs text-muted-foreground">≤ 2 × reorder point</div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Critical items</div>
+                <div
+                  className={`text-2xl font-bold mt-1 ${
+                    inventoryStats.criticalCount > 0 ? "text-red-300" : ""
+                  }`}
+                >
+                  {inventoryStats.criticalCount}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">≤ reorder point</div>
               </div>
 
               <div className="rounded-lg border border-border p-4">
@@ -1356,36 +1395,43 @@ export default function AdminDashboard() {
                         <th className="p-3 text-left">SKU</th>
                         <th className="p-3 text-left">Available</th>
                         <th className="p-3 text-left">Reorder point</th>
+                        <th className="p-3 text-left">Low threshold</th>
                         <th className="p-3 text-left">Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {lowStockRows.slice(0, 8).map((row) => (
-                        <tr key={row.id} className="border-t border-border">
-                          <td className="p-3 font-medium">{row.productName || "—"}</td>
-                          <td className="p-3">{titleizeSlug(row.flavor) || "—"}</td>
-                          <td className="p-3 font-mono text-xs">{row.sku || "—"}</td>
-                          <td
-                            className={`p-3 font-semibold ${
-                              inventoryIsOut(row) ? "text-red-300" : "text-amber-300"
-                            }`}
-                          >
-                            {inventoryAvailable(row)}
-                          </td>
-                          <td className="p-3">{row.reorderPoint}</td>
-                          <td className="p-3">
-                            <span
-                              className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                                inventoryIsOut(row)
-                                  ? "bg-red-500/15 text-red-300"
-                                  : "bg-amber-500/15 text-amber-300"
+                      {lowStockRows.slice(0, 8).map((row) => {
+                        const critical = inventoryIsCritical(row);
+                        const out = inventoryIsOut(row);
+
+                        return (
+                          <tr key={row.id} className="border-t border-border">
+                            <td className="p-3 font-medium">{row.productName || "—"}</td>
+                            <td className="p-3">{titleizeSlug(row.flavor) || "—"}</td>
+                            <td className="p-3 font-mono text-xs">{row.sku || "—"}</td>
+                            <td
+                              className={`p-3 font-semibold ${
+                                out || critical ? "text-red-300" : "text-amber-300"
                               }`}
                             >
-                              {inventoryHealthLabel(row)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                              {inventoryAvailable(row)}
+                            </td>
+                            <td className="p-3">{row.reorderPoint}</td>
+                            <td className="p-3">{inventoryLowThreshold(row)}</td>
+                            <td className="p-3">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-1 text-xs ${
+                                  out || critical
+                                    ? "bg-red-500/15 text-red-300"
+                                    : "bg-amber-500/15 text-amber-300"
+                                }`}
+                              >
+                                {inventoryHealthLabel(row)}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -2023,7 +2069,7 @@ export default function AdminDashboard() {
 
         {tab === "inventory" && (
           <div className="mt-6 grid gap-4">
-            <div className="grid md:grid-cols-5 gap-4">
+            <div className="grid md:grid-cols-6 gap-4">
               <div className="rounded-lg border border-border p-4">
                 <div className="text-sm text-muted-foreground">Total on hand</div>
                 <div className="text-2xl font-bold mt-1">{inventoryStats.totalOnHand}</div>
@@ -2048,6 +2094,19 @@ export default function AdminDashboard() {
                 >
                   {inventoryStats.lowStockCount}
                 </div>
+                <div className="mt-1 text-xs text-muted-foreground">≤ 2 × reorder point</div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-sm text-muted-foreground">Critical items</div>
+                <div
+                  className={`text-2xl font-bold mt-1 ${
+                    inventoryStats.criticalCount > 0 ? "text-red-300" : ""
+                  }`}
+                >
+                  {inventoryStats.criticalCount}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">≤ reorder point</div>
               </div>
 
               <div className="rounded-lg border border-border p-4">
@@ -2063,7 +2122,9 @@ export default function AdminDashboard() {
                   <div className="min-w-0">
                     <div className="font-semibold text-amber-200">
                       {inventoryStats.outOfStockCount > 0
-                        ? "Out-of-stock and low-stock items"
+                        ? "Out-of-stock, critical, and low-stock items"
+                        : inventoryStats.criticalCount > 0
+                        ? "Critical and low-stock items"
                         : "Low-stock items"}
                     </div>
                     <div className="mt-1 text-sm text-amber-100/90">
@@ -2171,6 +2232,7 @@ export default function AdminDashboard() {
                       <th className="p-3 text-left">Reserved</th>
                       <th className="p-3 text-left">Available</th>
                       <th className="p-3 text-left">Reorder point</th>
+                      <th className="p-3 text-left">Low threshold</th>
                       <th className="p-3 text-left">Status</th>
                       <th className="p-3 text-left">Updated</th>
                       <th className="p-3 text-left">Action</th>
@@ -2182,6 +2244,7 @@ export default function AdminDashboard() {
                       const reserved = Number(row.reservedQuantity ?? 0) || 0;
                       const available = inventoryAvailable(row);
                       const lowStock = inventoryIsLow(row);
+                      const critical = inventoryIsCritical(row);
                       const outOfStock = inventoryIsOut(row);
                       const viewingThis = selectedInventoryId === row.id;
 
@@ -2199,19 +2262,24 @@ export default function AdminDashboard() {
                           <td className="p-3">{reserved}</td>
                           <td
                             className={`p-3 font-medium ${
-                              outOfStock ? "text-red-300" : lowStock ? "text-amber-300" : ""
+                              outOfStock || critical
+                                ? "text-red-300"
+                                : lowStock
+                                ? "text-amber-300"
+                                : ""
                             }`}
                           >
                             {available}
                           </td>
                           <td className="p-3">{row.reorderPoint}</td>
+                          <td className="p-3">{inventoryLowThreshold(row)}</td>
                           <td className="p-3">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span
                                 className={`inline-flex rounded-full px-2 py-1 text-xs ${
                                   !row.isActive
                                     ? "bg-zinc-500/15 text-zinc-300"
-                                    : outOfStock
+                                    : outOfStock || critical
                                     ? "bg-red-500/15 text-red-300"
                                     : lowStock
                                     ? "bg-amber-500/15 text-amber-300"
@@ -2239,7 +2307,7 @@ export default function AdminDashboard() {
 
                     {!filteredInventory.length && !inventoryLoading && !inventoryError && (
                       <tr>
-                        <td className="p-4 text-muted-foreground" colSpan={10}>
+                        <td className="p-4 text-muted-foreground" colSpan={11}>
                           No inventory items found.
                         </td>
                       </tr>
@@ -2324,7 +2392,7 @@ export default function AdminDashboard() {
                             <div className="text-xs text-muted-foreground">Available</div>
                             <div
                               className={`text-2xl font-bold mt-1 ${
-                                inventoryIsOut(selectedInventoryRow)
+                                inventoryIsOut(selectedInventoryRow) || inventoryIsCritical(selectedInventoryRow)
                                   ? "text-red-300"
                                   : inventoryIsLow(selectedInventoryRow)
                                   ? "text-amber-300"
@@ -2340,12 +2408,13 @@ export default function AdminDashboard() {
                           </div>
 
                           <div className="rounded-md border border-border p-3">
-                            <div className="text-xs text-muted-foreground">Reorder point</div>
+                            <div className="text-xs text-muted-foreground">Thresholds</div>
                             <div className="text-2xl font-bold mt-1">
                               {selectedInventoryRow.reorderPoint}
                             </div>
                             <div className="text-xs text-muted-foreground mt-1">
-                              Updated {fmtDate(selectedInventoryRow.updatedAt)}
+                              Critical ≤ {selectedInventoryRow.reorderPoint} • Low ≤{" "}
+                              {inventoryLowThreshold(selectedInventoryRow)}
                             </div>
                           </div>
                         </div>

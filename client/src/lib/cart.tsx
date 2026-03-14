@@ -16,6 +16,7 @@ type CartContextType = {
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
+  setQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   subtotal: number;
   cartCount: number;
@@ -23,20 +24,54 @@ type CartContextType = {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+function normalizeCartItem(raw: any): CartItem | null {
+  const id = String(raw?.id ?? "").trim();
+  const flavor = String(raw?.flavor ?? "").trim();
+  const type: CartItem["type"] = raw?.type === "subscribe" ? "subscribe" : "onetime";
+  const price = Number(raw?.price);
+  const quantityRaw = Number(raw?.quantity);
+  const quantity = Number.isFinite(quantityRaw) ? Math.max(1, Math.floor(quantityRaw)) : 1;
+  const frequency =
+    raw?.frequency == null || raw?.frequency === "" ? undefined : String(raw.frequency);
+  const image = String(raw?.image ?? "").trim();
+
+  if (!id || !flavor || !Number.isFinite(price)) return null;
+
+  return {
+    id,
+    flavor,
+    type,
+    price,
+    quantity,
+    frequency,
+    image,
+  };
+}
+
+function readStoredCart(): CartItem[] {
+  try {
+    const savedCart = localStorage.getItem("kimora-cart");
+    if (!savedCart) return [];
+
+    const parsed = JSON.parse(savedCart);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map(normalizeCartItem)
+      .filter((item): item is CartItem => Boolean(item));
+  } catch (e) {
+    console.error("Failed to parse cart", e);
+    return [];
+  }
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const { toast } = useToast();
 
   // Load from localStorage on mount
   useEffect(() => {
-    const savedCart = localStorage.getItem("kimora-cart");
-    if (savedCart) {
-      try {
-        setItems(JSON.parse(savedCart));
-      } catch (e) {
-        console.error("Failed to parse cart", e);
-      }
-    }
+    setItems(readStoredCart());
   }, []);
 
   // Save to localStorage on change
@@ -45,18 +80,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items]);
 
   const addToCart = (newItem: CartItem) => {
+    const normalized = normalizeCartItem(newItem);
+    if (!normalized) return;
+
     setItems((prev) => {
-      const existing = prev.find((i) => i.id === newItem.id);
+      const existing = prev.find((i) => i.id === normalized.id);
+
       if (existing) {
         return prev.map((i) =>
-          i.id === newItem.id ? { ...i, quantity: i.quantity + newItem.quantity } : i
+          i.id === normalized.id
+            ? { ...i, quantity: Math.max(1, i.quantity + normalized.quantity) }
+            : i
         );
       }
-      return [...prev, newItem];
+
+      return [...prev, normalized];
     });
+
     toast({
       title: "Added to cart",
-      description: `${newItem.quantity}x ${newItem.flavor} added.`,
+      description: `${normalized.quantity}x ${normalized.flavor} added.`,
     });
   };
 
@@ -65,11 +108,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateQuantity = (id: string, delta: number) => {
+    const safeDelta = Number.isFinite(delta) ? Math.trunc(delta) : 0;
+    if (!safeDelta) return;
+
     setItems((prev) =>
       prev.map((i) => {
         if (i.id === id) {
-          const newQty = Math.max(1, i.quantity + delta);
+          const newQty = Math.max(1, i.quantity + safeDelta);
           return { ...i, quantity: newQty };
+        }
+        return i;
+      })
+    );
+  };
+
+  const setQuantity = (id: string, quantity: number) => {
+    const safeQty = Number.isFinite(quantity) ? Math.max(1, Math.floor(quantity)) : 1;
+
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.id === id) {
+          return { ...i, quantity: safeQty };
         }
         return i;
       })
@@ -88,6 +147,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         addToCart,
         removeFromCart,
         updateQuantity,
+        setQuantity,
         clearCart,
         subtotal,
         cartCount,

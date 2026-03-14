@@ -777,11 +777,15 @@ async function assertInventoryAvailableForCheckout(items: CheckoutItem[]) {
     const available = Math.max(0, onHand - reserved);
 
     if (available < requested) {
-      failures.push(
-        `${titleizeSlug(flavor)} only has ${available} available, but ${requested} ${
-          requested === 1 ? "was" : "were"
-        } requested.`
-      );
+      if (available <= 0) {
+        failures.push(`${titleizeSlug(flavor)} is currently out of stock.`);
+      } else {
+        failures.push(
+          `Only ${available} ${titleizeSlug(flavor)} ${
+            available === 1 ? "is" : "are"
+          } left in stock. Please adjust your cart.`
+        );
+      }
     }
   }
 
@@ -2413,54 +2417,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
+      await assertInventoryAvailableForCheckout(items);
+
       const siteUrl = getSiteUrl();
       const successUrl = `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${siteUrl}/checkout?canceled=1`;
 
       const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
-      
-      for (const item of items) {
-  const flavor = String(item.flavor || "").trim();
-  const requestedQty = Math.max(1, Math.trunc(Number(item.quantity ?? 0) || 0));
 
-  const invRows = await db
-    .select({
-      id: inventoryItems.id,
-      flavor: inventoryItems.flavor,
-      onHandQuantity: inventoryItems.onHandQuantity,
-      reservedQuantity: inventoryItems.reservedQuantity,
-      isActive: inventoryItems.isActive,
-    })
-    .from(inventoryItems)
-    .where(eq(inventoryItems.flavor, flavor))
-    .limit(1);
-
-  const inv = invRows?.[0];
-
-  if (!inv || !inv.isActive) {
-    return res.status(400).json({
-      message: `${titleizeSlug(flavor)} is not currently available.`,
-    });
-  }
-
-  const onHand = Number(inv.onHandQuantity ?? 0) || 0;
-  const reserved = Number(inv.reservedQuantity ?? 0) || 0;
-  const available = Math.max(0, onHand - reserved);
-
-  if (available < requestedQty) {
-    if (available <= 0) {
-      return res.status(400).json({
-        message: `${titleizeSlug(flavor)} is currently out of stock.`,
-      });
-    }
-
-    return res.status(400).json({
-      message: `Only ${available} ${titleizeSlug(
-        flavor
-      )} left in stock. Please adjust your cart.`,
-    });
-  }
-}
       const line_items = items.map((it: CheckoutItem) => ({
         price: getPriceId(it),
         quantity: it.quantity,
@@ -2508,7 +2472,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       console.error("POST /api/checkout error:", s);
 
       const publicMessage =
-        err?.publicMessage || err?.raw?.message || err?.message || "Failed to create checkout session.";
+        err?.publicMessage ||
+        err?.raw?.message ||
+        err?.message ||
+        "Failed to create checkout session.";
 
       if (String(publicMessage).startsWith("Missing env var:")) {
         return res.status(500).json({ message: publicMessage });

@@ -2420,7 +2420,35 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const cancelUrl = `${siteUrl}/checkout?canceled=1`;
 
       const mode: "payment" | "subscription" = hasSub ? "subscription" : "payment";
+      for (const item of items) {
+  const flavorName = titleizeSlug(item.flavor);
 
+  const inv = await db.execute(sql`
+    select
+      coalesce(sum(on_hand_delta),0) as on_hand,
+      coalesce(sum(reserved_delta),0) as reserved
+    from inventory_events
+    where flavor = ${item.flavor}
+  `);
+
+  const row = inv.rows?.[0] ?? { on_hand: 0, reserved: 0 };
+
+  const onHand = Number(row.on_hand ?? 0);
+  const reserved = Number(row.reserved ?? 0);
+  const available = onHand - reserved;
+
+  if (available < item.quantity) {
+    if (available <= 0) {
+      return res.status(400).json({
+        message: `${flavorName} is currently out of stock.`,
+      });
+    }
+
+    return res.status(400).json({
+      message: `Only ${available} ${flavorName} left in stock. Please adjust your cart.`,
+    });
+  }
+}
       const line_items = items.map((it: CheckoutItem) => ({
         price: getPriceId(it),
         quantity: it.quantity,

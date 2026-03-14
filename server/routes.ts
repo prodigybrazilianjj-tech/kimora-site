@@ -15,7 +15,7 @@ import {
 
 import { stripe } from "./stripe";
 import { db } from "./db";
-import { orders, orderItems, wholesaleApplications } from "../shared/schema";
+import { orders, orderItems, wholesaleApplications, inventoryItems } from "../shared/schema";
 
 type CheckoutItem = {
   flavor: string;
@@ -712,6 +712,85 @@ async function computeCartSubtotalCentsFromStripePrices(
   }
 
   return subtotal;
+}
+
+async function assertInventoryAvailableForCheckout(items: CheckoutItem[]) {
+  const normalized = items
+    .map((it) => ({
+      flavor: safeString(it.flavor, 120),
+      quantity: Number(it.quantity ?? 0),
+    }))
+    .filter((it) => it.flavor && Number.isFinite(it.quantity) && it.quantity > 0);
+
+  if (!normalized.length) return;
+
+  const qtyByFlavor = new Map<string, number>();
+  for (const item of normalized) {
+    qtyByFlavor.set(item.flavor, (qtyByFlavor.get(item.flavor) || 0) + item.quantity);
+  }
+
+  const flavors = Array.from(qtyByFlavor.keys());
+  if (!flavors.length) return;
+
+  const rows = await db
+    .select({
+      flavor: inventoryItems.flavor,
+      isActive: inventoryItems.isActive,
+      onHandQuantity: inventoryItems.onHandQuantity,
+      reservedQuantity: inventoryItems.reservedQuantity,
+    })
+    .from(inventoryItems)
+    .where(inArray(inventoryItems.flavor, flavors as any));
+
+  const byFlavor = new Map<
+    string,
+    {
+      flavor: string;
+      isActive: boolean | null;
+      onHandQuantity: number | null;
+      reservedQuantity: number | null;
+    }
+  >();
+
+  for (const row of rows) {
+    byFlavor.set(String(row.flavor || "").trim(), row);
+  }
+
+  const failures: string[] = [];
+
+  for (const flavor of flavors) {
+    const requested = qtyByFlavor.get(flavor) || 0;
+    const row = byFlavor.get(flavor);
+
+    if (!row) {
+      failures.push(`${titleizeSlug(flavor)} is not currently available.`);
+      continue;
+    }
+
+    if (!row.isActive) {
+      failures.push(`${titleizeSlug(flavor)} is not currently active.`);
+      continue;
+    }
+
+    const onHand = Number(row.onHandQuantity ?? 0) || 0;
+    const reserved = Number(row.reservedQuantity ?? 0) || 0;
+    const available = Math.max(0, onHand - reserved);
+
+    if (available < requested) {
+      failures.push(
+        `${titleizeSlug(flavor)} only has ${available} available, but ${requested} ${
+          requested === 1 ? "was" : "were"
+        } requested.`
+      );
+    }
+  }
+
+  if (failures.length) {
+    const err: any = new Error(failures.join(" "));
+    err.statusCode = 409;
+    err.publicMessage = failures.join(" ");
+    throw err;
+  }
 }
 
 function buildShippingOptions(params: { currency: string; subtotalCents: number }): any[] {
@@ -2334,6 +2413,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
+      await assertInventoryAvailableForCheckout(items);
+
       const siteUrl = getSiteUrl();
       const successUrl = `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${siteUrl}/checkout?canceled=1`;
@@ -2386,14 +2467,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const s = safeErrSummary(err);
       console.error("POST /api/checkout error:", s);
 
-      const stripeMsg = err?.raw?.message || err?.message || "Failed to create checkout session.";
+      const publicMessage =
+        err?.publicMessage || err?.raw?.message || err?.message || "Failed to create checkout session.";
 
-      if (String(stripeMsg).startsWith("Missing env var:")) {
-        return res.status(500).json({ message: stripeMsg });
+      if (String(publicMessage).startsWith("Missing env var:")) {
+        return res.status(500).json({ message: publicMessage });
+      }
+
+      if (Number(err?.statusCode) === 409) {
+        return res.status(409).json({ message: publicMessage });
       }
 
       return res.status(500).json({
-        message: stripeMsg,
+        message: publicMessage,
         code: err?.code || err?.raw?.code || undefined,
         type: err?.type || err?.raw?.type || undefined,
       });

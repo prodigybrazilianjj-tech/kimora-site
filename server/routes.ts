@@ -2413,8 +2413,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
-      await assertInventoryAvailableForCheckout(items);
-
       const siteUrl = getSiteUrl();
       const successUrl = `${siteUrl}/order-success?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${siteUrl}/checkout?canceled=1`;

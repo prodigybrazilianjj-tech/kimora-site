@@ -73,6 +73,18 @@ function isResumeMode(v: unknown): v is ResumeMode {
   return v === "subscription" || v === "onetime";
 }
 
+function looksLikeInventoryError(message: string | null | undefined) {
+  const msg = String(message || "").toLowerCase();
+  if (!msg) return false;
+
+  return (
+    msg.includes("left in stock") ||
+    msg.includes("out of stock") ||
+    msg.includes("not currently available") ||
+    msg.includes("not currently active")
+  );
+}
+
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { items, subtotal } = useCart() as any;
@@ -175,14 +187,23 @@ export default function Checkout() {
     [normalizedEmail],
   );
 
-  // Clear error once the email is valid
+  const hasInventoryError = useMemo(() => looksLikeInventoryError(error), [error]);
+
+  // Clear email-only error once the email is valid
   useEffect(() => {
-    if (error && emailOk) setError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emailOk]);
+    if (error && !hasInventoryError && emailOk) setError(null);
+  }, [emailOk, error, hasInventoryError]);
+
+  // Clear prior stock error when cart changes
+  useEffect(() => {
+    if (hasInventoryError) {
+      setError(null);
+    }
+  }, [items, hasInventoryError]);
 
   async function startCheckout(mode: ResumeMode) {
     if (loading) return;
+    if (hasInventoryError) return;
 
     setError(null);
     setEmailTouched(true);
@@ -258,6 +279,7 @@ export default function Checkout() {
     if (!resumeMode) return;
     if (didAutoStart.current) return;
     if (isEmpty) return;
+    if (hasInventoryError) return;
 
     // Must be ready to proceed
     if (!emailOk) return;
@@ -269,9 +291,13 @@ export default function Checkout() {
     didAutoStart.current = true;
     startCheckout(resumeMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeMode, isEmpty, emailOk, hasOne, hasSub]);
+  }, [resumeMode, isEmpty, emailOk, hasOne, hasSub, hasInventoryError]);
 
   const showEmailInlineError = emailTouched && !emailOk && !!email;
+
+  const singleCheckoutDisabled = isEmpty || !emailOk || !!loading || hasInventoryError;
+  const subscriptionCheckoutDisabled = !hasSub || !emailOk || !!loading || hasInventoryError;
+  const onetimeCheckoutDisabled = !hasOne || !emailOk || !!loading || hasInventoryError;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -319,7 +345,7 @@ export default function Checkout() {
                   inputMode="email"
                   autoComplete="email"
                   className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
-                  disabled={!!loading} // prevents weird mid-redirect edits
+                  disabled={!!loading}
                 />
 
                 {showEmailInlineError ? (
@@ -347,7 +373,21 @@ export default function Checkout() {
 
               {error ? (
                 <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
-                  {error}
+                  <div>{error}</div>
+
+                  {hasInventoryError ? (
+                    <div className="mt-4">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="h-10 bg-white/10 hover:bg-white/20 text-white"
+                        onClick={() => setLocation("/cart")}
+                        disabled={!!loading}
+                      >
+                        Adjust Cart
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -357,33 +397,41 @@ export default function Checkout() {
                   <Button
                     type="button"
                     onClick={() => startCheckout(hasSub ? "subscription" : "onetime")}
-                    disabled={isEmpty || !emailOk || !!loading}
-                    className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg"
+                    disabled={singleCheckoutDisabled}
+                    className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg disabled:opacity-60"
                   >
-                    {loading ? "Redirecting to Stripe..." : "Continue to Payment"}
+                    {loading
+                      ? "Redirecting to Stripe..."
+                      : hasInventoryError
+                        ? "Adjust Cart to Continue"
+                        : "Continue to Payment"}
                   </Button>
                 ) : (
                   <>
                     <Button
                       type="button"
                       onClick={() => startCheckout("subscription")}
-                      disabled={!hasSub || !emailOk || !!loading}
-                      className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg"
+                      disabled={subscriptionCheckoutDisabled}
+                      className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg disabled:opacity-60"
                     >
                       {loading === "subscription"
                         ? "Redirecting to Stripe..."
-                        : "Checkout Subscription"}
+                        : hasInventoryError
+                          ? "Adjust Cart to Continue"
+                          : "Checkout Subscription"}
                     </Button>
 
                     <Button
                       type="button"
                       onClick={() => startCheckout("onetime")}
-                      disabled={!hasOne || !emailOk || !!loading}
-                      className="w-full h-14 bg-white/10 hover:bg-white/20 text-white font-bold uppercase tracking-wider text-lg"
+                      disabled={onetimeCheckoutDisabled}
+                      className="w-full h-14 bg-white/10 hover:bg-white/20 text-white font-bold uppercase tracking-wider text-lg disabled:opacity-60"
                     >
                       {loading === "onetime"
                         ? "Redirecting to Stripe..."
-                        : "Checkout One-Time Items"}
+                        : hasInventoryError
+                          ? "Adjust Cart to Continue"
+                          : "Checkout One-Time Items"}
                     </Button>
 
                     <p className="text-xs text-white/50">

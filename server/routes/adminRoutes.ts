@@ -700,26 +700,7 @@ export function registerAdminRoutes(app: Express) {
         ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
         : [];
 
-      let selectedOrderIds: string[] = [];
-
-      if (orderIdsIn.length > 0) {
-        selectedOrderIds = orderIdsIn;
-      } else {
-        const packedAgg = await db
-          .select({
-            orderId: orderItems.orderId,
-            packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
-              Number
-            ),
-          })
-          .from(orderItems)
-          .groupBy(orderItems.orderId);
-
-        selectedOrderIds = (packedAgg || [])
-          .filter((r: any) => (Number(r.packedCount) || 0) > 0)
-          .map((r: any) => String(r.orderId || "").trim())
-          .filter(Boolean);
-      }
+      const selectedOrderIds = await getPackedOrderIds(orderIdsIn);
 
       if (!selectedOrderIds.length) {
         return res.status(404).json({
@@ -728,30 +709,8 @@ export function registerAdminRoutes(app: Express) {
         });
       }
 
-      const orderRows = await db
-        .select({
-          id: orders.id,
-          createdAt: orders.createdAt,
-          customerEmail: orders.customerEmail,
-          shippingName: orders.shippingName,
-          shippingAddress: orders.shippingAddress,
-          amountTotal: orders.amountTotal,
-          currency: orders.currency,
-          shippingCarrier: orders.shippingCarrier,
-          shippingTrackingNumber: orders.shippingTrackingNumber,
-          isSubscription: orders.isSubscription,
-        })
-        .from(orders)
-        .where(inArray(orders.id, selectedOrderIds as any))
-        .orderBy(desc(orders.createdAt))
-        .limit(500);
+      const { byOrderId, orderedIds } = await getPackingSlipRowsByOrderIds(selectedOrderIds);
 
-      const byOrderId: Record<string, any> = {};
-      for (const row of orderRows as any[]) {
-        byOrderId[String(row.id)] = row;
-      }
-
-      const orderedIds = selectedOrderIds.filter((id) => byOrderId[id]);
       if (!orderedIds.length) {
         return res.status(404).json({
           ok: false,
@@ -774,6 +733,95 @@ export function registerAdminRoutes(app: Express) {
       const s = safeErrSummary(err);
       console.error("POST /api/admin/packing-slips/batch error:", s);
       return res.status(500).json({ ok: false, message: "Failed to generate packing slips." });
+    }
+  });
+
+  /*
+  ONE-CLICK FULFILLMENT PACKET
+  */
+
+  app.post("/api/admin/fulfill/batch", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const orderIdsIn: string[] = Array.isArray(req.body?.orderIds)
+        ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
+        : [];
+
+      const selectedOrderIds = await getPackedOrderIds(orderIdsIn);
+
+      if (!selectedOrderIds.length) {
+        return res.status(404).json({
+          ok: false,
+          message: "No packed orders were found to fulfill.",
+        });
+      }
+
+      const { byOrderId, orderedIds } = await getPackingSlipRowsByOrderIds(selectedOrderIds);
+
+      if (!orderedIds.length) {
+        return res.status(404).json({
+          ok: false,
+          message: "No matching packed orders found to fulfill.",
+        });
+      }
+
+      const packingSlipsPdf = await buildPackingSlipsPdf({
+        orderIds: orderedIds,
+        byOrderId,
+      });
+
+      const { labelPdfs, errors } = await createBatchLabels({ orderIds: orderedIds });
+
+      if (!labelPdfs.length) {
+        return res.status(400).json({
+          ok: false,
+          message: errors.length
+            ? `No labels created. Example: ${errors[0].orderId}: ${errors[0].message}`
+            : "No labels created.",
+          errors,
+        });
+      }
+
+      let merged = await mergePdfs([packingSlipsPdf, ...labelPdfs]);
+
+      if (errors.length) {
+        merged = await appendErrorsPage(merged, errors);
+        res.setHeader("X-Fulfillment-Errors", String(errors.length));
+      } else {
+        res.setHeader("X-Fulfillment-Errors", "0");
+      }
+
+      res.setHeader("X-Fulfilled-Orders", String(orderedIds.length));
+
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const filename = `kimora-fulfillment-packet-${stamp}.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.status(200).send(Buffer.from(merged));
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/admin/fulfill/batch error:", s);
+
+      if (Number(err?.statusCode) === 404) {
+        return res.status(404).json({ ok: false, message: err.message || "Not found." });
+      }
+
+      if (Number(err?.statusCode) === 400) {
+        return res.status(400).json({
+          ok: false,
+          message: err.message || "Failed to fulfill orders.",
+          errors: err?.errors || undefined,
+        });
+      }
+
+      if (Number(err?.statusCode) === 500 && String(err?.message || "").includes("EASYPOST")) {
+        return res.status(500).json({ ok: false, message: err.message });
+      }
+
+      return res.status(500).json({ ok: false, message: "Failed to fulfill orders." });
     }
   });
 }

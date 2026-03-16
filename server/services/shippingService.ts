@@ -24,6 +24,14 @@ function numEnv(name: string, fallback: number) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function normalizeOrderIds(orderIds?: string[]) {
+  return Array.isArray(orderIds)
+    ? orderIds
+        .map((x) => String(x || "").trim())
+        .filter(Boolean)
+    : [];
+}
+
 export function trackingUrlFor(
   carrier: string | null | undefined,
   trackingNumber: string | null | undefined
@@ -168,6 +176,49 @@ function stripeAddrToEasyPost(toName: string | null | undefined, addr: any) {
     state: state || undefined,
     zip: zip || undefined,
     country: country || "US",
+  });
+}
+
+async function getPackedOrderCandidateIds(args: {
+  orderIds?: string[];
+  requireMissingTracking?: boolean;
+}) {
+  const orderIdsIn = normalizeOrderIds(args.orderIds);
+  const requireMissingTracking = Boolean(args.requireMissingTracking);
+
+  const whereOrderIds =
+    orderIdsIn.length > 0 ? inArray(orderItems.orderId, orderIdsIn as any) : undefined;
+
+  const packedAgg = await db
+    .select({
+      orderId: orderItems.orderId,
+      packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
+        Number
+      ),
+      packedWithoutTracking: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' and (${orderItems.trackingNumber} is null or ${orderItems.trackingNumber} = '') then 1 else 0 end)`.mapWith(
+        Number
+      ),
+    })
+    .from(orderItems)
+    .where(whereOrderIds as any)
+    .groupBy(orderItems.orderId);
+
+  return (packedAgg || [])
+    .filter((r: any) => {
+      const packedCount = Number(r.packedCount) || 0;
+      const packedWithoutTracking = Number(r.packedWithoutTracking) || 0;
+      if (packedCount <= 0) return false;
+      if (requireMissingTracking) return packedWithoutTracking > 0;
+      return true;
+    })
+    .map((r: any) => String(r.orderId || "").trim())
+    .filter(Boolean);
+}
+
+export async function getPackedOrderIds(args?: { orderIds?: string[] }) {
+  return getPackedOrderCandidateIds({
+    orderIds: args?.orderIds,
+    requireMissingTracking: false,
   });
 }
 
@@ -340,32 +391,10 @@ export async function createBatchLabels(args: { orderIds?: string[] }) {
     throw err;
   }
 
-  const orderIdsIn = Array.isArray(args.orderIds) ? args.orderIds.map(String).map((x) => x.trim()).filter(Boolean) : [];
-
-  const whereOrderIds =
-    orderIdsIn.length > 0 ? inArray(orderItems.orderId, orderIdsIn as any) : undefined;
-
-  const packedAgg = await db
-    .select({
-      orderId: orderItems.orderId,
-      packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
-        Number
-      ),
-      packedWithoutTracking: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' and (${orderItems.trackingNumber} is null or ${orderItems.trackingNumber} = '') then 1 else 0 end)`.mapWith(
-        Number
-      ),
-    })
-    .from(orderItems)
-    .where(whereOrderIds as any)
-    .groupBy(orderItems.orderId);
-
-  const candidateOrderIds = (packedAgg || [])
-    .filter(
-      (r: any) =>
-        (Number(r.packedCount) || 0) > 0 && (Number(r.packedWithoutTracking) || 0) > 0
-    )
-    .map((r: any) => String(r.orderId || "").trim())
-    .filter(Boolean);
+  const candidateOrderIds = await getPackedOrderCandidateIds({
+    orderIds: args.orderIds,
+    requireMissingTracking: true,
+  });
 
   if (!candidateOrderIds.length) {
     const err: any = new Error("No packed orders without tracking were found.");
@@ -406,6 +435,7 @@ export async function createBatchLabels(args: { orderIds?: string[] }) {
   const fromAddress = getShipFromAddress();
   const labelPdfs: Uint8Array[] = [];
   const errors: Array<{ orderId: string; message: string }> = [];
+  const processedOrderIds: string[] = [];
 
   for (const orderId of candidateOrderIds) {
     const o = byId[String(orderId)];
@@ -499,6 +529,8 @@ export async function createBatchLabels(args: { orderIds?: string[] }) {
           trackingNumber: result.trackingNumber || null,
         });
       }
+
+      processedOrderIds.push(orderId);
     } catch (e: any) {
       const s = safeErrSummary(e);
       errors.push({ orderId, message: s.message || "Failed to create label." });
@@ -519,5 +551,17 @@ export async function createBatchLabels(args: { orderIds?: string[] }) {
   return {
     labelPdfs,
     errors,
+    processedOrderIds,
+  };
+}
+
+export async function fulfillPackedOrders(args: { orderIds?: string[] }) {
+  const result = await createBatchLabels({ orderIds: args.orderIds });
+
+  return {
+    labelPdfs: result.labelPdfs,
+    errors: result.errors,
+    processedOrderIds: result.processedOrderIds,
+    packingSlipOrderIds: [...result.processedOrderIds],
   };
 }

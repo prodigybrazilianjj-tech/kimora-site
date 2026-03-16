@@ -138,6 +138,74 @@ function pickOrderSearchWhere(q: string) {
   )`;
 }
 
+async function getPackedOrderIds(orderIdsIn: string[]) {
+  let selectedOrderIds: string[] = [];
+
+  if (orderIdsIn.length > 0) {
+    const packedAgg = await db
+      .select({
+        orderId: orderItems.orderId,
+        packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
+          Number
+        ),
+      })
+      .from(orderItems)
+      .where(inArray(orderItems.orderId, orderIdsIn as any))
+      .groupBy(orderItems.orderId);
+
+    selectedOrderIds = (packedAgg || [])
+      .filter((r: any) => (Number(r.packedCount) || 0) > 0)
+      .map((r: any) => String(r.orderId || "").trim())
+      .filter(Boolean);
+  } else {
+    const packedAgg = await db
+      .select({
+        orderId: orderItems.orderId,
+        packedCount: sql<number>`sum(case when ${orderItems.fulfillmentStatus} = 'packed' then 1 else 0 end)`.mapWith(
+          Number
+        ),
+      })
+      .from(orderItems)
+      .groupBy(orderItems.orderId);
+
+    selectedOrderIds = (packedAgg || [])
+      .filter((r: any) => (Number(r.packedCount) || 0) > 0)
+      .map((r: any) => String(r.orderId || "").trim())
+      .filter(Boolean);
+  }
+
+  return selectedOrderIds;
+}
+
+async function getPackingSlipRowsByOrderIds(selectedOrderIds: string[]) {
+  const orderRows = await db
+    .select({
+      id: orders.id,
+      createdAt: orders.createdAt,
+      customerEmail: orders.customerEmail,
+      shippingName: orders.shippingName,
+      shippingAddress: orders.shippingAddress,
+      amountTotal: orders.amountTotal,
+      currency: orders.currency,
+      shippingCarrier: orders.shippingCarrier,
+      shippingTrackingNumber: orders.shippingTrackingNumber,
+      isSubscription: orders.isSubscription,
+    })
+    .from(orders)
+    .where(inArray(orders.id, selectedOrderIds as any))
+    .orderBy(desc(orders.createdAt))
+    .limit(500);
+
+  const byOrderId: Record<string, any> = {};
+  for (const row of orderRows as any[]) {
+    byOrderId[String(row.id)] = row;
+  }
+
+  const orderedIds = selectedOrderIds.filter((id) => byOrderId[id]);
+
+  return { byOrderId, orderedIds };
+}
+
 export function registerAdminRoutes(app: Express) {
   /*
   INVENTORY ROUTES

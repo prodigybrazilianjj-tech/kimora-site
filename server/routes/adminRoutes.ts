@@ -1,6 +1,6 @@
 // server/routes/adminRoutes.ts
 import type { Express } from "express";
-import { eq, desc, sql, and, inArray } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 import { db } from "../db";
 import { orders, orderItems } from "../../shared/schema";
@@ -11,6 +11,16 @@ import {
   getAdminInventoryItemHandler,
   adjustAdminInventoryHandler,
 } from "../services/inventoryService";
+
+const ALLOWED_FULFILLMENT = new Set([
+  "unfulfilled",
+  "allocated",
+  "packed",
+  "shipped",
+  "delivered",
+  "canceled",
+  "backordered",
+]);
 
 function safeString(v: any, maxLen = 20000) {
   const s = String(v ?? "").trim();
@@ -208,7 +218,21 @@ export function registerAdminRoutes(app: Express) {
 
     try {
       const orderId = String(req.params.id || "").trim();
-      const status = String(req.body?.fulfillmentStatus ?? "").trim();
+      if (!orderId) {
+        return res.status(400).json({ ok: false, message: "Missing id." });
+      }
+
+      const status = String(req.body?.fulfillmentStatus ?? "")
+        .trim()
+        .toLowerCase();
+
+      if (!status || !ALLOWED_FULFILLMENT.has(status)) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            "Invalid fulfillmentStatus. Allowed: unfulfilled, allocated, packed, shipped, delivered, canceled, backordered",
+        });
+      }
 
       const existingItems = await db
         .select({
@@ -225,12 +249,15 @@ export function registerAdminRoutes(app: Express) {
         return res.status(404).json({ ok: false, message: "No items found for that order." });
       }
 
-      await db
-        .update(orderItems)
-        .set({
-          fulfillmentStatus: status,
-        })
-        .where(eq(orderItems.orderId, orderId));
+      const now = new Date();
+      const set: any = {
+        fulfillmentStatus: status,
+      };
+
+      if (status === "shipped") set.shippedAt = now;
+      if (status === "delivered") set.deliveredAt = now;
+
+      await db.update(orderItems).set(set).where(eq(orderItems.orderId, orderId));
 
       for (const item of existingItems) {
         await reconcileInventoryReservationForOrderItem({

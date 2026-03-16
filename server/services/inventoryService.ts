@@ -1,6 +1,6 @@
 // server/services/inventoryService.ts
 import type { Request, Response } from "express";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql, and, gte } from "drizzle-orm";
 
 import { db } from "../db";
 import { inventoryItems, inventoryTransactions } from "../../shared/schema";
@@ -61,6 +61,15 @@ function normalizeFulfillmentStatus(value: any) {
     .toLowerCase();
 }
 
+function normalizeFlavorSlug(value: string) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function statusHoldsReservation(status: string) {
   return status === "unfulfilled" || status === "allocated" || status === "packed";
 }
@@ -69,29 +78,42 @@ function statusConsumesPhysicalInventory(status: string) {
   return status === "shipped" || status === "delivered";
 }
 
+async function findInventoryItemByFlavor(flavorRaw: string) {
+  const normalizedFlavor = normalizeFlavorSlug(flavorRaw);
+  if (!normalizedFlavor) return null;
+
+  const rows = await db
+    .select({
+      id: inventoryItems.id,
+      sku: inventoryItems.sku,
+      flavor: inventoryItems.flavor,
+      productName: inventoryItems.productName,
+      isActive: inventoryItems.isActive,
+      onHandQuantity: inventoryItems.onHandQuantity,
+      reservedQuantity: inventoryItems.reservedQuantity,
+      reorderPoint: inventoryItems.reorderPoint,
+      createdAt: inventoryItems.createdAt,
+      updatedAt: inventoryItems.updatedAt,
+    })
+    .from(inventoryItems)
+    .where(eq(inventoryItems.flavor, normalizedFlavor))
+    .limit(1);
+
+  return rows?.[0] ?? null;
+}
+
 export async function applyInventoryForOrderItem(args: {
   orderId: string;
   orderItemId: string;
   flavor: string;
   quantity: number;
 }) {
-  const flavor = safeString(args.flavor, 120);
+  const flavor = normalizeFlavorSlug(safeString(args.flavor, 120));
   const quantity = Number(args.quantity ?? 0);
 
   if (!flavor || !Number.isFinite(quantity) || quantity <= 0) return;
 
-  const inventoryRow = await db
-    .select({
-      id: inventoryItems.id,
-      flavor: inventoryItems.flavor,
-      onHandQuantity: inventoryItems.onHandQuantity,
-      reservedQuantity: inventoryItems.reservedQuantity,
-    })
-    .from(inventoryItems)
-    .where(eq(inventoryItems.flavor, flavor))
-    .limit(1);
-
-  const inventoryItem = inventoryRow?.[0];
+  const inventoryItem = await findInventoryItemByFlavor(flavor);
   if (!inventoryItem?.id) {
     console.warn(
       "[inventory] no inventory item found for flavor:",
@@ -112,7 +134,10 @@ export async function applyInventoryForOrderItem(args: {
         updatedAt: new Date(),
       })
       .where(
-        sql`${inventoryItems.id} = ${inventoryItem.id} and (${inventoryItems.onHandQuantity} - ${inventoryItems.reservedQuantity}) >= ${quantity}`
+        and(
+          eq(inventoryItems.id, inventoryItem.id),
+          gte(sql`${inventoryItems.onHandQuantity} - ${inventoryItems.reservedQuantity}`, quantity)
+        )!
       )
       .returning({
         id: inventoryItems.id,
@@ -158,7 +183,7 @@ export async function reconcileInventoryReservationForOrderItem(args: {
   fromStatus: string | null | undefined;
   toStatus: string | null | undefined;
 }) {
-  const flavor = safeString(args.flavor, 120);
+  const flavor = normalizeFlavorSlug(safeString(args.flavor, 120));
   const quantity = Number(args.quantity ?? 0);
   const fromStatus = normalizeFulfillmentStatus(args.fromStatus);
   const toStatus = normalizeFulfillmentStatus(args.toStatus);
@@ -182,18 +207,7 @@ export async function reconcileInventoryReservationForOrderItem(args: {
 
   if (reservedDelta === 0 && onHandDelta === 0) return;
 
-  const inventoryRow = await db
-    .select({
-      id: inventoryItems.id,
-      flavor: inventoryItems.flavor,
-      onHandQuantity: inventoryItems.onHandQuantity,
-      reservedQuantity: inventoryItems.reservedQuantity,
-    })
-    .from(inventoryItems)
-    .where(eq(inventoryItems.flavor, flavor))
-    .limit(1);
-
-  const inventoryItem = inventoryRow?.[0];
+  const inventoryItem = await findInventoryItemByFlavor(flavor);
   if (!inventoryItem?.id) {
     console.warn(
       "[inventory] no inventory item found for fulfillment reconciliation, flavor:",
@@ -211,20 +225,18 @@ export async function reconcileInventoryReservationForOrderItem(args: {
   }
 
   try {
-    const whereClauseParts = [sql`${inventoryItems.id} = ${inventoryItem.id}`];
+    const whereParts = [eq(inventoryItems.id, inventoryItem.id)];
 
     if (reservedDelta < 0) {
-      whereClauseParts.push(
-        sql`${inventoryItems.reservedQuantity} >= ${Math.abs(reservedDelta)}`
-      );
+      whereParts.push(gte(inventoryItems.reservedQuantity, Math.abs(reservedDelta)));
     } else if (reservedDelta > 0) {
-      whereClauseParts.push(
-        sql`(${inventoryItems.onHandQuantity} - ${inventoryItems.reservedQuantity}) >= ${reservedDelta}`
+      whereParts.push(
+        gte(sql`${inventoryItems.onHandQuantity} - ${inventoryItems.reservedQuantity}`, reservedDelta)
       );
     }
 
     if (onHandDelta < 0) {
-      whereClauseParts.push(sql`${inventoryItems.onHandQuantity} >= ${Math.abs(onHandDelta)}`);
+      whereParts.push(gte(inventoryItems.onHandQuantity, Math.abs(onHandDelta)));
     }
 
     const updated = await db
@@ -234,7 +246,7 @@ export async function reconcileInventoryReservationForOrderItem(args: {
         reservedQuantity: sql`${inventoryItems.reservedQuantity} + ${reservedDelta}`,
         updatedAt: new Date(),
       })
-      .where(sql.join(whereClauseParts, sql` and `))
+      .where(and(...whereParts)!)
       .returning({
         id: inventoryItems.id,
       });
@@ -468,6 +480,10 @@ export async function adjustAdminInventoryHandler(req: Request, res: Response) {
         source: "admin_dashboard",
         actor: "admin",
         reason: "manual_adjustment",
+        reorderPointFrom: currentReorderPoint,
+        reorderPointTo: nextReorderPoint,
+        quantityFrom: currentOnHand,
+        quantityTo: nextOnHand,
       },
     });
 

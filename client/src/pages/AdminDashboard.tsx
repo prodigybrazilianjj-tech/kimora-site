@@ -403,6 +403,7 @@ export default function AdminDashboard() {
 
   const [labelsLoading, setLabelsLoading] = useState(false);
   const [packingSlipsLoading, setPackingSlipsLoading] = useState(false);
+  const [fulfillmentPacketLoading, setFulfillmentPacketLoading] = useState(false);
   const [singlePackingSlipOrderId, setSinglePackingSlipOrderId] = useState<string | null>(null);
 
   const fromDateInputRef = useRef<HTMLInputElement | null>(null);
@@ -972,6 +973,49 @@ export default function AdminDashboard() {
     }
   }
 
+  async function generateFulfillmentPacket() {
+    if (!savedToken || fulfillmentPacketLoading) return;
+
+    try {
+      setFulfillmentPacketLoading(true);
+      toast({
+        title: "Building fulfillment packet…",
+        description: "Generating packing slips and labels for packed orders.",
+      });
+
+      const headers = await downloadPdf(
+        "/api/admin/fulfill/batch",
+        savedToken,
+        "kimora-fulfillment-packet"
+      );
+
+      const errorCount = Number(headers.get("X-Fulfillment-Errors") || "0") || 0;
+      const fulfilledOrders = Number(headers.get("X-Fulfilled-Orders") || "0") || 0;
+
+      toast({
+        title: "Fulfillment packet ready",
+        description:
+          errorCount > 0
+            ? `${fulfilledOrders} packed order${
+                fulfilledOrders === 1 ? "" : "s"
+              } processed. ${errorCount} issue${errorCount === 1 ? "" : "s"} appended at the end.`
+            : `${fulfilledOrders} packed order${
+                fulfilledOrders === 1 ? "" : "s"
+              } processed. Packet opened/downloaded.`,
+      });
+
+      await loadOrders();
+      await loadInventory();
+      if (selectedOrderId) await openOrder(selectedOrderId);
+      if (selectedInventoryId) await openInventory(selectedInventoryId);
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to generate fulfillment packet.");
+      toast({ title: "Fulfillment failed", description: msg });
+    } finally {
+      setFulfillmentPacketLoading(false);
+    }
+  }
+
   async function generateSinglePackingSlip(order: OrderRow) {
     if (!savedToken) return;
 
@@ -1244,7 +1288,7 @@ export default function AdminDashboard() {
 
               <Button
                 type="button"
-                variant="default"
+                variant="outline"
                 onClick={generatePackedLabels}
                 disabled={labelsLoading || packedCount === 0}
                 title={
@@ -1256,6 +1300,22 @@ export default function AdminDashboard() {
                 {labelsLoading
                   ? "Generating labels…"
                   : `Generate labels${packedCount ? ` (${packedCount})` : ""}`}
+              </Button>
+
+              <Button
+                type="button"
+                variant="default"
+                onClick={generateFulfillmentPacket}
+                disabled={fulfillmentPacketLoading || packedCount === 0}
+                title={
+                  packedCount === 0
+                    ? "No packed orders yet"
+                    : "Generate one fulfillment packet containing packing slips and labels for packed orders"
+                }
+              >
+                {fulfillmentPacketLoading
+                  ? "Fulfilling…"
+                  : `Fulfill packed orders${packedCount ? ` (${packedCount})` : ""}`}
               </Button>
             </div>
           )}

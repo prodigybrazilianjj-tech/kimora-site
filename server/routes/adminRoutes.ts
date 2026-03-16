@@ -15,6 +15,7 @@ import {
 import {
   getOrderLabelByOrderId,
   createBatchLabels,
+  fulfillPackedOrders,
   trackingUrlFor,
 } from "../services/shippingService";
 
@@ -749,30 +750,10 @@ export function registerAdminRoutes(app: Express) {
         ? req.body.orderIds.map((x: any) => String(x || "").trim()).filter(Boolean)
         : [];
 
-      const selectedOrderIds = await getPackedOrderIds(orderIdsIn);
-
-      if (!selectedOrderIds.length) {
-        return res.status(404).json({
-          ok: false,
-          message: "No packed orders were found to fulfill.",
+      const { labelPdfs, errors, processedOrderIds, packingSlipOrderIds } =
+        await fulfillPackedOrders({
+          orderIds: orderIdsIn,
         });
-      }
-
-      const { byOrderId, orderedIds } = await getPackingSlipRowsByOrderIds(selectedOrderIds);
-
-      if (!orderedIds.length) {
-        return res.status(404).json({
-          ok: false,
-          message: "No matching packed orders found to fulfill.",
-        });
-      }
-
-      const packingSlipsPdf = await buildPackingSlipsPdf({
-        orderIds: orderedIds,
-        byOrderId,
-      });
-
-      const { labelPdfs, errors } = await createBatchLabels({ orderIds: orderedIds });
 
       if (!labelPdfs.length) {
         return res.status(400).json({
@@ -784,6 +765,22 @@ export function registerAdminRoutes(app: Express) {
         });
       }
 
+      const { byOrderId, orderedIds } = await getPackingSlipRowsByOrderIds(
+        packingSlipOrderIds || processedOrderIds || []
+      );
+
+      if (!orderedIds.length) {
+        return res.status(404).json({
+          ok: false,
+          message: "No matching orders found for packing slips.",
+        });
+      }
+
+      const packingSlipsPdf = await buildPackingSlipsPdf({
+        orderIds: orderedIds,
+        byOrderId,
+      });
+
       let merged = await mergePdfs([packingSlipsPdf, ...labelPdfs]);
 
       if (errors.length) {
@@ -793,7 +790,7 @@ export function registerAdminRoutes(app: Express) {
         res.setHeader("X-Fulfillment-Errors", "0");
       }
 
-      res.setHeader("X-Fulfilled-Orders", String(orderedIds.length));
+      res.setHeader("X-Fulfilled-Orders", String((processedOrderIds || []).length));
 
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
       const filename = `kimora-fulfillment-packet-${stamp}.pdf`;

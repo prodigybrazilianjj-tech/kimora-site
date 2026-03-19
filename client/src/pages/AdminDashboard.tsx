@@ -914,55 +914,7 @@ export default function AdminDashboard() {
     setInventoryFilter("all");
     setInventorySort("available-asc");
   }
-  async function fulfillSelectedOrders() {
-  if (!savedToken) return;
 
-  const packedOrders = orders.filter(
-    (o) => normalizeFulfillment(o.fulfillmentStatus) === "packed"
-  );
-
-  if (!packedOrders.length) {
-    toast({
-      title: "No packed orders",
-      description: "Only orders marked 'packed' can be fulfilled.",
-    });
-    return;
-  }
-
-  try {
-    toast({
-      title: "Fulfilling orders…",
-      description: `Processing ${packedOrders.length} packed orders.`,
-    });
-
-    await api<{ ok: true }>(
-      "/api/admin/orders/fulfill-batch",
-      savedToken,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          orderIds: packedOrders.map((o) => o.id),
-        }),
-      }
-    );
-
-    toast({
-      title: "Orders fulfilled",
-      description: `${packedOrders.length} orders moved to shipped.`,
-    });
-
-    await loadOrders();
-    await loadInventory();
-
-    if (selectedOrderId) await openOrder(selectedOrderId);
-    if (selectedInventoryId) await openInventory(selectedInventoryId);
-  } catch (e: any) {
-    toast({
-      title: "Fulfillment failed",
-      description: String(e?.message || "Unknown error"),
-    });
-  }
-}
   async function generatePackedLabels() {
     if (!savedToken || labelsLoading) return;
 
@@ -1349,20 +1301,6 @@ export default function AdminDashboard() {
                   ? "Generating labels…"
                   : `Generate labels${packedCount ? ` (${packedCount})` : ""}`}
               </Button>
-
-              <Button
-                type="button"
-                variant="default"
-                onClick={fulfillSelectedOrders}
-                disabled={packedCount === 0}
-                title={
-                  packedCount === 0
-                    ? "No packed orders"
-                    : "Mark packed orders as shipped"
-                }
->
-  Fulfill packed orders
-</Button>
 
               <Button
                 type="button"

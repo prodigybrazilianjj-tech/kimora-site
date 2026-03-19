@@ -1256,70 +1256,54 @@ export default function AdminDashboard() {
           <div className="flex-1" />
 
           {canAuth && (
-            <div className="flex gap-2 flex-wrap">
-              <Button type="button" variant="outline" onClick={() => loadSummary(true)}>
-                Refresh overview
-              </Button>
-              <Button type="button" variant="outline" onClick={() => loadOrders(true)}>
-                Refresh orders
-              </Button>
-              <Button type="button" variant="outline" onClick={() => loadInventory(true)}>
-                Refresh inventory
-              </Button>
-              <Button type="button" variant="outline" onClick={() => loadWholesale(true)}>
-                Refresh wholesale
-              </Button>
+  <div className="flex gap-2 flex-wrap">
+    <Button type="button" variant="outline" onClick={() => loadSummary(true)}>
+      Refresh overview
+    </Button>
+    <Button type="button" variant="outline" onClick={() => loadOrders(true)}>
+      Refresh orders
+    </Button>
+    <Button type="button" variant="outline" onClick={() => loadInventory(true)}>
+      Refresh inventory
+    </Button>
+    <Button type="button" variant="outline" onClick={() => loadWholesale(true)}>
+      Refresh wholesale
+    </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={generatePackingSlips}
-                disabled={packingSlipsLoading || packedCount === 0}
-                title={
-                  packedCount === 0
-                    ? "No packed orders yet"
-                    : "Generate a packing slips PDF for packed orders"
-                }
-              >
-                {packingSlipsLoading
-                  ? "Generating slips…"
-                  : `Packing slips${packedCount ? ` (${packedCount})` : ""}`}
-              </Button>
+    <Button
+      type="button"
+      variant="outline"
+      onClick={generatePackingSlips}
+      disabled={packingSlipsLoading || packedCount === 0}
+      title={
+        packedCount === 0
+          ? "No packed orders yet"
+          : "Generate a packing slips PDF for packed orders"
+      }
+    >
+      {packingSlipsLoading
+        ? "Generating slips…"
+        : `Packing slips${packedCount ? ` (${packedCount})` : ""}`}
+    </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={generatePackedLabels}
-                disabled={labelsLoading || packedCount === 0}
-                title={
-                  packedCount === 0
-                    ? "No packed orders yet"
-                    : "Creates EasyPost labels for packed orders and downloads a merged PDF"
-                }
-              >
-                {labelsLoading
-                  ? "Generating labels…"
-                  : `Generate labels${packedCount ? ` (${packedCount})` : ""}`}
-              </Button>
-
-              <Button
-                type="button"
-                variant="default"
-                onClick={generateFulfillmentPacket}
-                disabled={fulfillmentPacketLoading || packedCount === 0}
-                title={
-                  packedCount === 0
-                    ? "No packed orders yet"
-                    : "Generate one fulfillment packet containing packing slips and labels for packed orders"
-                }
-              >
-                {fulfillmentPacketLoading
-                  ? "Fulfilling…"
-                  : `Fulfill packed orders${packedCount ? ` (${packedCount})` : ""}`}
-              </Button>
-            </div>
-          )}
-        </div>
+    <Button
+      type="button"
+      variant="default"
+      onClick={generateFulfillmentPacket}
+      disabled={fulfillmentPacketLoading || packedCount === 0}
+      title={
+        packedCount === 0
+          ? "No packed orders yet"
+          : "Generate one fulfillment packet containing packing slips and labels for packed orders"
+      }
+    >
+      {fulfillmentPacketLoading
+        ? "Fulfilling…"
+        : `Fulfill packed orders${packedCount ? ` (${packedCount})` : ""}`}
+    </Button>
+  </div>
+)}
+</div>
 
         {tab === "overview" && (
           <div className="mt-6 grid gap-4">

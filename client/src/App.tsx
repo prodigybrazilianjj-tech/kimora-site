@@ -6,6 +6,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { CartProvider } from "@/lib/cart";
 
+import ComingSoon from "@/pages/ComingSoon";
 import Home from "@/pages/Home";
 import FAQ from "@/pages/FAQ";
 import Shop from "@/pages/Shop";
@@ -47,7 +48,8 @@ function Router() {
       <ScrollToTop />
 
       <Switch>
-        <Route path="/" component={Home} />
+        <Route path="/" component={ComingSoon} />
+        <Route path="/home" component={Home} />
         <Route path="/faq" component={FAQ} />
         <Route path="/shop" component={Shop} />
         <Route path="/product" component={Product} />

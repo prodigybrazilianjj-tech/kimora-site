@@ -65,6 +65,27 @@ function getSiteUrl() {
   );
 }
 
+function getSupportEmail() {
+  return String(process.env.SUPPORT_EMAIL || "support@kimoraco.com").trim();
+}
+
+function getWaitlistNotifyEmail() {
+  return String(
+    process.env.WAITLIST_NOTIFY_EMAIL ||
+      process.env.RESEND_INTERNAL_TO_EMAIL ||
+      process.env.SUPPORT_EMAIL ||
+      "support@kimoraco.com"
+  ).trim();
+}
+
+function getLaunchDiscountCode() {
+  return String(process.env.EARLY_ACCESS_DISCOUNT_CODE || "").trim();
+}
+
+function getLaunchWindowText() {
+  return String(process.env.EARLY_ACCESS_WINDOW_TEXT || "Early access is now open.").trim();
+}
+
 function envPriceId(
   flavor: string,
   type: "onetime" | "subscribe",
@@ -203,7 +224,7 @@ export async function sendOrderConfirmationEmail(args: {
     : "Kimora Co — Order confirmed";
 
   const manageLink = `${siteUrl}/manage-subscription`;
-  const supportEmail = "support@kimoraco.com";
+  const supportEmail = getSupportEmail();
 
   const itemsText = lines
     .map((l: any) => {
@@ -349,7 +370,7 @@ export async function sendShippingNotificationEmail(args: {
   const email = normalizeEmail(String(args.customerEmail || ""));
   if (!email || !isValidEmail(email)) return;
 
-  const supportEmail = "support@kimoraco.com";
+  const supportEmail = getSupportEmail();
   const carrier = safeString(args.carrier || "", 40);
   const tracking = safeString(args.trackingNumber || "", 120);
   const name = safeString(args.shippingName || "", 200);
@@ -421,6 +442,209 @@ export async function sendShippingNotificationEmail(args: {
   } catch (e: any) {
     const s = safeErrSummary(e);
     console.error("[shipping-email] send failed:", s);
+  }
+}
+
+export async function sendWaitlistConfirmationEmail(args: {
+  email: string;
+  firstName?: string | null;
+}) {
+  const client = getResendClient();
+  if (!client) {
+    console.warn(
+      "[waitlist-email] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM)."
+    );
+    return;
+  }
+
+  const { resend, from } = client;
+
+  const email = normalizeEmail(String(args.email || ""));
+  if (!email || !isValidEmail(email)) {
+    console.warn("[waitlist-email] Missing/invalid email; skipping send.");
+    return;
+  }
+
+  const firstName = safeString(args.firstName || "", 120);
+  const siteUrl = getSiteUrl();
+  const supportEmail = getSupportEmail();
+
+  const subject = "Kimora Co — You're on the list";
+  const text =
+    `You're in${firstName ? `, ${firstName}` : ""}.\n\n` +
+    `Thanks for joining the Kimora Co waitlist.\n` +
+    `We’re getting everything dialed in and you’ll be among the first to hear when early access opens.\n\n` +
+    `Site: ${siteUrl}\n` +
+    `Need help? Reply to this email or contact ${supportEmail}.\n\n` +
+    `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
+
+  const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
+  <h2 style="margin:0 0 10px;">You’re on the list 🔥</h2>
+  <p style="margin:0 0 14px;">
+    Thanks${firstName ? `, <b>${escapeHtml(firstName)}</b>` : ""}. You’ve joined the Kimora Co waitlist.
+  </p>
+  <p style="margin:0 0 14px;color:#444;">
+    We’re dialing in flavor, performance, and the full launch experience. You’ll be among the first to hear when early access opens.
+  </p>
+  <div style="margin:16px 0 12px;">
+    <a href="${siteUrl}" style="display:inline-block;padding:12px 16px;border-radius:10px;background:#111;color:#fff;text-decoration:none;">
+      Visit Kimora Co
+    </a>
+  </div>
+  <div style="margin:16px 0 0;font-size:12px;color:#666;">
+    Need help? Reply to this email or contact
+    <a href="mailto:${supportEmail}">${supportEmail}</a>.
+  </div>
+  <div style="margin:14px 0 0;font-size:12px;letter-spacing:0.08em;color:#999;text-transform:uppercase;">
+    OUT-TRAIN. OUT-SMART. OUT-LAST.
+  </div>
+</div>`;
+
+  try {
+    await resend.emails.send({
+      from,
+      to: email,
+      subject,
+      text,
+      html,
+      replyTo: supportEmail,
+    } as any);
+  } catch (e: any) {
+    const s = safeErrSummary(e);
+    console.error("[waitlist-email] confirmation send failed:", s);
+  }
+}
+
+export async function sendWaitlistAdminNotificationEmail(args: {
+  email: string;
+  source?: string | null;
+  metadata?: any;
+}) {
+  const client = getResendClient();
+  if (!client) return;
+
+  const { resend, from } = client;
+  const notifyTo = getWaitlistNotifyEmail();
+  if (!notifyTo || !isValidEmail(notifyTo)) return;
+
+  const email = normalizeEmail(String(args.email || ""));
+  if (!email || !isValidEmail(email)) return;
+
+  const source = safeString(args.source || "unknown", 120) || "unknown";
+  const ip = safeString(args.metadata?.ip || "", 120) || "—";
+  const userAgent = safeString(args.metadata?.userAgent || "", 500) || "—";
+  const referer = safeString(args.metadata?.referer || "", 500) || "—";
+
+  const subject = "Kimora Co — New waitlist signup";
+  const text =
+    `New waitlist signup\n\n` +
+    `Email: ${email}\n` +
+    `Source: ${source}\n` +
+    `IP: ${ip}\n` +
+    `User-Agent: ${userAgent}\n` +
+    `Referer: ${referer}\n`;
+
+  const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
+  <h2 style="margin:0 0 10px;">New waitlist signup</h2>
+  <div style="margin:0 0 8px;"><b>Email:</b> ${escapeHtml(email)}</div>
+  <div style="margin:0 0 8px;"><b>Source:</b> ${escapeHtml(source)}</div>
+  <div style="margin:0 0 8px;"><b>IP:</b> ${escapeHtml(ip)}</div>
+  <div style="margin:0 0 8px;"><b>User-Agent:</b> ${escapeHtml(userAgent)}</div>
+  <div style="margin:0 0 8px;"><b>Referer:</b> ${escapeHtml(referer)}</div>
+</div>`;
+
+  try {
+    await resend.emails.send({
+      from,
+      to: notifyTo,
+      subject,
+      text,
+      html,
+      replyTo: getSupportEmail(),
+    } as any);
+  } catch (e: any) {
+    const s = safeErrSummary(e);
+    console.error("[waitlist-email] admin notification send failed:", s);
+  }
+}
+
+export async function sendEarlyAccessDropEmail(args: {
+  email: string;
+  firstName?: string | null;
+  launchUrl?: string | null;
+  discountCode?: string | null;
+  windowText?: string | null;
+}) {
+  const client = getResendClient();
+  if (!client) {
+    console.warn(
+      "[early-access-email] Resend not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL/EMAIL_FROM)."
+    );
+    return;
+  }
+
+  const { resend, from } = client;
+
+  const email = normalizeEmail(String(args.email || ""));
+  if (!email || !isValidEmail(email)) {
+    console.warn("[early-access-email] Missing/invalid email; skipping send.");
+    return;
+  }
+
+  const firstName = safeString(args.firstName || "", 120);
+  const launchUrl = safeString(args.launchUrl || `${getSiteUrl()}/shop`, 1000) || `${getSiteUrl()}/shop`;
+  const discountCode = safeString(args.discountCode || getLaunchDiscountCode(), 120);
+  const windowText = safeString(args.windowText || getLaunchWindowText(), 300) || "Early access is now open.";
+  const supportEmail = getSupportEmail();
+
+  const subject = "Kimora Co — Early access is live";
+  const discountBlockText = discountCode ? `Discount code: ${discountCode}\n` : "";
+  const discountBlockHtml = discountCode
+    ? `<div style="margin:0 0 14px;color:#111;"><b>Discount code:</b> <span style="letter-spacing:0.04em;">${escapeHtml(
+        discountCode
+      )}</span></div>`
+    : "";
+
+  const text =
+    `Early access is live${firstName ? `, ${firstName}` : ""}.\n\n` +
+    `${windowText}\n\n` +
+    `${discountBlockText}` +
+    `Shop now: ${launchUrl}\n\n` +
+    `Need help? Reply to this email or contact ${supportEmail}.\n\n` +
+    `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
+
+  const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
+  <h2 style="margin:0 0 10px;">Early access is live 🚀</h2>
+  <p style="margin:0 0 14px;">
+    ${firstName ? `Hey <b>${escapeHtml(firstName)}</b>, ` : ""}${escapeHtml(windowText)}
+  </p>
+  ${discountBlockHtml}
+  <div style="margin:16px 0 12px;">
+    <a href="${launchUrl}" style="display:inline-block;padding:12px 16px;border-radius:10px;background:#111;color:#fff;text-decoration:none;">
+      Shop early access
+    </a>
+  </div>
+  <div style="margin:16px 0 0;font-size:12px;color:#666;">
+    Need help? Reply to this email or contact
+    <a href="mailto:${supportEmail}">${supportEmail}</a>.
+  </div>
+  <div style="margin:14px 0 0;font-size:12px;letter-spacing:0.08em;color:#999;text-transform:uppercase;">
+    OUT-TRAIN. OUT-SMART. OUT-LAST.
+  </div>
+</div>`;
+
+  try {
+    await resend.emails.send({
+      from,
+      to: email,
+      subject,
+      text,
+      html,
+      replyTo: supportEmail,
+    } as any);
+  } catch (e: any) {
+    const s = safeErrSummary(e);
+    console.error("[early-access-email] send failed:", s);
   }
 }
 

@@ -1,4 +1,3 @@
-// shared/schema.ts
 import { sql } from "drizzle-orm";
 import {
   pgTable,
@@ -330,3 +329,38 @@ export const wholesaleApplications = pgTable(
 
 export type WholesaleApplication = typeof wholesaleApplications.$inferSelect;
 export type InsertWholesaleApplication = typeof wholesaleApplications.$inferInsert;
+
+/** WAITLIST EMAILS */
+export const waitlistEmails = pgTable(
+  "waitlist_emails",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    email: varchar("email", { length: 320 }).notNull(),
+    source: varchar("source", { length: 64 }).notNull().default("coming-soon"),
+
+    metadata: jsonb("metadata").$type<{
+      ip?: string | null;
+      userAgent?: string | null;
+      referer?: string | null;
+    }>(),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    waitlistEmailUnique: uniqueIndex("waitlist_emails_email_unique").on(t.email),
+    waitlistCreatedAtIdx: index("waitlist_emails_created_at_idx").on(t.createdAt),
+    waitlistSourceIdx: index("waitlist_emails_source_idx").on(t.source),
+  }),
+);
+
+export const insertWaitlistEmailSchema = createInsertSchema(waitlistEmails).pick({
+  email: true,
+  source: true,
+  metadata: true,
+});
+
+export type WaitlistEmail = typeof waitlistEmails.$inferSelect;
+export type InsertWaitlistEmail = typeof waitlistEmails.$inferInsert;

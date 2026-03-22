@@ -336,7 +336,8 @@ export const waitlistEmails = pgTable(
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
 
-    email: varchar("email", { length: 320 }).notNull(),
+    email: varchar("email", { length: 320 }).notNull().unique(),
+
     source: varchar("source", { length: 64 }).notNull().default("coming-soon"),
 
     metadata: jsonb("metadata").$type<{
@@ -348,12 +349,7 @@ export const waitlistEmails = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-  },
-  (t) => ({
-    waitlistEmailUnique: uniqueIndex("waitlist_emails_email_unique").on(t.email),
-    waitlistCreatedAtIdx: index("waitlist_emails_created_at_idx").on(t.createdAt),
-    waitlistSourceIdx: index("waitlist_emails_source_idx").on(t.source),
-  }),
+  }
 );
 
 export const insertWaitlistEmailSchema = createInsertSchema(waitlistEmails).pick({

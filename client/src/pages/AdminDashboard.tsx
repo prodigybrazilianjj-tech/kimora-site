@@ -25,6 +25,13 @@ type WholesaleRow = {
   status: "new" | "reviewing" | "approved" | "rejected" | "closed";
 };
 
+type WaitlistRow = {
+  id: string;
+  email: string;
+  source?: string | null;
+  createdAt?: string | null;
+};
+
 type FulfillmentStatus =
   | "unfulfilled"
   | "allocated"
@@ -291,7 +298,7 @@ async function downloadPdf(
   return res.headers;
 }
 
-type TabKey = "overview" | "orders" | "inventory" | "wholesale";
+type TabKey = "overview" | "orders" | "inventory" | "wholesale" | "waitlist";
 type InventoryFilterKey = "all" | "low" | "active" | "inactive";
 type InventorySortKey =
   | "product-asc"
@@ -401,6 +408,10 @@ export default function AdminDashboard() {
     "" | WholesaleRow["status"]
   >("");
 
+  const [waitlist, setWaitlist] = useState<WaitlistRow[]>([]);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistError, setWaitlistError] = useState<string | null>(null);
+
   const [labelsLoading, setLabelsLoading] = useState(false);
   const [packingSlipsLoading, setPackingSlipsLoading] = useState(false);
   const [fulfillmentPacketLoading, setFulfillmentPacketLoading] = useState(false);
@@ -409,7 +420,6 @@ export default function AdminDashboard() {
   const fromDateInputRef = useRef<HTMLInputElement | null>(null);
   const toDateInputRef = useRef<HTMLInputElement | null>(null);
   const orderFulfillmentEditsRef = useRef<Record<string, FulfillmentStatus>>({});
-  const tokenInputRef = useRef<HTMLInputElement | null>(null);
 
   const canAuth = Boolean(savedToken);
 
@@ -422,12 +432,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     orderFulfillmentEditsRef.current = orderFulfillmentEdits;
   }, [orderFulfillmentEdits]);
-
-  useEffect(() => {
-    if (!canAuth) {
-      setTimeout(() => tokenInputRef.current?.focus(), 0);
-    }
-  }, [canAuth]);
 
   function setOrderFulfillmentValue(orderId: string, status: FulfillmentStatus) {
     orderFulfillmentEditsRef.current = {
@@ -466,6 +470,8 @@ export default function AdminDashboard() {
     orderFulfillmentEditsRef.current = {};
     setWholesale([]);
     setWholesaleError(null);
+    setWaitlist([]);
+    setWaitlistError(null);
     closeInventory();
     closeOrder();
   }
@@ -565,6 +571,29 @@ export default function AdminDashboard() {
       throw e;
     } finally {
       setWholesaleLoading(false);
+    }
+  }
+
+  async function loadWaitlist(showToast = false) {
+    if (!savedToken) return;
+
+    setWaitlistLoading(true);
+    try {
+      setWaitlistError(null);
+
+      const data = await api<{ ok: true; rows: WaitlistRow[] }>("/api/admin/waitlist", savedToken);
+      setWaitlist(data.rows || []);
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to load waitlist.");
+      setWaitlist([]);
+      setWaitlistError(msg);
+
+      if (showToast) {
+        toast({ title: "Waitlist load failed", description: msg });
+      }
+      throw e;
+    } finally {
+      setWaitlistLoading(false);
     }
   }
 
@@ -1059,6 +1088,7 @@ export default function AdminDashboard() {
     loadOrders().catch(() => {});
     loadInventory().catch(() => {});
     loadWholesale().catch(() => {});
+    loadWaitlist().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedToken]);
 
@@ -1196,46 +1226,15 @@ export default function AdminDashboard() {
     return rows;
   }, [inventory, inventoryQ, inventoryFilter, inventorySort]);
 
-  if (!canAuth) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <div className="mx-auto flex min-h-screen max-w-md items-center justify-center px-4">
-          <div className="w-full rounded-xl border border-border bg-background p-6 shadow-sm">
-            <div className="text-sm font-medium">Access</div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              Enter token to continue.
-            </div>
-
-            <div className="mt-4 flex flex-col gap-3">
-              <input
-                ref={tokenInputRef}
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") saveToken();
-                }}
-                placeholder="Token"
-                autoComplete="off"
-                spellCheck={false}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
-              />
-              <Button type="button" onClick={saveToken} className="h-10 w-full">
-                Continue
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-7xl mx-auto px-4 py-10">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground mt-2">Orders • Revenue • Inventory • Wholesale</p>
+            <p className="text-muted-foreground mt-2">
+              Orders • Revenue • Inventory • Wholesale • Waitlist
+            </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -1253,6 +1252,15 @@ export default function AdminDashboard() {
             </Button>
           </div>
         </div>
+
+        {!canAuth && (
+          <div className="mt-8 rounded-lg border border-border p-5">
+            <div className="font-semibold">Token required</div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Set ADMIN_DASHBOARD_TOKEN in Render, then paste it here and click Save token.
+            </p>
+          </div>
+        )}
 
         <div className="mt-8 flex gap-2 flex-wrap">
           <Button
@@ -1283,71 +1291,83 @@ export default function AdminDashboard() {
           >
             Wholesale
           </Button>
+          <Button
+            type="button"
+            variant={tab === "waitlist" ? "default" : "outline"}
+            onClick={() => setTab("waitlist")}
+          >
+            Waitlist
+          </Button>
 
           <div className="flex-1" />
 
-          <div className="flex gap-2 flex-wrap">
-            <Button type="button" variant="outline" onClick={() => loadSummary(true)}>
-              Refresh overview
-            </Button>
-            <Button type="button" variant="outline" onClick={() => loadOrders(true)}>
-              Refresh orders
-            </Button>
-            <Button type="button" variant="outline" onClick={() => loadInventory(true)}>
-              Refresh inventory
-            </Button>
-            <Button type="button" variant="outline" onClick={() => loadWholesale(true)}>
-              Refresh wholesale
-            </Button>
+          {canAuth && (
+            <div className="flex gap-2 flex-wrap">
+              <Button type="button" variant="outline" onClick={() => loadSummary(true)}>
+                Refresh overview
+              </Button>
+              <Button type="button" variant="outline" onClick={() => loadOrders(true)}>
+                Refresh orders
+              </Button>
+              <Button type="button" variant="outline" onClick={() => loadInventory(true)}>
+                Refresh inventory
+              </Button>
+              <Button type="button" variant="outline" onClick={() => loadWholesale(true)}>
+                Refresh wholesale
+              </Button>
+              <Button type="button" variant="outline" onClick={() => loadWaitlist(true)}>
+                Refresh waitlist
+              </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={generatePackingSlips}
-              disabled={packingSlipsLoading || packedCount === 0}
-              title={
-                packedCount === 0
-                  ? "No packed orders yet"
-                  : "Generate a packing slips PDF for packed orders"
-              }
-            >
-              {packingSlipsLoading
-                ? "Generating slips…"
-                : `Packing slips${packedCount ? ` (${packedCount})` : ""}`}
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={generatePackingSlips}
+                disabled={packingSlipsLoading || packedCount === 0}
+                title={
+                  packedCount === 0
+                    ? "No packed orders yet"
+                    : "Generate a packing slips PDF for packed orders"
+                }
+              >
+                {packingSlipsLoading
+                  ? "Generating slips…"
+                  : `Packing slips${packedCount ? ` (${packedCount})` : ""}`}
+              </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={generatePackedLabels}
-              disabled={labelsLoading || packedCount === 0}
-              title={
-                packedCount === 0
-                  ? "No packed orders yet"
-                  : "Creates EasyPost labels for packed orders and downloads a merged PDF"
-              }
-            >
-              {labelsLoading
-                ? "Generating labels…"
-                : `Generate labels${packedCount ? ` (${packedCount})` : ""}`}
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={generatePackedLabels}
+                disabled={labelsLoading || packedCount === 0}
+                title={
+                  packedCount === 0
+                    ? "No packed orders yet"
+                    : "Creates EasyPost labels for packed orders and downloads a merged PDF"
+                }
+              >
+                {labelsLoading
+                  ? "Generating labels…"
+                  : `Generate labels${packedCount ? ` (${packedCount})` : ""}`}
+              </Button>
 
-            <Button
-              type="button"
-              variant="default"
-              onClick={generateFulfillmentPacket}
-              disabled={fulfillmentPacketLoading || packedCount === 0}
-              title={
-                packedCount === 0
-                  ? "No packed orders yet"
-                  : "Generate one fulfillment packet containing packing slips and labels for packed orders"
-              }
-            >
-              {fulfillmentPacketLoading
-                ? "Fulfilling…"
-                : `Fulfill packed orders${packedCount ? ` (${packedCount})` : ""}`}
-            </Button>
-          </div>
+              <Button
+                type="button"
+                variant="default"
+                onClick={generateFulfillmentPacket}
+                disabled={fulfillmentPacketLoading || packedCount === 0}
+                title={
+                  packedCount === 0
+                    ? "No packed orders yet"
+                    : "Generate one fulfillment packet containing packing slips and labels for packed orders"
+                }
+              >
+                {fulfillmentPacketLoading
+                  ? "Fulfilling…"
+                  : `Fulfill packed orders${packedCount ? ` (${packedCount})` : ""}`}
+              </Button>
+            </div>
+          )}
         </div>
 
         {tab === "overview" && (
@@ -1374,14 +1394,14 @@ export default function AdminDashboard() {
                             inventoryStats.lowStockCount === 1 ? "" : "s"
                           } detected.`
                         : inventoryStats.criticalCount > 0
-                          ? `${inventoryStats.criticalCount} critical item${
-                              inventoryStats.criticalCount === 1 ? "" : "s"
-                            } and ${inventoryStats.lowStockCount} low-stock item${
-                              inventoryStats.lowStockCount === 1 ? "" : "s"
-                            } detected.`
-                          : `${inventoryStats.lowStockCount} low-stock item${
-                              inventoryStats.lowStockCount === 1 ? "" : "s"
-                            } detected.`}
+                        ? `${inventoryStats.criticalCount} critical item${
+                            inventoryStats.criticalCount === 1 ? "" : "s"
+                          } and ${inventoryStats.lowStockCount} low-stock item${
+                            inventoryStats.lowStockCount === 1 ? "" : "s"
+                          } detected.`
+                        : `${inventoryStats.lowStockCount} low-stock item${
+                            inventoryStats.lowStockCount === 1 ? "" : "s"
+                          } detected.`}
                     </div>
                   </div>
                 </div>
@@ -2213,8 +2233,8 @@ export default function AdminDashboard() {
                       {inventoryStats.outOfStockCount > 0
                         ? "Out-of-stock, critical, and low-stock items"
                         : inventoryStats.criticalCount > 0
-                          ? "Critical and low-stock items"
-                          : "Low-stock items"}
+                        ? "Critical and low-stock items"
+                        : "Low-stock items"}
                     </div>
                     <div className="mt-1 text-sm text-amber-100/90">
                       {lowStockRows
@@ -2354,8 +2374,8 @@ export default function AdminDashboard() {
                               outOfStock || critical
                                 ? "text-red-300"
                                 : lowStock
-                                  ? "text-amber-300"
-                                  : ""
+                                ? "text-amber-300"
+                                : ""
                             }`}
                           >
                             {available}
@@ -2369,10 +2389,10 @@ export default function AdminDashboard() {
                                   !row.isActive
                                     ? "bg-zinc-500/15 text-zinc-300"
                                     : outOfStock || critical
-                                      ? "bg-red-500/15 text-red-300"
-                                      : lowStock
-                                        ? "bg-amber-500/15 text-amber-300"
-                                        : "bg-emerald-500/15 text-emerald-300"
+                                    ? "bg-red-500/15 text-red-300"
+                                    : lowStock
+                                    ? "bg-amber-500/15 text-amber-300"
+                                    : "bg-emerald-500/15 text-emerald-300"
                                 }`}
                               >
                                 {inventoryHealthLabel(row)}
@@ -2481,12 +2501,11 @@ export default function AdminDashboard() {
                             <div className="text-xs text-muted-foreground">Available</div>
                             <div
                               className={`text-2xl font-bold mt-1 ${
-                                inventoryIsOut(selectedInventoryRow) ||
-                                inventoryIsCritical(selectedInventoryRow)
+                                inventoryIsOut(selectedInventoryRow) || inventoryIsCritical(selectedInventoryRow)
                                   ? "text-red-300"
                                   : inventoryIsLow(selectedInventoryRow)
-                                    ? "text-amber-300"
-                                    : ""
+                                  ? "text-amber-300"
+                                  : ""
                               }`}
                             >
                               {inventoryAvailable(selectedInventoryRow)}
@@ -2609,8 +2628,8 @@ export default function AdminDashboard() {
                                         safeNum(tx.quantityDelta, 0) < 0
                                           ? "text-red-300"
                                           : safeNum(tx.quantityDelta, 0) > 0
-                                            ? "text-emerald-300"
-                                            : ""
+                                          ? "text-emerald-300"
+                                          : ""
                                       }`}
                                     >
                                       {safeNum(tx.quantityDelta, 0)}
@@ -2620,8 +2639,8 @@ export default function AdminDashboard() {
                                         safeNum(tx.reservedDelta, 0) < 0
                                           ? "text-red-300"
                                           : safeNum(tx.reservedDelta, 0) > 0
-                                            ? "text-emerald-300"
-                                            : ""
+                                          ? "text-emerald-300"
+                                          : ""
                                       }`}
                                     >
                                       {safeNum(tx.reservedDelta, 0)}
@@ -2746,6 +2765,66 @@ export default function AdminDashboard() {
                       <tr>
                         <td className="p-4 text-muted-foreground" colSpan={5}>
                           No wholesale applications found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "waitlist" && (
+          <div className="mt-6 grid gap-4">
+            <div className="rounded-lg border border-border p-4 flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div className="font-semibold">Waitlist ({waitlist.length})</div>
+                <div className="text-sm text-muted-foreground">
+                  Emails collected from the coming soon page
+                </div>
+              </div>
+
+              <Button type="button" variant="outline" onClick={() => loadWaitlist(true)}>
+                Refresh
+              </Button>
+            </div>
+
+            {waitlistLoading && (
+              <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+                Loading waitlist…
+              </div>
+            )}
+
+            {waitlistError && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+                Failed to load waitlist: {waitlistError}
+              </div>
+            )}
+
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40">
+                    <tr>
+                      <th className="p-3 text-left">Email</th>
+                      <th className="p-3 text-left">Source</th>
+                      <th className="p-3 text-left">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {waitlist.map((row) => (
+                      <tr key={row.id} className="border-t border-border">
+                        <td className="p-3">{row.email}</td>
+                        <td className="p-3">{row.source || "—"}</td>
+                        <td className="p-3">{fmtDate(row.createdAt)}</td>
+                      </tr>
+                    ))}
+
+                    {!waitlist.length && !waitlistLoading && !waitlistError && (
+                      <tr>
+                        <td className="p-4 text-muted-foreground" colSpan={3}>
+                          No waitlist emails yet.
                         </td>
                       </tr>
                     )}

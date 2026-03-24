@@ -3,7 +3,7 @@ import type { Express } from "express";
 import { eq, desc, inArray, sql } from "drizzle-orm";
 
 import { db } from "../db";
-import { orders, orderItems } from "../../shared/schema";
+import { orders, orderItems, waitlistEmails } from "../../shared/schema";
 
 import {
   reconcileInventoryReservationForOrderItem,
@@ -261,6 +261,34 @@ export function registerAdminRoutes(app: Express) {
       const s = safeErrSummary(err);
       console.error("GET /api/admin/summary error:", s);
       return res.status(500).json({ ok: false, message: "Failed to load summary." });
+    }
+  });
+
+  /*
+  WAITLIST
+  */
+
+  app.get("/api/admin/waitlist", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+
+    try {
+      const rows = await db
+        .select({
+          id: waitlistEmails.id,
+          email: waitlistEmails.email,
+          source: waitlistEmails.source,
+          createdAt: waitlistEmails.createdAt,
+        })
+        .from(waitlistEmails)
+        .orderBy(desc(waitlistEmails.createdAt))
+        .limit(5000);
+
+      return res.json({ ok: true, rows });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("GET /api/admin/waitlist error:", s);
+      return res.status(500).json({ ok: false, message: "Failed to load waitlist." });
     }
   });
 

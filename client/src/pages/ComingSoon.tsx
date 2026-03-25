@@ -94,12 +94,25 @@ export default function ComingSoon() {
                 First drop coming soon
               </div>
 
-              <h1 className="mt-5 text-5xl font-bold tracking-tight md:text-6xl">
-                KIMORA CO.
+              <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-500">
+                Kimora Co.
+              </p>
+
+              <h1 className="mt-3 text-5xl font-bold tracking-tight md:text-6xl">
+                OUT-TRAIN.
+                <br />
+                OUT-SMART.
+                <br />
+                OUT-LAST.
               </h1>
 
-              <p className="mt-4 text-lg text-zinc-300 md:text-xl">
-                Creatine + Electrolytes for Performance
+              <p className="mt-5 max-w-lg text-lg text-zinc-300 md:text-xl">
+                Creatine + Electrolytes built for fighters and high performers.
+              </p>
+
+              <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-400 md:text-base">
+                Built for combat athletes who want strength, hydration, and
+                recovery in one clean daily packet.
               </p>
 
               <div className="mt-6 h-px w-full bg-zinc-800" />
@@ -126,32 +139,44 @@ export default function ComingSoon() {
                       {countdown.minutes}m
                     </span>
                     <span className="text-zinc-600">:</span>
-                    <span className="rounded-lg border border-zinc-800 bg-black/40 px-3 py-2">
+                    <span className="animate-pulse rounded-lg border border-orange-400/30 bg-orange-500/10 px-3 py-2 shadow-[0_0_20px_rgba(249,115,22,0.08)]">
                       {countdown.seconds}s
                     </span>
                   </div>
                 </div>
 
-                <p className="mt-5 max-w-lg text-sm leading-7 text-zinc-400 md:text-base">
-                  Dialed for performance — flavor, hydration, and recovery.
-                  Join the list to get first access when the initial drop goes live.
+                <p className="mt-5 max-w-lg text-sm leading-7 text-zinc-300 md:text-base">
+                  First drop is limited. Waitlist subscribers get early access
+                  before public release.
                 </p>
 
-                <div className="mt-4 space-y-2 text-sm text-zinc-300">
+                <div className="mt-4 grid gap-2 text-sm text-zinc-200">
                   <div>• 5g creatine per serving</div>
-                  <div>• Electrolytes for hydration &amp; endurance</div>
-                  <div>• Built for combat athletes</div>
+                  <div>• Electrolytes for hydration, endurance, and recovery</div>
+                  <div>• Built for combat athletes and everyday performance</div>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
-                    Strawberry Guava
+                    5g Creatine
                   </span>
                   <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
-                    Raspberry Dragonfruit
+                    Electrolytes
                   </span>
                   <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
-                    Lemon Yuzu
+                    No Sugar
+                  </span>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
+                    Strawberry Guava — smooth &amp; tropical
+                  </span>
+                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
+                    Raspberry Dragonfruit — bold &amp; punchy
+                  </span>
+                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
+                    Lemon Yuzu — crisp &amp; refreshing
                   </span>
                 </div>
 
@@ -160,10 +185,10 @@ export default function ComingSoon() {
                     Limited first drop. Early access only.
                   </p>
                   <p className="text-sm text-zinc-400">
-                    Early access subscribers get priority ordering.
+                    Join 137 fighters already on the waitlist.
                   </p>
                   <p className="text-sm text-zinc-400">
-                    Join 137 others on the waitlist.
+                    Be first in line when the initial drop goes live.
                   </p>
                 </div>
               </div>
@@ -187,7 +212,7 @@ export default function ComingSoon() {
                   disabled={submitting}
                   className="h-13 rounded-xl bg-white px-7 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-60"
                 >
-                  {submitting ? "Submitting..." : "Get Early Access"}
+                  {submitting ? "Submitting..." : "Join the First Drop"}
                 </button>
               </form>
 

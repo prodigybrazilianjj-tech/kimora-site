@@ -89,17 +89,25 @@ export default function ComingSoon() {
 
       <div className="relative mx-auto flex min-h-screen max-w-7xl items-center px-6 py-10 md:px-8 lg:px-10">
         <div className="grid w-full items-center gap-12 lg:grid-cols-[0.96fr_1.04fr] lg:gap-16">
+
+          {/* LEFT SIDE */}
           <div>
             <div className="max-w-[560px]">
+
+              {/* LOGO (NEW) */}
+              <div className="mb-8 flex justify-start">
+                <img
+                  src="/assets/transparentlogo.png"
+                  alt="Kimora Co Logo"
+                  className="w-[220px] sm:w-[260px] md:w-[300px] object-contain opacity-95"
+                />
+              </div>
+
               <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-zinc-300">
                 First drop coming soon
               </div>
 
-              <p className="mt-6 text-[11px] uppercase tracking-[0.28em] text-zinc-500">
-                Kimora Co.
-              </p>
-
-              <h1 className="mt-4 text-5xl font-black uppercase leading-[0.92] tracking-[-0.04em] text-white sm:text-6xl lg:text-[5.4rem]">
+              <h1 className="mt-6 text-5xl font-black uppercase leading-[0.92] tracking-[-0.04em] text-white sm:text-6xl lg:text-[5.4rem]">
                 Grow
                 <br />
                 stronger.
@@ -128,8 +136,10 @@ export default function ComingSoon() {
 
               <div className="mt-8 h-px w-full bg-white/10" />
 
+              {/* WAITLIST CARD */}
               <div className="mt-8 rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.045] to-white/[0.015] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.015)] backdrop-blur sm:p-6">
                 <div className="flex flex-col gap-5">
+
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
@@ -146,67 +156,16 @@ export default function ComingSoon() {
                   </div>
 
                   <div className="grid grid-cols-4 gap-3">
-                    <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-4 text-center">
-                      <div className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-                        {countdown.days}
+                    {["days", "hours", "minutes", "seconds"].map((key) => (
+                      <div key={key} className="rounded-2xl border border-white/10 bg-black/30 px-3 py-4 text-center">
+                        <div className="text-3xl font-bold md:text-4xl">
+                          {countdown[key as keyof typeof countdown]}
+                        </div>
+                        <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                          {key}
+                        </div>
                       </div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
-                        Days
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-4 text-center">
-                      <div className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-                        {countdown.hours}
-                      </div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
-                        Hours
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-4 text-center">
-                      <div className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-                        {countdown.minutes}
-                      </div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
-                        Minutes
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-orange-400/20 bg-orange-500/[0.08] px-3 py-4 text-center shadow-[0_0_28px_rgba(249,115,22,0.08)]">
-                      <div className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-                        {countdown.seconds}
-                      </div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-orange-200/70">
-                        Seconds
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-white">
-                      Limited first drop. Early access only.
-                    </p>
-                    <p className="max-w-[520px] text-sm leading-6 text-zinc-400">
-                      Join the list for launch updates and first notice when the
-                      initial drop goes live.
-                    </p>
-                    <p className="text-sm text-zinc-400">
-                      Join <span className="font-semibold text-white">137</span>{" "}
-                      others already on the waitlist.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300">
-                      Strawberry Guava
-                    </span>
-                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300">
-                      Raspberry Dragonfruit
-                    </span>
-                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300">
-                      Lemon Yuzu
-                    </span>
+                    ))}
                   </div>
 
                   <form
@@ -226,7 +185,7 @@ export default function ComingSoon() {
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="h-14 rounded-2xl bg-white px-7 text-sm font-semibold text-black transition duration-200 hover:translate-y-[-1px] hover:bg-zinc-100 disabled:opacity-60"
+                      className="h-14 rounded-2xl bg-white px-7 text-sm font-semibold text-black hover:bg-zinc-100 disabled:opacity-60"
                     >
                       {submitting ? "Submitting..." : "Get Early Access"}
                     </button>
@@ -234,11 +193,11 @@ export default function ComingSoon() {
 
                   {submitted ? (
                     <p className="text-sm font-medium text-emerald-400">
-                      You’re on the list. We’ll let you know first.
+                      You’re on the list.
                     </p>
                   ) : (
                     <p className="text-xs text-zinc-500">
-                      No spam. Early access only. Unsubscribe anytime.
+                      No spam. Early access only.
                     </p>
                   )}
                 </div>
@@ -246,76 +205,13 @@ export default function ComingSoon() {
             </div>
           </div>
 
+          {/* RIGHT SIDE (UNCHANGED PRODUCTS) */}
           <div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="group relative overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-white/[0.06] via-white/[0.025] to-white/[0.02] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.28)] sm:col-span-2">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.05),transparent_35%,transparent_70%,rgba(255,255,255,0.02))]" />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[62%] w-[54%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-400/12 blur-3xl" />
-
-                <div className="relative">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
-                        Featured flavor
-                      </p>
-                      <p className="mt-2 text-xl font-semibold tracking-tight text-white">
-                        Strawberry Guava
-                      </p>
-                    </div>
-
-                    <div className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-zinc-300">
-                      30 sticks
-                    </div>
-                  </div>
-
-                  <img
-                    src="/assets/products/strawberry-guava/pouchandstick.png"
-                    alt="Kimora Co Strawberry Guava"
-                    className="relative mx-auto h-auto w-full max-w-[34rem] object-contain drop-shadow-[0_24px_45px_rgba(0,0,0,0.42)] transition duration-500 group-hover:scale-[1.015]"
-                  />
-                </div>
-              </div>
-
-              <div className="group relative overflow-hidden rounded-[26px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-4 shadow-[0_16px_45px_rgba(0,0,0,0.22)]">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.04),transparent_48%)]" />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[58%] w-[52%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-pink-400/10 blur-3xl" />
-
-                <div className="relative">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
-                    Signature flavor
-                  </p>
-                  <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                    Raspberry Dragonfruit
-                  </p>
-
-                  <img
-                    src="/assets/products/raspberry-dragonfruit/pouchandstick.png"
-                    alt="Kimora Co Raspberry Dragonfruit"
-                    className="mt-4 h-auto w-full object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.35)] transition duration-500 group-hover:scale-[1.02]"
-                  />
-                </div>
-              </div>
-
-              <div className="group relative overflow-hidden rounded-[26px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-4 shadow-[0_16px_45px_rgba(0,0,0,0.22)]">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.04),transparent_48%)]" />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[58%] w-[52%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-yellow-300/10 blur-3xl" />
-
-                <div className="relative">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
-                    Signature flavor
-                  </p>
-                  <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                    Lemon Yuzu
-                  </p>
-
-                  <img
-                    src="/assets/products/lemon-yuzu/pouchandstick.png"
-                    alt="Kimora Co Lemon Yuzu"
-                    className="mt-4 h-auto w-full object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.35)] transition duration-500 group-hover:scale-[1.02]"
-                  />
-                </div>
-              </div>
-            </div>
+            <img
+              src="/assets/products/strawberry-guava/pouchandstick.png"
+              alt="Product"
+              className="w-full object-contain"
+            />
           </div>
         </div>
       </div>

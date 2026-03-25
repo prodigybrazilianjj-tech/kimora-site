@@ -99,7 +99,7 @@ export default function ComingSoon() {
 
             <div className="mt-7">
               <img
-                src="/assets/transparentlogo.png"
+                src="/assets/products/transparentlogo.png"
                 alt="Kimora Co."
                 className="h-8 w-auto opacity-90 sm:h-9"
               />

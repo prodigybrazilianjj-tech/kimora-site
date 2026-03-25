@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 
+type CountdownUnit = {
+  label: string;
+  value: string;
+};
+
 export default function ComingSoon() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -43,12 +48,14 @@ export default function ComingSoon() {
 
     const pad = (n: number) => String(n).padStart(2, "0");
 
-    return {
-      days: pad(days),
-      hours: pad(hours),
-      minutes: pad(minutes),
-      seconds: pad(seconds),
-    };
+    const units: CountdownUnit[] = [
+      { label: "Days", value: pad(days) },
+      { label: "Hours", value: pad(hours) },
+      { label: "Minutes", value: pad(minutes) },
+      { label: "Seconds", value: pad(seconds) },
+    ];
+
+    return units;
   }, [timeLeftMs]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -83,188 +90,227 @@ export default function ComingSoon() {
   }
 
   return (
-    <div className="min-h-screen overflow-hidden bg-black text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_40%,rgba(255,255,255,0.05),transparent_28%),radial-gradient(circle_at_78%_42%,rgba(249,115,22,0.10),transparent_24%),radial-gradient(circle_at_82%_76%,rgba(234,179,8,0.08),transparent_18%)]" />
+    <div className="relative min-h-screen overflow-hidden bg-[#050505] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.06),transparent_26%),radial-gradient(circle_at_78%_22%,rgba(249,115,22,0.16),transparent_20%),radial-gradient(circle_at_88%_72%,rgba(234,179,8,0.10),transparent_18%),linear-gradient(to_bottom,rgba(255,255,255,0.015),transparent_20%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/[0.03] to-transparent" />
+      <div className="pointer-events-none absolute left-1/2 top-[14%] h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-white/[0.02] blur-3xl" />
 
-      <div className="relative mx-auto flex min-h-screen max-w-7xl items-center px-6 py-10 md:px-8 lg:px-10">
-        <div className="grid w-full items-center gap-10 lg:grid-cols-[1.02fr_1fr] lg:gap-14">
-          <div>
-            <div className="max-w-xl">
-              <div className="inline-flex items-center rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-zinc-400">
-                First drop coming soon
-              </div>
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-5 py-10 sm:px-8 lg:px-10">
+        <div className="grid w-full items-center gap-10 lg:grid-cols-[minmax(0,1.04fr)_minmax(460px,0.96fr)] lg:gap-14">
+          <section className="max-w-2xl">
+            <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-zinc-300 backdrop-blur">
+              First drop coming soon
+            </div>
 
-              <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-500">
+            <div className="mt-7">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-zinc-500">
                 Kimora Co.
               </p>
 
-              <h1 className="mt-3 text-5xl font-bold tracking-tight md:text-6xl">
-                OUT-TRAIN.
+              <h1 className="mt-4 max-w-xl text-5xl font-black uppercase leading-[0.94] tracking-[-0.04em] text-white sm:text-6xl lg:text-[5.3rem]">
+                Stronger.
                 <br />
-                OUT-SMART.
+                Sharper.
                 <br />
-                OUT-LAST.
+                Ready.
               </h1>
 
-              <p className="mt-5 max-w-lg text-lg text-zinc-300 md:text-xl">
-                Creatine + Electrolytes built for fighters and high performers.
+              <p className="mt-6 max-w-xl text-lg leading-8 text-zinc-300 sm:text-[1.35rem]">
+                Creatine + electrolytes built for fighters, lifters, and
+                high-performers who want daily performance support without the
+                extra junk.
               </p>
+            </div>
 
-              <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-400 md:text-base">
-                Built for combat athletes who want strength, hydration, and
-                recovery in one clean daily packet.
-              </p>
-
-              <div className="mt-6 h-px w-full bg-zinc-800" />
-
-              <div className="mt-7">
-                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                  Launching Soon
-                </h2>
-
-                <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                    Drop goes live in
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 text-xl font-semibold md:text-2xl">
-                    <span className="rounded-lg border border-zinc-800 bg-black/40 px-3 py-2">
-                      {countdown.days}d
-                    </span>
-                    <span className="text-zinc-600">:</span>
-                    <span className="rounded-lg border border-zinc-800 bg-black/40 px-3 py-2">
-                      {countdown.hours}h
-                    </span>
-                    <span className="text-zinc-600">:</span>
-                    <span className="rounded-lg border border-zinc-800 bg-black/40 px-3 py-2">
-                      {countdown.minutes}m
-                    </span>
-                    <span className="text-zinc-600">:</span>
-                    <span className="animate-pulse rounded-lg border border-orange-400/30 bg-orange-500/10 px-3 py-2 shadow-[0_0_20px_rgba(249,115,22,0.08)]">
-                      {countdown.seconds}s
-                    </span>
-                  </div>
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 backdrop-blur">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                  Strength
                 </div>
-
-                <p className="mt-5 max-w-lg text-sm leading-7 text-zinc-300 md:text-base">
-                  First drop is limited. Waitlist subscribers get early access
-                  before public release.
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  5g creatine monohydrate per serving.
                 </p>
-
-                <div className="mt-4 grid gap-2 text-sm text-zinc-200">
-                  <div>• 5g creatine per serving</div>
-                  <div>• Electrolytes for hydration, endurance, and recovery</div>
-                  <div>• Built for combat athletes and everyday performance</div>
-                </div>
-
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
-                    5g Creatine
-                  </span>
-                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
-                    Electrolytes
-                  </span>
-                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
-                    No Sugar
-                  </span>
-                </div>
-
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
-                    Strawberry Guava — smooth &amp; tropical
-                  </span>
-                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
-                    Raspberry Dragonfruit — bold &amp; punchy
-                  </span>
-                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">
-                    Lemon Yuzu — crisp &amp; refreshing
-                  </span>
-                </div>
-
-                <div className="mt-5 space-y-2">
-                  <p className="text-sm font-semibold text-zinc-100">
-                    Limited first drop. Early access only.
-                  </p>
-                  <p className="text-sm text-zinc-400">
-                    Join 137 fighters already on the waitlist.
-                  </p>
-                  <p className="text-sm text-zinc-400">
-                    Be first in line when the initial drop goes live.
-                  </p>
-                </div>
               </div>
 
-              <form
-                onSubmit={handleSubmit}
-                className="mt-8 flex flex-col gap-3 sm:flex-row"
-              >
-                <input
-                  type="email"
-                  required
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={submitting}
-                  className="h-13 flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-4 text-sm text-white placeholder:text-zinc-500 focus:border-white focus:outline-none disabled:opacity-60"
-                />
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="h-13 rounded-xl bg-white px-7 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-60"
-                >
-                  {submitting ? "Submitting..." : "Join the First Drop"}
-                </button>
-              </form>
-
-              {submitted && (
-                <p className="mt-4 text-sm font-medium text-green-400">
-                  You’re on the list. We’ll let you know first.
+              <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 backdrop-blur">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                  Hydration
+                </div>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  Electrolytes to support training and recovery.
                 </p>
-              )}
+              </div>
 
-              <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-zinc-500">
-                <span>Built for fighters.</span>
-                <span className="hidden h-1 w-1 rounded-full bg-zinc-700 sm:block" />
-                <span>Designed for everyday performance.</span>
-                <span className="hidden h-1 w-1 rounded-full bg-zinc-700 sm:block" />
-                <span>3 signature flavors.</span>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 backdrop-blur">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                  Formula
+                </div>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  No sugar. No fluff. Daily-use simplicity.
+                </p>
               </div>
             </div>
-          </div>
 
-          <div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="group relative overflow-hidden rounded-[28px] border border-zinc-800 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] sm:col-span-2">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_45%)]" />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[65%] w-[55%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-400/10 blur-3xl" />
-                <img
-                  src="/assets/products/strawberry-guava/pouchandstick.png"
-                  alt="Kimora Co Strawberry Guava"
-                  className="relative h-auto w-full rounded-2xl object-contain transition duration-300 group-hover:scale-[1.015]"
-                />
+            <div className="mt-8 rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] backdrop-blur sm:p-6">
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                      Countdown
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]">
+                      Launching soon
+                    </h2>
+                  </div>
+
+                  <p className="max-w-xs text-sm leading-6 text-zinc-400 sm:text-right">
+                    Waitlist members get first access before the public drop
+                    opens.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {countdown.map((unit, index) => (
+                    <div
+                      key={unit.label}
+                      className={`rounded-2xl border p-4 ${
+                        index === 3
+                          ? "border-orange-400/25 bg-orange-500/[0.08] shadow-[0_0_30px_rgba(249,115,22,0.08)]"
+                          : "border-white/10 bg-black/30"
+                      }`}
+                    >
+                      <div className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                        {unit.value}
+                      </div>
+                      <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                        {unit.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
+                  <div>
+                    <p className="text-sm font-medium text-white">
+                      Limited first drop.
+                    </p>
+                    <p className="mt-2 max-w-lg text-sm leading-6 text-zinc-400">
+                      Join the list for early access, launch updates, and first
+                      notice when ordering opens.
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300">
+                        Strawberry Guava
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300">
+                        Raspberry Dragonfruit
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300">
+                        Lemon Yuzu
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-zinc-300">
+                    <span className="font-semibold text-white">137</span> already
+                    on the waitlist
+                  </div>
+                </div>
+
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex flex-col gap-3 sm:flex-row"
+                >
+                  <input
+                    type="email"
+                    required
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={submitting}
+                    className="h-14 flex-1 rounded-2xl border border-white/10 bg-black/40 px-5 text-sm text-white placeholder:text-zinc-500 focus:border-white/40 focus:outline-none disabled:opacity-60"
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="h-14 rounded-2xl bg-white px-7 text-sm font-semibold text-black shadow-[0_0_30px_rgba(255,255,255,0.08)] transition duration-200 hover:translate-y-[-1px] hover:bg-zinc-100 disabled:opacity-60"
+                  >
+                    {submitting ? "Submitting..." : "Get Early Access"}
+                  </button>
+                </form>
+
+                {submitted ? (
+                  <p className="text-sm font-medium text-emerald-400">
+                    You’re on the list. We’ll let you know first.
+                  </p>
+                ) : (
+                  <p className="text-xs text-zinc-500">
+                    Early access only. No spam. Unsubscribe anytime.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="relative">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,rgba(249,115,22,0.12),transparent_34%)]" />
+
+            <div className="grid gap-4 sm:grid-cols-[1.18fr_0.82fr] sm:grid-rows-[auto_auto]">
+              <div className="relative overflow-hidden rounded-[34px] border border-white/10 bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-white/[0.02] p-5 shadow-[0_20px_80px_rgba(0,0,0,0.35)] sm:row-span-2 sm:p-6">
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_36%,transparent_64%,rgba(255,255,255,0.03))]" />
+                <div className="pointer-events-none absolute left-1/2 top-[42%] h-[58%] w-[58%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-400/15 blur-3xl" />
+
+                <div className="relative">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                        Featured flavor
+                      </p>
+                      <p className="mt-2 text-xl font-semibold tracking-tight text-white">
+                        Strawberry Guava
+                      </p>
+                    </div>
+
+                    <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-zinc-300">
+                      30 sticks
+                    </div>
+                  </div>
+
+                  <img
+                    src="/assets/products/strawberry-guava/pouchandstick.png"
+                    alt="Kimora Co Strawberry Guava"
+                    className="mx-auto h-auto w-full max-w-[34rem] object-contain drop-shadow-[0_28px_50px_rgba(0,0,0,0.45)] transition duration-500 hover:scale-[1.015]"
+                  />
+                </div>
               </div>
 
-              <div className="group relative overflow-hidden rounded-[24px] border border-zinc-800 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_45%)]" />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[55%] w-[50%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-pink-400/10 blur-3xl" />
+              <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-4 shadow-[0_16px_60px_rgba(0,0,0,0.28)]">
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[62%] w-[62%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-pink-400/10 blur-3xl" />
+                <p className="relative text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                  Signature flavor
+                </p>
                 <img
                   src="/assets/products/raspberry-dragonfruit/pouchandstick.png"
                   alt="Kimora Co Raspberry Dragonfruit"
-                  className="relative h-auto w-full rounded-xl object-contain transition duration-300 group-hover:scale-[1.02]"
+                  className="relative mt-3 h-auto w-full object-contain drop-shadow-[0_18px_35px_rgba(0,0,0,0.4)] transition duration-500 hover:scale-[1.02]"
                 />
               </div>
 
-              <div className="group relative overflow-hidden rounded-[24px] border border-zinc-800 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_45%)]" />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[55%] w-[50%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-yellow-300/10 blur-3xl" />
+              <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-4 shadow-[0_16px_60px_rgba(0,0,0,0.28)]">
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[62%] w-[62%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-yellow-300/10 blur-3xl" />
+                <p className="relative text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                  Signature flavor
+                </p>
                 <img
                   src="/assets/products/lemon-yuzu/pouchandstick.png"
                   alt="Kimora Co Lemon Yuzu"
-                  className="relative h-auto w-full rounded-xl object-contain transition duration-300 group-hover:scale-[1.02]"
+                  className="relative mt-3 h-auto w-full object-contain drop-shadow-[0_18px_35px_rgba(0,0,0,0.4)] transition duration-500 hover:scale-[1.02]"
                 />
               </div>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>

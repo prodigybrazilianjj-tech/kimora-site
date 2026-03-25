@@ -92,16 +92,23 @@ export default function ComingSoon() {
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-6 py-10 md:px-8 lg:px-10">
         <div className="grid w-full items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
-          <section className="max-w-[560px]">
+          <section className="relative max-w-[560px]">
+            <img
+              src="/assets/products/transparentlogo.png"
+              alt=""
+              aria-hidden="true"
+              className="pointer-events-none absolute -left-10 top-[5.5rem] hidden w-[520px] max-w-none opacity-[0.05] brightness-150 contrast-125 lg:block"
+            />
+
             <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-zinc-300 backdrop-blur">
               First drop coming soon
             </div>
 
-            <div className="mt-7">
+            <div className="relative mt-7">
               <img
                 src="/assets/products/transparentlogo.png"
                 alt="Kimora Co."
-                className="h-8 w-auto opacity-90 sm:h-9"
+                className="relative h-14 w-auto opacity-90 brightness-150 contrast-125 sm:h-16"
               />
             </div>
 

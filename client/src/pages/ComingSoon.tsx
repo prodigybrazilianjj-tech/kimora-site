@@ -90,14 +90,22 @@ export default function ComingSoon() {
       <div className="pointer-events-none absolute right-[-8rem] top-24 h-[28rem] w-[28rem] rounded-full bg-red-500/10 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-8rem] right-[8%] h-[20rem] w-[20rem] rounded-full bg-yellow-400/10 blur-3xl" />
 
-      <header className="relative z-20">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 md:px-8 lg:px-10">
+      <header className="relative z-20 border-b border-white/6">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-5 md:px-8 lg:px-10">
           <div className="flex items-center gap-3">
             <img
               src="/assets/products/transparentlogo.png"
               alt="Kimora Co."
-              className="h-10 w-auto invert brightness-[2.2] contrast-125 sm:h-11"
+              className="h-9 w-auto invert brightness-[2.2] contrast-125 sm:h-10"
             />
+            <div className="flex flex-col leading-none">
+              <span className="text-sm font-semibold uppercase tracking-[0.22em] text-white sm:text-base">
+                KIMORA CO.
+              </span>
+              <span className="mt-1 text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                Grow Stronger. Think Sharper.
+              </span>
+            </div>
           </div>
 
           <div className="hidden sm:flex items-center gap-3">
@@ -109,7 +117,7 @@ export default function ComingSoon() {
       </header>
 
       <main className="relative z-10">
-        <section className="mx-auto w-full max-w-7xl px-6 pb-16 pt-4 md:px-8 lg:px-10">
+        <section className="mx-auto w-full max-w-7xl px-6 pb-16 pt-6 md:px-8 lg:px-10">
           <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,620px)_1fr] lg:gap-16">
             <div className="relative max-w-[620px]">
               <img

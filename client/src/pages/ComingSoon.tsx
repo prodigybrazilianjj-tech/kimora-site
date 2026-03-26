@@ -84,20 +84,20 @@ export default function ComingSoon() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#040404] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_18%,rgba(255,255,255,0.07),transparent_22%),radial-gradient(circle_at_76%_18%,rgba(249,115,22,0.18),transparent_24%),radial-gradient(circle_at_88%_72%,rgba(234,179,8,0.14),transparent_22%),radial-gradient(circle_at_62%_56%,rgba(244,63,94,0.10),transparent_26%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04),transparent_14%,transparent_86%,rgba(255,255,255,0.02))]" />
-      <div className="pointer-events-none absolute left-[-8%] top-[8%] h-[24rem] w-[24rem] rounded-full bg-orange-500/10 blur-3xl" />
-      <div className="pointer-events-none absolute right-[-10%] top-[10%] h-[28rem] w-[28rem] rounded-full bg-red-500/10 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-[-8%] right-[8%] h-[18rem] w-[18rem] rounded-full bg-yellow-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_18%,rgba(255,255,255,0.06),transparent_22%),radial-gradient(circle_at_76%_16%,rgba(249,115,22,0.16),transparent_24%),radial-gradient(circle_at_88%_74%,rgba(234,179,8,0.12),transparent_20%),radial-gradient(circle_at_68%_56%,rgba(244,63,94,0.08),transparent_24%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03),transparent_14%,transparent_84%,rgba(255,255,255,0.015))]" />
+      <div className="pointer-events-none absolute -left-24 top-12 h-[22rem] w-[22rem] rounded-full bg-orange-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute right-[-8rem] top-20 h-[26rem] w-[26rem] rounded-full bg-red-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-[-6rem] right-[6%] h-[18rem] w-[18rem] rounded-full bg-yellow-400/10 blur-3xl" />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-6 py-10 md:px-8 lg:px-10">
-        <div className="grid w-full items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
+        <div className="grid w-full items-center gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12">
           <section className="relative max-w-[560px]">
             <img
               src="/assets/products/transparentlogo.png"
               alt=""
               aria-hidden="true"
-              className="pointer-events-none absolute -left-10 top-[5.5rem] hidden w-[520px] max-w-none opacity-[0.05] brightness-150 contrast-125 lg:block"
+              className="pointer-events-none absolute -left-8 top-14 hidden w-[440px] max-w-none opacity-[0.04] brightness-200 contrast-125 lg:block"
             />
 
             <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-zinc-300 backdrop-blur">
@@ -108,11 +108,11 @@ export default function ComingSoon() {
               <img
                 src="/assets/products/transparentlogo.png"
                 alt="Kimora Co."
-                className="relative h-14 w-auto opacity-90 brightness-150 contrast-125 sm:h-16"
+                className="h-14 w-auto brightness-[2.4] contrast-125 invert sm:h-16"
               />
             </div>
 
-            <h1 className="mt-8 text-5xl font-black uppercase leading-[0.9] tracking-[-0.05em] text-white sm:text-6xl lg:text-[5.5rem]">
+            <h1 className="mt-8 text-5xl font-black uppercase leading-[0.9] tracking-[-0.05em] text-white sm:text-6xl lg:text-[5.35rem]">
               OUT-TRAIN.
               <br />
               OUT-SMART.
@@ -120,7 +120,7 @@ export default function ComingSoon() {
               OUT-LAST.
             </h1>
 
-            <p className="mt-6 max-w-[520px] text-lg leading-8 text-zinc-200 sm:text-[1.35rem]">
+            <p className="mt-6 max-w-[540px] text-lg leading-8 text-zinc-200 sm:text-[1.35rem]">
               Creatine + electrolytes for performance, hydration, and recovery
               — built for fighters and everyday high performers.
             </p>
@@ -137,7 +137,7 @@ export default function ComingSoon() {
               </span>
             </div>
 
-            <div className="mt-10 rounded-[30px] border border-white/10 bg-white/[0.035] p-5 shadow-[0_10px_50px_rgba(0,0,0,0.25)] backdrop-blur sm:p-6">
+            <div className="mt-10 rounded-[28px] border border-white/10 bg-white/[0.035] p-5 shadow-[0_10px_50px_rgba(0,0,0,0.26)] backdrop-blur sm:p-6">
               <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                   <div>
@@ -149,7 +149,7 @@ export default function ComingSoon() {
                     </h2>
                   </div>
 
-                  <p className="max-w-[240px] text-sm leading-6 text-zinc-400 sm:text-right">
+                  <p className="max-w-[220px] text-sm leading-6 text-zinc-400 sm:text-right">
                     Waitlist members get first access before the public drop.
                   </p>
                 </div>
@@ -254,72 +254,73 @@ export default function ComingSoon() {
             </div>
           </section>
 
-          <section className="relative">
-            <div className="relative grid gap-4 sm:grid-cols-[1.18fr_0.82fr] sm:grid-rows-[auto_auto]">
-              <div className="relative overflow-hidden rounded-[34px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur sm:row-span-2 sm:p-6">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.06),transparent_35%,transparent_70%,rgba(255,255,255,0.02))]" />
-                <div className="pointer-events-none absolute left-1/2 top-[42%] h-[60%] w-[56%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-500/16 blur-3xl" />
+          <section className="relative min-h-[640px]">
+            <div className="pointer-events-none absolute inset-0 rounded-[42px] bg-[radial-gradient(circle_at_58%_34%,rgba(249,115,22,0.14),transparent_24%),radial-gradient(circle_at_72%_72%,rgba(234,179,8,0.12),transparent_20%),radial-gradient(circle_at_84%_28%,rgba(244,63,94,0.10),transparent_18%)]" />
 
-                <div className="relative z-10 flex items-center justify-between gap-3">
+            <div className="relative h-full min-h-[640px]">
+              <div className="pointer-events-none absolute left-[16%] top-[10%] h-[28rem] w-[28rem] rounded-full bg-orange-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute right-[8%] top-[24%] h-[18rem] w-[18rem] rounded-full bg-pink-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute bottom-[8%] right-[12%] h-[16rem] w-[16rem] rounded-full bg-yellow-400/10 blur-3xl" />
+
+              <div className="absolute left-[6%] top-[2%] hidden xl:block">
+                <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-zinc-300 backdrop-blur">
+                  3 signature flavors
+                </div>
+              </div>
+
+              <div className="absolute left-[8%] top-[12%] z-20 w-[62%]">
+                <div className="mb-4 flex items-center justify-between">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
                       Featured flavor
                     </p>
-                    <p className="mt-2 text-xl font-semibold tracking-tight text-white">
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-white">
                       Strawberry Guava
                     </p>
                   </div>
 
-                  <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-zinc-300">
+                  <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-zinc-300 backdrop-blur">
                     30 sticks
                   </div>
                 </div>
 
+                <div className="relative">
+                  <img
+                    src="/assets/products/strawberry-guava/pouchandstick.png"
+                    alt="Kimora Co Strawberry Guava"
+                    className="relative z-10 h-auto w-full object-contain drop-shadow-[0_32px_55px_rgba(0,0,0,0.42)] transition duration-500 hover:scale-[1.015]"
+                  />
+                </div>
+              </div>
+
+              <div className="absolute right-[4%] top-[12%] z-10 w-[32%] rounded-[26px] border border-white/8 bg-white/[0.03] p-4 backdrop-blur">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                  Signature flavor
+                </p>
+                <p className="mt-2 text-lg font-semibold tracking-tight text-white">
+                  Raspberry Dragonfruit
+                </p>
+
                 <img
-                  src="/assets/products/strawberry-guava/pouchandstick.png"
-                  alt="Kimora Co Strawberry Guava"
-                  className="relative z-10 mx-auto mt-4 h-auto w-full max-w-[34rem] object-contain drop-shadow-[0_24px_45px_rgba(0,0,0,0.42)] transition duration-500 hover:scale-[1.015]"
+                  src="/assets/products/raspberry-dragonfruit/pouchandstick.png"
+                  alt="Kimora Co Raspberry Dragonfruit"
+                  className="mt-4 h-auto w-full object-contain drop-shadow-[0_18px_32px_rgba(0,0,0,0.34)] transition duration-500 hover:scale-[1.02]"
                 />
               </div>
 
-              <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_16px_45px_rgba(0,0,0,0.22)] backdrop-blur">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.04),transparent_48%)]" />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[58%] w-[52%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-pink-500/14 blur-3xl" />
+              <div className="absolute right-[8%] bottom-[8%] z-10 w-[30%] rounded-[26px] border border-white/8 bg-white/[0.03] p-4 backdrop-blur">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                  Signature flavor
+                </p>
+                <p className="mt-2 text-lg font-semibold tracking-tight text-white">
+                  Lemon Yuzu
+                </p>
 
-                <div className="relative z-10">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
-                    Signature flavor
-                  </p>
-                  <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                    Raspberry Dragonfruit
-                  </p>
-
-                  <img
-                    src="/assets/products/raspberry-dragonfruit/pouchandstick.png"
-                    alt="Kimora Co Raspberry Dragonfruit"
-                    className="mt-4 h-auto w-full object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.35)] transition duration-500 hover:scale-[1.02]"
-                  />
-                </div>
-              </div>
-
-              <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_16px_45px_rgba(0,0,0,0.22)] backdrop-blur">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.04),transparent_48%)]" />
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[58%] w-[52%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-yellow-400/16 blur-3xl" />
-
-                <div className="relative z-10">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
-                    Signature flavor
-                  </p>
-                  <p className="mt-2 text-base font-semibold tracking-tight text-white">
-                    Lemon Yuzu
-                  </p>
-
-                  <img
-                    src="/assets/products/lemon-yuzu/pouchandstick.png"
-                    alt="Kimora Co Lemon Yuzu"
-                    className="mt-4 h-auto w-full object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.35)] transition duration-500 hover:scale-[1.02]"
-                  />
-                </div>
+                <img
+                  src="/assets/products/lemon-yuzu/pouchandstick.png"
+                  alt="Kimora Co Lemon Yuzu"
+                  className="mt-4 h-auto w-full object-contain drop-shadow-[0_18px_32px_rgba(0,0,0,0.34)] transition duration-500 hover:scale-[1.02]"
+                />
               </div>
             </div>
           </section>

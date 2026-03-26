@@ -84,9 +84,9 @@ export default function ComingSoon() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#040404] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_14%,rgba(255,255,255,0.06),transparent_22%),radial-gradient(circle_at_84%_12%,rgba(249,115,22,0.16),transparent_22%),radial-gradient(circle_at_86%_72%,rgba(234,179,8,0.12),transparent_18%),radial-gradient(circle_at_72%_42%,rgba(244,63,94,0.08),transparent_22%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03),transparent_14%,transparent_86%,rgba(255,255,255,0.02))]" />
-      <div className="pointer-events-none absolute -left-24 top-10 h-[24rem] w-[24rem] rounded-full bg-orange-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_14%,rgba(255,255,255,0.05),transparent_22%),radial-gradient(circle_at_86%_12%,rgba(249,115,22,0.14),transparent_22%),radial-gradient(circle_at_84%_72%,rgba(234,179,8,0.10),transparent_18%),radial-gradient(circle_at_74%_42%,rgba(244,63,94,0.07),transparent_22%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03),transparent_14%,transparent_88%,rgba(255,255,255,0.015))]" />
+      <div className="pointer-events-none absolute -left-28 top-10 h-[24rem] w-[24rem] rounded-full bg-orange-500/10 blur-3xl" />
       <div className="pointer-events-none absolute right-[-8rem] top-24 h-[28rem] w-[28rem] rounded-full bg-red-500/10 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-8rem] right-[8%] h-[20rem] w-[20rem] rounded-full bg-yellow-400/10 blur-3xl" />
 
@@ -109,21 +109,21 @@ export default function ComingSoon() {
       </header>
 
       <main className="relative z-10">
-        <section className="mx-auto flex w-full max-w-7xl items-center px-6 pb-14 pt-4 md:px-8 lg:px-10 lg:min-h-[calc(100vh-88px)]">
-          <div className="grid w-full items-center gap-14 lg:grid-cols-[0.92fr_1.08fr] lg:gap-16">
-            <div className="relative max-w-[580px]">
+        <section className="mx-auto w-full max-w-7xl px-6 pb-16 pt-4 md:px-8 lg:px-10">
+          <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,620px)_1fr] lg:gap-16">
+            <div className="relative max-w-[620px]">
               <img
                 src="/assets/products/transparentlogo.png"
                 alt=""
                 aria-hidden="true"
-                className="pointer-events-none absolute -left-10 top-8 hidden w-[460px] max-w-none opacity-[0.04] invert brightness-[2.2] contrast-125 lg:block"
+                className="pointer-events-none absolute -left-12 top-10 hidden w-[500px] max-w-none opacity-[0.04] invert brightness-[2.3] contrast-125 lg:block"
               />
 
               <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-zinc-300 backdrop-blur sm:hidden">
                 First drop coming soon
               </div>
 
-              <h1 className="mt-6 text-5xl font-black uppercase leading-[0.9] tracking-[-0.05em] text-white sm:text-6xl lg:text-[5.5rem]">
+              <h1 className="mt-6 text-5xl font-black uppercase leading-[0.9] tracking-[-0.05em] text-white sm:text-6xl lg:text-[5.4rem]">
                 OUT-TRAIN.
                 <br />
                 OUT-SMART.
@@ -134,6 +134,10 @@ export default function ComingSoon() {
               <p className="mt-6 max-w-[540px] text-lg leading-8 text-zinc-200 sm:text-[1.35rem]">
                 Creatine + electrolytes for performance, hydration, and recovery
                 — built for fighters and everyday high performers.
+              </p>
+
+              <p className="mt-4 text-base font-medium text-zinc-300 sm:text-lg">
+                Built for fighters. Designed for everyday performance.
               </p>
 
               <div className="mt-7 flex flex-wrap gap-2.5">
@@ -253,48 +257,20 @@ export default function ComingSoon() {
               </div>
             </div>
 
-            <div className="relative min-h-[540px] lg:min-h-[640px]">
-              <div className="pointer-events-none absolute inset-0 rounded-[42px] bg-[radial-gradient(circle_at_60%_34%,rgba(249,115,22,0.14),transparent_24%),radial-gradient(circle_at_74%_72%,rgba(234,179,8,0.12),transparent_20%),radial-gradient(circle_at_84%_24%,rgba(244,63,94,0.10),transparent_18%)]" />
-              <div className="pointer-events-none absolute left-[14%] top-[10%] h-[28rem] w-[28rem] rounded-full bg-orange-500/10 blur-3xl" />
-              <div className="pointer-events-none absolute right-[8%] top-[20%] h-[18rem] w-[18rem] rounded-full bg-pink-500/10 blur-3xl" />
+            <div className="relative hidden lg:block">
+              <div className="sticky top-24 min-h-[620px]">
+                <div className="pointer-events-none absolute inset-0 rounded-[42px] bg-[radial-gradient(circle_at_62%_34%,rgba(249,115,22,0.14),transparent_24%),radial-gradient(circle_at_78%_72%,rgba(234,179,8,0.12),transparent_20%),radial-gradient(circle_at_86%_24%,rgba(244,63,94,0.10),transparent_18%)]" />
+                <div className="pointer-events-none absolute left-[20%] top-[14%] h-[24rem] w-[24rem] rounded-full bg-orange-500/10 blur-3xl" />
+                <div className="pointer-events-none absolute right-[14%] top-[30%] h-[16rem] w-[16rem] rounded-full bg-pink-500/10 blur-3xl" />
+                <div className="pointer-events-none absolute bottom-[12%] left-[36%] h-[14rem] w-[14rem] rounded-full bg-yellow-400/10 blur-3xl" />
 
-              <div className="absolute left-[8%] top-[8%] z-20 w-[72%] sm:w-[66%]">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
-                      Featured flavor
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold tracking-tight text-white">
-                      Strawberry Guava
-                    </p>
-                  </div>
-
-                  <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-zinc-300 backdrop-blur">
-                    30 sticks
-                  </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <img
+                    src="/assets/products/strawberry-guava/pouchandstick.png"
+                    alt="Kimora Co Strawberry Guava"
+                    className="h-auto w-full max-w-[36rem] object-contain drop-shadow-[0_36px_60px_rgba(0,0,0,0.42)] transition duration-500 hover:scale-[1.015]"
+                  />
                 </div>
-
-                <img
-                  src="/assets/products/strawberry-guava/pouchandstick.png"
-                  alt="Kimora Co Strawberry Guava"
-                  className="h-auto w-full object-contain drop-shadow-[0_32px_55px_rgba(0,0,0,0.42)] transition duration-500 hover:scale-[1.015]"
-                />
-              </div>
-
-              <div className="absolute right-[2%] top-[16%] z-10 w-[32%]">
-                <img
-                  src="/assets/products/raspberry-dragonfruit/pouchandstick.png"
-                  alt="Kimora Co Raspberry Dragonfruit"
-                  className="h-auto w-full object-contain drop-shadow-[0_24px_42px_rgba(0,0,0,0.34)] transition duration-500 hover:scale-[1.02]"
-                />
-              </div>
-
-              <div className="absolute right-[10%] bottom-[4%] z-10 w-[28%]">
-                <img
-                  src="/assets/products/lemon-yuzu/pouchandstick.png"
-                  alt="Kimora Co Lemon Yuzu"
-                  className="h-auto w-full object-contain drop-shadow-[0_24px_42px_rgba(0,0,0,0.34)] transition duration-500 hover:scale-[1.02]"
-                />
               </div>
             </div>
           </div>

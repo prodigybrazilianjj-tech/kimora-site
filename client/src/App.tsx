@@ -51,8 +51,14 @@ function Router() {
         <Route path="/" component={ComingSoon} />
         <Route path="/home" component={Home} />
         <Route path="/faq" component={FAQ} />
-        <Route path="/shop" component={Shop} />
-        <Route path="/product" component={Product} />
+
+        {/* Prelaunch: lock consumer purchase routes */}
+        <Route path="/shop" component={ComingSoon} />
+        <Route path="/product" component={ComingSoon} />
+        <Route path="/cart" component={ComingSoon} />
+        <Route path="/checkout" component={ComingSoon} />
+        <Route path="/order-success" component={ComingSoon} />
+        <Route path="/manage-subscription" component={ComingSoon} />
 
         {/* Admin */}
         <Route path="/admin" component={AdminDashboard} />
@@ -60,11 +66,6 @@ function Router() {
         {/* Put the more specific route BEFORE /wholesale */}
         <Route path="/wholesale/apply" component={WholesaleApply} />
         <Route path="/wholesale" component={Wholesale} />
-
-        <Route path="/cart" component={Cart} />
-        <Route path="/checkout" component={Checkout} />
-        <Route path="/order-success" component={OrderSuccess} />
-        <Route path="/manage-subscription" component={ManageSubscription} />
 
         {/* Legal */}
         <Route path="/terms" component={Terms} />

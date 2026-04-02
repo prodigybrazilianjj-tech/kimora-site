@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
 
 export default function ComingSoon() {
   const [email, setEmail] = useState("");
@@ -516,6 +517,76 @@ export default function ComingSoon() {
           </div>
         </section>
       </main>
+
+      <footer className="relative z-20 border-t border-white/6 bg-black">
+        <div className="mx-auto w-full max-w-7xl px-6 py-14 md:px-8 lg:px-10">
+          <div className="flex flex-col items-center gap-6 text-center">
+            <p className="text-2xl font-semibold uppercase tracking-[0.25em] text-white">
+              KIMORA CO.
+            </p>
+
+            <p className="text-xs uppercase tracking-[0.35em] text-white/30">
+              OUT-TRAIN. OUT-SMART. OUT-LAST.
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-white/60">
+              <a
+                href="mailto:support@kimoraco.com"
+                className="transition hover:text-white"
+              >
+                support@kimoraco.com
+              </a>
+
+              <a
+                href="https://instagram.com/kimoracreatine"
+                target="_blank"
+                rel="noreferrer"
+                className="transition hover:text-white"
+              >
+                @kimoracreatine
+              </a>
+            </div>
+          </div>
+
+          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-4 text-xs uppercase tracking-[0.18em] text-white/40">
+            <Link href="/terms" className="transition hover:text-white">
+              Terms
+            </Link>
+
+            <Link href="/privacy" className="transition hover:text-white">
+              Privacy
+            </Link>
+
+            <Link href="/refunds" className="transition hover:text-white">
+              Refunds
+            </Link>
+
+            <Link
+              href="/manage-subscription"
+              className="transition hover:text-white"
+            >
+              Subscription
+            </Link>
+
+            <Link href="/wholesale" className="transition hover:text-white">
+              Wholesale
+            </Link>
+          </div>
+
+          <div className="mt-10 border-t border-white/6 pt-6 text-center">
+            <p className="text-xs text-white/30">
+              © 2026 Kimora Co. All rights reserved.
+            </p>
+
+            <p className="mx-auto mt-4 max-w-2xl text-[10px] leading-relaxed text-white/20">
+              These statements have not been evaluated by the Food and Drug
+              Administration. This product is not intended to diagnose, treat,
+              cure, or prevent any disease. Always consult your healthcare
+              provider before starting any new supplement.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

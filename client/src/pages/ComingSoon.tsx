@@ -138,7 +138,7 @@ export default function ComingSoon() {
               </h1>
 
               <p className="mt-5 text-xl font-light uppercase tracking-widest text-white/80 sm:text-3xl">
-                Grow Stronger. Think Sharper.
+                Creatine — Finally Done Right.
               </p>
 
               <p className="mt-5 text-sm font-medium uppercase tracking-widest text-muted-foreground">
@@ -146,16 +146,17 @@ export default function ComingSoon() {
               </p>
 
               <p className="mt-8 max-w-[580px] text-base leading-7 text-zinc-300 sm:text-lg sm:leading-8">
-                Kimora was built on the belief that what you do every day shapes
-                who you become. Inspired by jiu-jitsu, it reflects the idea that
-                discipline becomes strength, and commitment becomes clarity.
+                Most people know they should take creatine. Almost nobody does
+                it consistently.
+              </p>
+
+              <p className="mt-4 max-w-[580px] text-base leading-7 text-zinc-300 sm:text-lg sm:leading-8">
+                Kimora fixes that.
               </p>
 
               <p className="mt-4 max-w-[580px] text-base leading-7 text-zinc-400 sm:text-lg sm:leading-8">
-                The first drop starts with creatine + electrolytes — a clean,
-                daily formula built around 5 g of micronized creatine
-                monohydrate, a balanced electrolyte blend, and flavor that makes
-                consistency effortless.
+                Single-serve creatine + electrolytes — no scooping, no mixing,
+                no mess. Just tear, pour, and go.
               </p>
 
               <div className="mt-7 flex flex-wrap gap-2.5">
@@ -163,10 +164,10 @@ export default function ComingSoon() {
                   5 g Creatine Monohydrate
                 </span>
                 <span className="rounded-full border border-pink-400/20 bg-pink-500/[0.08] px-3 py-1.5 text-xs text-pink-100">
-                  Balanced Electrolytes
+                  Electrolytes Included
                 </span>
                 <span className="rounded-full border border-yellow-300/20 bg-yellow-400/[0.10] px-3 py-1.5 text-xs text-yellow-100">
-                  No Sugar / Alcohols
+                  No Sugar / No Alcohols
                 </span>
                 <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300">
                   Nothing Artificial
@@ -181,13 +182,12 @@ export default function ComingSoon() {
                         Launch countdown
                       </p>
                       <h3 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                        Coming soon
+                        First Drop Coming Soon
                       </h3>
                     </div>
 
                     <p className="max-w-[240px] text-sm leading-6 text-zinc-400 sm:text-right">
-                      Join the list for first access before the public drop goes
-                      live.
+                      Get early access before the first batch sells out.
                     </p>
                   </div>
 
@@ -231,15 +231,14 @@ export default function ComingSoon() {
 
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-white">
-                      Daily fuel. Zero compromise.
+                      Built for people who actually train.
                     </p>
                     <p className="max-w-[520px] text-sm leading-6 text-zinc-400">
-                      Three precision-engineered flavors designed to make your
-                      daily creatine habit effortless.
+                      If you’ve ever skipped creatine because it’s inconvenient
+                      — this is for you.
                     </p>
                     <p className="text-sm text-zinc-400">
-                      Join <span className="font-semibold text-white">137</span>{" "}
-                      others already on the waitlist.
+                      Be part of the first drop.
                     </p>
                   </div>
 
@@ -262,7 +261,7 @@ export default function ComingSoon() {
                       disabled={submitting}
                       className="h-14 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(0,191,165,0.3)] transition-all duration-300 hover:bg-primary/90 hover:shadow-[0_0_30px_rgba(0,191,165,0.5)] disabled:opacity-60"
                     >
-                      {submitting ? "Submitting..." : "Get Early Access"}
+                      {submitting ? "Submitting..." : "Get First Access"}
                     </button>
                   </form>
 
@@ -272,7 +271,7 @@ export default function ComingSoon() {
                     </p>
                   ) : (
                     <p className="text-xs text-zinc-500">
-                      No spam. Early access only. Unsubscribe anytime.
+                      First batch will be limited. No spam. Unsubscribe anytime.
                     </p>
                   )}
                 </div>
@@ -298,6 +297,29 @@ export default function ComingSoon() {
           </div>
         </section>
 
+        <section className="mx-auto max-w-7xl px-6 py-6 md:px-8 lg:px-10">
+          <div className="max-w-3xl">
+            <h2 className="text-3xl font-semibold text-white sm:text-4xl">
+              Why Kimora Exists
+            </h2>
+
+            <p className="mt-6 leading-7 text-zinc-400">
+              In jiu-jitsu, nothing works if you’re inconsistent.
+            </p>
+
+            <p className="mt-4 leading-7 text-zinc-400">
+              You don’t get stronger from one lift. You don’t get better from
+              one roll. And you don’t get results from taking creatine “when you
+              remember.”
+            </p>
+
+            <p className="mt-4 leading-7 text-zinc-300">
+              Kimora was built to remove that friction — so you actually follow
+              through.
+            </p>
+          </div>
+        </section>
+
         <section className="bg-secondary/20 py-12 md:py-16">
           <div className="mx-auto grid max-w-7xl grid-cols-1 gap-5 px-6 md:grid-cols-3 md:px-8 lg:px-10">
             <div className="rounded-2xl border border-white/5 bg-card p-8 text-center">
@@ -306,8 +328,7 @@ export default function ComingSoon() {
               </div>
               <h3 className="mb-4 text-3xl font-bold text-white">Cognition</h3>
               <p className="leading-relaxed text-muted-foreground">
-                Supports brain energy metabolism and sharp decision-making under
-                pressure.
+                Stay sharp under pressure — in training and competition.
               </p>
             </div>
 
@@ -317,8 +338,7 @@ export default function ComingSoon() {
               </div>
               <h3 className="mb-4 text-3xl font-bold text-white">Recovery</h3>
               <p className="leading-relaxed text-muted-foreground">
-                Creatine + electrolytes help restore energy and hydration so you
-                bounce back between sessions.
+                Hydrate faster and bounce back quicker between sessions.
               </p>
             </div>
 
@@ -328,10 +348,30 @@ export default function ComingSoon() {
               </div>
               <h3 className="mb-4 text-3xl font-bold text-white">Strength</h3>
               <p className="leading-relaxed text-muted-foreground">
-                Fuels higher training volume for heavier lifts, harder rolls,
-                and longer rounds.
+                Train harder, lift heavier, and push longer.
               </p>
             </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-6 py-6 md:px-8 lg:px-10">
+          <div className="max-w-3xl">
+            <h2 className="text-3xl font-semibold text-white sm:text-4xl">
+              Built for Performance
+            </h2>
+
+            <p className="mt-6 leading-7 text-zinc-400">
+              Every stick delivers 5 g of creatine monohydrate with a balanced
+              electrolyte blend.
+            </p>
+
+            <p className="mt-4 leading-7 text-zinc-400">
+              No sugar. No artificial fillers. No unnecessary ingredients.
+            </p>
+
+            <p className="mt-4 leading-7 text-zinc-300">
+              Just what works — in a form you’ll actually use daily.
+            </p>
           </div>
         </section>
 
@@ -342,10 +382,9 @@ export default function ComingSoon() {
                 What’s Inside Each Stick
               </h2>
               <p className="mx-auto max-w-2xl leading-relaxed text-muted-foreground">
-                Every Kimora stick is built around 5 g of micronized creatine
-                monohydrate and a balanced electrolyte blend, with a clean acid
-                system and monk fruit for sweetness — no sugar, no stevia, and
-                no artificial colors or fillers.
+                Every stick delivers 5 g of creatine monohydrate with a balanced
+                electrolyte blend — designed for performance, hydration, and
+                daily consistency.
               </p>
             </div>
 
@@ -431,11 +470,11 @@ export default function ComingSoon() {
         <section className="relative mx-auto w-full max-w-7xl px-6 py-10 md:px-8 lg:px-10 lg:py-16">
           <div className="mb-8 text-center md:mb-10">
             <h2 className="mb-4 text-4xl font-bold text-white md:text-5xl">
-              Daily Fuel. Zero Compromise.
+              Daily Fuel. Zero Excuses.
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              Three precision-engineered flavors designed to make your daily
-              creatine habit effortless.
+              Three flavors designed to make taking creatine something you
+              actually look forward to.
             </p>
           </div>
 
@@ -502,16 +541,14 @@ export default function ComingSoon() {
               ABOUT KIMORA
             </h2>
             <div className="space-y-6 text-lg leading-relaxed text-muted-foreground">
+              <p>Kimora is built on one idea: consistency wins.</p>
               <p>
-                Kimora was built on the belief that what you do every day shapes
-                who you become.
+                In jiu-jitsu, strength, endurance, and clarity aren’t built in a
+                day — they’re built daily.
               </p>
               <p>
-                Inspired by jiu-jitsu, Kimora reflects the idea that discipline
-                becomes strength, and commitment becomes clarity. Every product
-                is designed with integrity, humility, and purpose — made for
-                athletes who understand that long-term growth is earned through
-                consistent effort.
+                This isn’t just another supplement. It’s a system designed to
+                make sure you actually follow through.
               </p>
             </div>
           </div>
@@ -561,15 +598,8 @@ export default function ComingSoon() {
               Refunds
             </Link>
 
-            <Link
-              href="/manage-subscription"
-              className="transition hover:text-white"
-            >
-              Subscription
-            </Link>
-
-            <Link href="/wholesale" className="transition hover:text-white">
-              Wholesale
+            <Link href="/wholesale/apply" className="transition hover:text-white">
+              Wholesale Apply
             </Link>
           </div>
 

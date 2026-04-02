@@ -6,14 +6,21 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
 
+/**
+ * 🔒 PRELAUNCH MODE
+ * When true:
+ * - Removes Shop from nav
+ * - Removes Shop button
+ * - Still allows Wholesale access
+ */
+const PRELAUNCH = true;
+
 function scrollToSelector(selector: string) {
   const el = document.querySelector(selector);
   if (!(el instanceof HTMLElement)) return false;
 
-  // ✅ Use native scroll + rely on CSS scroll-margin-top (scroll-mt-*)
   el.scrollIntoView({ behavior: "auto", block: "start" });
 
-  // One extra frame helps when fonts/layout settle (prevents “jump then settle”)
   requestAnimationFrame(() => {
     el.scrollIntoView({ behavior: "auto", block: "start" });
   });
@@ -40,7 +47,6 @@ function scrollToSelectorWithRetry(selector: string, attempts = 36) {
 function setHashNoJump(hash: string) {
   const normalized = hash.startsWith("#") ? hash : `#${hash}`;
   const url = window.location.pathname + window.location.search + normalized;
-  // pushState avoids the browser’s default anchor jump that causes flicker
   history.pushState(null, "", url);
 }
 
@@ -52,7 +58,7 @@ function clearHashNoJump() {
 function scrollToTop() {
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   requestAnimationFrame(() =>
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" }),
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" })
   );
 }
 
@@ -60,16 +66,11 @@ export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [location, setLocation] = useLocation();
   const { cartCount } = useCart();
-
-  // Mobile sheet state (so it collapses after any tap)
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isHome = location === "/";
-
-  // If we navigate to "/" and want to scroll to a section, we stash it here.
   const pendingSelectorRef = useRef<string | null>(null);
 
-  // ✅ IMPORTANT: keep height/padding CONSTANT to prevent flicker
   const navBase =
     "fixed top-0 left-0 right-0 z-50 border-b border-transparent transition-colors duration-300";
 
@@ -91,7 +92,6 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHome]);
 
-  // When we arrive on home (after setLocation("/")), execute any pending scroll.
   useEffect(() => {
     if (!isHome) return;
 
@@ -99,8 +99,6 @@ export function Navbar() {
     if (!selector) return;
 
     pendingSelectorRef.current = null;
-
-    // ✅ Retry a few frames so Home can mount and the anchor exists
     scrollToSelectorWithRetry(selector);
   }, [isHome]);
 
@@ -111,7 +109,6 @@ export function Navbar() {
   function goHomeTop() {
     closeMobile();
 
-    // Clear hash (prevents auto-jump weirdness)
     if (window.location.hash) clearHashNoJump();
 
     if (!isHome) {
@@ -130,24 +127,16 @@ export function Navbar() {
     const selector = normalizedHash;
 
     if (!isHome) {
-      // ✅ CRITICAL FIX:
-      // Set the hash BEFORE navigating home so App's ScrollToTop sees window.location.hash
-      // and does NOT scroll to the top on route change.
       setHashNoJump(normalizedHash);
-
-      // Navigate home, then scroll once content is mounted
       pendingSelectorRef.current = selector;
       setLocation("/");
-
       return;
     }
 
-    // Home page: set hash without browser jump, then scroll
     setHashNoJump(normalizedHash);
     scrollToSelectorWithRetry(selector);
   }
 
-  // Optional: if the user hits Back/Forward and hash changes, handle it without flicker.
   useEffect(() => {
     if (!isHome) return;
 
@@ -161,19 +150,12 @@ export function Navbar() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [isHome]);
 
-  const navLinks = useMemo(
-    () => [
+  const navLinks = useMemo(() => {
+    const baseLinks = [
       { name: "Flavors", action: () => goToSection("#flavors") },
       { name: "Formula", action: () => goToSection("#formula") },
       { name: "Why Not a Tub?", action: () => goToSection("#comparison") },
       { name: "About", action: () => goToSection("#about") },
-      {
-        name: "Shop",
-        action: () => {
-          closeMobile();
-          setLocation("/shop");
-        },
-      },
       {
         name: "Wholesale",
         action: () => {
@@ -181,10 +163,21 @@ export function Navbar() {
           setLocation("/wholesale");
         },
       },
-      
-    ],
-    [isHome, location],
-  );
+    ];
+
+    // 🚫 Remove Shop if prelaunch
+    if (!PRELAUNCH) {
+      baseLinks.splice(4, 0, {
+        name: "Shop",
+        action: () => {
+          closeMobile();
+          setLocation("/shop");
+        },
+      });
+    }
+
+    return baseLinks;
+  }, [isHome, location]);
 
   return (
     <nav className={cn(navBase, navBackground)}>
@@ -224,12 +217,15 @@ export function Navbar() {
             )}
           </Link>
 
-          <Button
-            onClick={() => setLocation("/shop")}
-            className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider"
-          >
-            Shop Now
-          </Button>
+          {/* 🚫 Hide Shop CTA in prelaunch */}
+          {!PRELAUNCH && (
+            <Button
+              onClick={() => setLocation("/shop")}
+              className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider"
+            >
+              Shop Now
+            </Button>
+          )}
         </div>
 
         {/* Mobile Nav */}
@@ -276,15 +272,18 @@ export function Navbar() {
                   </button>
                 ))}
 
-                <Button
-                  onClick={() => {
-                    closeMobile();
-                    setLocation("/shop");
-                  }}
-                  className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider mt-4"
-                >
-                  Shop Now
-                </Button>
+                {/* 🚫 Hide Shop CTA mobile */}
+                {!PRELAUNCH && (
+                  <Button
+                    onClick={() => {
+                      closeMobile();
+                      setLocation("/shop");
+                    }}
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider mt-4"
+                  >
+                    Shop Now
+                  </Button>
+                )}
               </div>
             </SheetContent>
           </Sheet>

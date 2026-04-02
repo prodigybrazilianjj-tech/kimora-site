@@ -90,13 +90,20 @@ export default function ComingSoon() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_84%_14%,rgba(249,115,22,0.12),transparent_22%),radial-gradient(circle_at_82%_72%,rgba(234,179,8,0.10),transparent_18%),radial-gradient(circle_at_72%_42%,rgba(244,63,94,0.06),transparent_20%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03),transparent_14%,transparent_88%,rgba(255,255,255,0.015))]" />
 
+      <img
+        src="/assets/products/enso_tentacle.png"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-[-4rem] hidden w-[48rem] max-w-none -translate-x-1/2 opacity-[0.035] invert lg:block"
+      />
+
       <header className="relative z-20 border-b border-white/6">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-5 md:px-8 lg:px-10">
           <div className="flex items-center gap-3">
             <img
-              src="/assets/products/transparentlogo.png"
+              src="/assets/products/enso_tentacle.png"
               alt="Kimora Co."
-              className="h-9 w-auto invert brightness-[2.2] contrast-125 sm:h-10"
+              className="h-10 w-auto invert brightness-[2.2] contrast-125"
             />
             <div className="flex flex-col leading-none">
               <span className="text-sm font-semibold uppercase tracking-[0.22em] text-white sm:text-base">
@@ -121,10 +128,10 @@ export default function ComingSoon() {
           <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,660px)_1fr] lg:gap-16">
             <div className="relative max-w-[660px]">
               <img
-                src="/assets/products/transparentlogo.png"
+                src="/assets/products/enso_tentacle.png"
                 alt=""
                 aria-hidden="true"
-                className="pointer-events-none absolute -left-10 top-10 hidden w-[520px] max-w-none opacity-[0.04] invert brightness-[2.3] contrast-125 lg:block"
+                className="pointer-events-none absolute -left-10 top-6 hidden w-[520px] max-w-none opacity-[0.045] invert brightness-[2.3] contrast-125 lg:block"
               />
 
               <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-4 py-1.5 backdrop-blur-sm sm:hidden">
@@ -558,6 +565,13 @@ export default function ComingSoon() {
       <footer className="relative z-20 border-t border-white/6 bg-black">
         <div className="mx-auto w-full max-w-7xl px-6 py-14 md:px-8 lg:px-10">
           <div className="flex flex-col items-center gap-6 text-center">
+            <img
+              src="/assets/products/enso_tentacle.png"
+              alt=""
+              aria-hidden="true"
+              className="h-12 w-auto invert opacity-70"
+            />
+
             <p className="text-2xl font-semibold uppercase tracking-[0.25em] text-white">
               KIMORA CO.
             </p>

@@ -162,7 +162,8 @@ export default function ComingSoon() {
                     </div>
 
                     <p className="max-w-[240px] text-sm leading-6 text-zinc-400 sm:text-right">
-                      Join the list before launch and hear about the first batch first.
+                      Join the list before launch and hear about the first batch
+                      first.
                     </p>
                   </div>
 
@@ -241,16 +242,19 @@ export default function ComingSoon() {
             </div>
 
             <div className="relative">
-              <div className="relative flex min-h-[420px] items-center justify-center lg:min-h-[700px]">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_56%_16%,rgba(255,214,163,0.18),transparent_16%),radial-gradient(circle_at_52%_34%,rgba(255,138,74,0.12),transparent_24%),radial-gradient(circle_at_72%_68%,rgba(255,105,105,0.08),transparent_18%)]" />
-                <div className="pointer-events-none absolute left-[18%] top-[12%] h-[15rem] w-[15rem] rounded-full bg-[#d7ad57]/10 blur-3xl" />
-                <div className="pointer-events-none absolute right-[10%] top-[26%] h-[13rem] w-[13rem] rounded-full bg-[#c94d2d]/10 blur-3xl" />
+              <div className="relative flex min-h-[440px] items-center justify-center overflow-visible lg:min-h-[720px]">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_58%_18%,rgba(255,220,170,0.18),transparent_14%),radial-gradient(circle_at_55%_34%,rgba(255,148,82,0.14),transparent_22%),radial-gradient(circle_at_70%_68%,rgba(255,95,95,0.08),transparent_18%)]" />
+                <div className="pointer-events-none absolute left-[20%] top-[12%] h-[17rem] w-[17rem] rounded-full bg-[#d7ad57]/12 blur-3xl" />
+                <div className="pointer-events-none absolute right-[10%] top-[26%] h-[14rem] w-[14rem] rounded-full bg-[#c94d2d]/12 blur-3xl" />
                 <div className="pointer-events-none absolute bottom-[10%] left-[35%] h-[12rem] w-[12rem] rounded-full bg-[#7d1d1d]/10 blur-3xl" />
+                <div className="pointer-events-none absolute bottom-[14%] left-1/2 h-[90px] w-[68%] -translate-x-1/2 rounded-full bg-[rgba(255,130,58,0.10)] blur-[65px]" />
+                <div className="pointer-events-none absolute bottom-[11%] left-1/2 h-[44px] w-[58%] -translate-x-1/2 rounded-full bg-black/55 blur-[32px]" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_60%_28%,rgba(255,183,117,0.09),transparent_32%)]" />
 
                 <img
                   src="/assets/products/full_lineup.png"
                   alt="Kimora creatine and electrolytes product lineup"
-                  className="relative z-10 h-auto w-full max-w-[760px] object-contain drop-shadow-[0_36px_80px_rgba(0,0,0,0.55)]"
+                  className="relative z-10 h-auto w-full max-w-[760px] object-contain brightness-[1.04] contrast-[1.06] saturate-[1.03] drop-shadow-[0_42px_90px_rgba(0,0,0,0.58)] transition duration-700 hover:scale-[1.01] [mask-image:radial-gradient(circle_at_center,black_72%,transparent_100%)]"
                 />
               </div>
             </div>
@@ -269,9 +273,9 @@ export default function ComingSoon() {
               </h2>
 
               <p className="mt-6 leading-8 text-zinc-400">
-                You do not get stronger from one lift. You do not get better from
-                one roll. And you do not get results from taking creatine only
-                when you remember.
+                You do not get stronger from one lift. You do not get better
+                from one roll. And you do not get results from taking creatine
+                only when you remember.
               </p>
 
               <p className="mt-4 leading-8 text-zinc-300">
@@ -294,7 +298,8 @@ export default function ComingSoon() {
               </h2>
 
               <p className="mt-5 leading-7 text-zinc-400">
-                Designed to feel premium, clean, and actually enjoyable to take every day.
+                Designed to feel premium, clean, and actually enjoyable to take
+                every day.
               </p>
             </div>
 
@@ -312,7 +317,8 @@ export default function ComingSoon() {
                     Strawberry Guava
                   </h3>
                   <p className="mt-3 text-sm leading-7 text-zinc-400">
-                    Tropical, richer, and fruit-forward with a fuller flavor profile.
+                    Tropical, richer, and fruit-forward with a fuller flavor
+                    profile.
                   </p>
                 </div>
               </article>
@@ -400,7 +406,10 @@ export default function ComingSoon() {
               Refunds
             </Link>
 
-            <Link href="/wholesale/apply" className="transition hover:text-white">
+            <Link
+              href="/wholesale/apply"
+              className="transition hover:text-white"
+            >
               Wholesale Apply
             </Link>
           </div>

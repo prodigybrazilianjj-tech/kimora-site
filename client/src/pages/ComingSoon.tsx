@@ -109,7 +109,7 @@ export default function ComingSoon() {
         </header>
 
         <section className="mx-auto w-full max-w-7xl px-6 pb-16 pt-8 md:px-8 lg:px-10 lg:pb-24 lg:pt-10">
-          <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,540px)_1fr] lg:gap-8">
+          <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,500px)_minmax(0,1fr)] lg:gap-6">
             <div className="relative z-10 max-w-[600px]">
               <p className="text-sm font-medium uppercase tracking-[0.28em] text-[#d9b161]">
                 Coming soon
@@ -242,16 +242,19 @@ export default function ComingSoon() {
             </div>
 
             <div className="relative">
-              <div className="relative flex min-h-[500px] items-center justify-center lg:min-h-[760px]">
-                <div className="pointer-events-none absolute left-1/2 top-[10%] h-[200px] w-[200px] -translate-x-1/2 rounded-full bg-[rgba(234,178,91,0.16)] blur-[110px]" />
-                <div className="pointer-events-none absolute left-1/2 top-[22%] h-[320px] w-[320px] -translate-x-1/2 rounded-full bg-[rgba(193,112,45,0.08)] blur-[150px]" />
-                <div className="pointer-events-none absolute bottom-[14%] left-1/2 h-[70px] w-[42%] -translate-x-1/2 rounded-full bg-black/70 blur-[30px]" />
+              <div className="relative flex min-h-[520px] items-center justify-center lg:min-h-[780px]">
+                <div className="pointer-events-none absolute inset-0 bg-black/70" />
+                <div className="pointer-events-none absolute left-1/2 top-[8%] h-[180px] w-[180px] -translate-x-1/2 rounded-full bg-[rgba(234,178,91,0.12)] blur-[110px]" />
+                <div className="pointer-events-none absolute left-1/2 top-[18%] h-[260px] w-[260px] -translate-x-1/2 rounded-full bg-[rgba(185,106,45,0.06)] blur-[140px]" />
+                <div className="pointer-events-none absolute bottom-[16%] left-1/2 h-[70px] w-[44%] -translate-x-1/2 rounded-full bg-black/80 blur-[28px]" />
 
-                <img
-                  src="/assets/products/full_lineup.png"
-                  alt="Kimora creatine and electrolytes product lineup"
-                  className="relative z-10 h-auto w-full max-w-[980px] object-contain brightness-[1.03] contrast-[1.04] saturate-[1.02] drop-shadow-[0_42px_90px_rgba(0,0,0,0.55)]"
-                />
+                <div className="relative z-10 flex w-full items-center justify-center bg-black">
+                  <img
+                    src="/assets/products/full_lineup.png"
+                    alt="Kimora creatine and electrolytes product lineup"
+                    className="relative z-10 h-auto w-full max-w-[1120px] object-contain brightness-[1.03] contrast-[1.04] saturate-[1.02] drop-shadow-[0_42px_90px_rgba(0,0,0,0.55)] xl:max-w-[1240px]"
+                  />
+                </div>
               </div>
             </div>
           </div>

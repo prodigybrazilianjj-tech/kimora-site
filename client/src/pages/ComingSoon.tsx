@@ -85,9 +85,9 @@ export default function ComingSoon() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-black text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_12%,rgba(255,196,128,0.16),transparent_16%),radial-gradient(circle_at_72%_28%,rgba(255,134,74,0.12),transparent_22%),radial-gradient(circle_at_58%_54%,rgba(255,92,92,0.07),transparent_20%),linear-gradient(180deg,#020202_0%,#070707_44%,#030303_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#020202_0%,#060606_42%,#030303_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,rgba(255,255,255,0.72)_0.55px,transparent_0.7px)] [background-size:6px_6px]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-gradient-to-b from-[#1a120b]/20 via-transparent to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-gradient-to-b from-[#1a120b]/10 via-transparent to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black to-transparent" />
 
       <main className="relative z-10">
@@ -109,7 +109,7 @@ export default function ComingSoon() {
         </header>
 
         <section className="mx-auto w-full max-w-7xl px-6 pb-16 pt-8 md:px-8 lg:px-10 lg:pb-24 lg:pt-10">
-          <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,560px)_1fr] lg:gap-12">
+          <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,540px)_1fr] lg:gap-8">
             <div className="relative z-10 max-w-[600px]">
               <p className="text-sm font-medium uppercase tracking-[0.28em] text-[#d9b161]">
                 Coming soon
@@ -242,19 +242,15 @@ export default function ComingSoon() {
             </div>
 
             <div className="relative">
-              <div className="relative flex min-h-[440px] items-center justify-center overflow-visible lg:min-h-[720px]">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_58%_18%,rgba(255,220,170,0.18),transparent_14%),radial-gradient(circle_at_55%_34%,rgba(255,148,82,0.14),transparent_22%),radial-gradient(circle_at_70%_68%,rgba(255,95,95,0.08),transparent_18%)]" />
-                <div className="pointer-events-none absolute left-[20%] top-[12%] h-[17rem] w-[17rem] rounded-full bg-[#d7ad57]/12 blur-3xl" />
-                <div className="pointer-events-none absolute right-[10%] top-[26%] h-[14rem] w-[14rem] rounded-full bg-[#c94d2d]/12 blur-3xl" />
-                <div className="pointer-events-none absolute bottom-[10%] left-[35%] h-[12rem] w-[12rem] rounded-full bg-[#7d1d1d]/10 blur-3xl" />
-                <div className="pointer-events-none absolute bottom-[14%] left-1/2 h-[90px] w-[68%] -translate-x-1/2 rounded-full bg-[rgba(255,130,58,0.10)] blur-[65px]" />
-                <div className="pointer-events-none absolute bottom-[11%] left-1/2 h-[44px] w-[58%] -translate-x-1/2 rounded-full bg-black/55 blur-[32px]" />
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_60%_28%,rgba(255,183,117,0.09),transparent_32%)]" />
+              <div className="relative flex min-h-[500px] items-center justify-center lg:min-h-[760px]">
+                <div className="pointer-events-none absolute left-1/2 top-[10%] h-[200px] w-[200px] -translate-x-1/2 rounded-full bg-[rgba(234,178,91,0.16)] blur-[110px]" />
+                <div className="pointer-events-none absolute left-1/2 top-[22%] h-[320px] w-[320px] -translate-x-1/2 rounded-full bg-[rgba(193,112,45,0.08)] blur-[150px]" />
+                <div className="pointer-events-none absolute bottom-[14%] left-1/2 h-[70px] w-[42%] -translate-x-1/2 rounded-full bg-black/70 blur-[30px]" />
 
                 <img
                   src="/assets/products/full_lineup.png"
                   alt="Kimora creatine and electrolytes product lineup"
-                  className="relative z-10 h-auto w-full max-w-[760px] object-contain brightness-[1.04] contrast-[1.06] saturate-[1.03] drop-shadow-[0_42px_90px_rgba(0,0,0,0.58)] transition duration-700 hover:scale-[1.01] [mask-image:radial-gradient(circle_at_center,black_72%,transparent_100%)]"
+                  className="relative z-10 h-auto w-full max-w-[980px] object-contain brightness-[1.03] contrast-[1.04] saturate-[1.02] drop-shadow-[0_42px_90px_rgba(0,0,0,0.55)]"
                 />
               </div>
             </div>

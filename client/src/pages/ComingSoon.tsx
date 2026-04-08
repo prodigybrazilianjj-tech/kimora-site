@@ -248,7 +248,7 @@ export default function ComingSoon() {
                 <div className="pointer-events-none absolute bottom-[10%] left-[35%] h-[12rem] w-[12rem] rounded-full bg-[#7d1d1d]/10 blur-3xl" />
 
                 <img
-                  src="/assets/products/pouchandstick.png"
+                  src="/assets/products/full_lineup.png"
                   alt="Kimora creatine and electrolytes product lineup"
                   className="relative z-10 h-auto w-full max-w-[760px] object-contain drop-shadow-[0_36px_80px_rgba(0,0,0,0.55)]"
                 />

@@ -16,6 +16,12 @@ type CheckoutItem = {
 
 type ResumeMode = "subscription" | "onetime";
 
+type CheckoutApiError = {
+  message: string;
+  restockAlertSaved?: boolean;
+  restockAlertCount?: number;
+};
+
 function safeGetString(key: string): string {
   try {
     return String(localStorage.getItem(key) || "");
@@ -83,6 +89,19 @@ function looksLikeInventoryError(message: string | null | undefined) {
     msg.includes("not currently available") ||
     msg.includes("not currently active")
   );
+}
+
+function buildCheckoutErrorMessage(err: CheckoutApiError) {
+  const base = String(err.message || "Checkout failed.").trim();
+  if (!err.restockAlertSaved) return base;
+
+  const count = Number(err.restockAlertCount ?? 0) || 0;
+  const suffix =
+    count > 1
+      ? "You’ve been added to the restock list for the unavailable items. We’ll notify you as soon as they’re available."
+      : "You’ve been added to the restock list. We’ll notify you as soon as it’s available.";
+
+  return `${base}\n\n${suffix}`;
 }
 
 export default function Checkout() {
@@ -257,19 +276,36 @@ export default function Checkout() {
       const text: string = !isJson ? await res.text().catch(() => "") : "";
 
       if (!res.ok) {
-        const msg =
-          (data && (data.message || data.error)) ||
-          text ||
-          `Checkout failed (${res.status}).`;
-        throw new Error(msg);
+        const apiError: CheckoutApiError = {
+          message:
+            (data && (data.message || data.error)) ||
+            text ||
+            `Checkout failed (${res.status}).`,
+          restockAlertSaved: Boolean(data?.restockAlertSaved),
+          restockAlertCount:
+            typeof data?.restockAlertCount === "number" ? data.restockAlertCount : undefined,
+        };
+
+        throw apiError;
       }
 
       const url = data?.url;
-      if (!url) throw new Error("Stripe session created, but no URL returned.");
+      if (!url) {
+        throw {
+          message: "Stripe session created, but no URL returned.",
+        } satisfies CheckoutApiError;
+      }
 
       window.location.href = url;
     } catch (e: any) {
-      setError(e?.message || "Checkout failed.");
+      const apiError: CheckoutApiError = {
+        message: String(e?.message || "Checkout failed."),
+        restockAlertSaved: Boolean(e?.restockAlertSaved),
+        restockAlertCount:
+          typeof e?.restockAlertCount === "number" ? e.restockAlertCount : undefined,
+      };
+
+      setError(buildCheckoutErrorMessage(apiError));
       setLoading(null);
     }
   }
@@ -372,7 +408,7 @@ export default function Checkout() {
               ) : null}
 
               {error ? (
-                <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+                <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200 whitespace-pre-line">
                   <div>{error}</div>
 
                   {hasInventoryError ? (

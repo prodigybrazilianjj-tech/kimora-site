@@ -52,13 +52,13 @@ function Router() {
         <Route path="/home" component={Home} />
         <Route path="/faq" component={FAQ} />
 
-        {/* Prelaunch: lock consumer purchase routes */}
-        <Route path="/shop" component={ComingSoon} />
-        <Route path="/product" component={ComingSoon} />
-        <Route path="/cart" component={ComingSoon} />
-        <Route path="/checkout" component={ComingSoon} />
-        <Route path="/order-success" component={ComingSoon} />
-        <Route path="/manage-subscription" component={ComingSoon} />
+        {/* Testing mode: temporarily unlock consumer purchase routes */}
+        <Route path="/shop" component={Shop} />
+        <Route path="/product" component={Product} />
+        <Route path="/cart" component={Cart} />
+        <Route path="/checkout" component={Checkout} />
+        <Route path="/order-success" component={OrderSuccess} />
+        <Route path="/manage-subscription" component={ManageSubscription} />
 
         {/* Admin */}
         <Route path="/admin" component={AdminDashboard} />

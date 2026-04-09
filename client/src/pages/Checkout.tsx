@@ -185,6 +185,15 @@ export default function Checkout() {
       });
   }, [items]);
 
+  const cartSignature = useMemo(() => {
+    return payloadItems
+      .map((it) => itemKey(it))
+      .sort()
+      .join("||");
+  }, [payloadItems]);
+
+  const previousCartSignatureRef = useRef(cartSignature);
+
   const isEmpty = payloadItems.length === 0;
 
   const subscriptionItems = useMemo(
@@ -213,12 +222,16 @@ export default function Checkout() {
     if (error && !hasInventoryError && emailOk) setError(null);
   }, [emailOk, error, hasInventoryError]);
 
-  // Clear prior stock error when cart changes
+  // Clear prior stock error only when cart contents actually change
   useEffect(() => {
-    if (hasInventoryError) {
-      setError(null);
+    if (previousCartSignatureRef.current !== cartSignature) {
+      previousCartSignatureRef.current = cartSignature;
+
+      if (hasInventoryError) {
+        setError(null);
+      }
     }
-  }, [items, hasInventoryError]);
+  }, [cartSignature, hasInventoryError]);
 
   async function startCheckout(mode: ResumeMode) {
     if (loading) return;

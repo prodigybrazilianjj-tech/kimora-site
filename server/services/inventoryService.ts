@@ -1,9 +1,17 @@
 // server/services/inventoryService.ts
 import type { Request, Response } from "express";
 import { desc, eq, sql, and, gte } from "drizzle-orm";
+import { Resend } from "resend";
 
 import { db } from "../db";
-import { inventoryItems, inventoryTransactions } from "../../shared/schema";
+import {
+  inventoryItems,
+  inventoryTransactions,
+  restockAlerts,
+} from "../../shared/schema";
+
+const resendApiKey = String(process.env.RESEND_API_KEY || "").trim();
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 function safeString(v: any, maxLen = 20000) {
   const s = String(v ?? "").trim();
@@ -70,6 +78,29 @@ function normalizeFlavorSlug(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+function titleizeSlug(value: string | null | undefined) {
+  return String(value || "")
+    .split(/[-\s]+/g)
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
+    .filter(Boolean)
+    .join(" ");
+}
+
+function getSiteUrl() {
+  return (
+    process.env.PUBLIC_SITE_URL ||
+    (process.env.NODE_ENV === "production" ? "https://kimoraco.com" : "http://localhost:5173")
+  );
+}
+
+function getRestockEmailFromAddress() {
+  return (
+    String(process.env.RESEND_FROM_EMAIL || "").trim() ||
+    String(process.env.FROM_EMAIL || "").trim() ||
+    "Kimora <hello@kimoraco.com>"
+  );
+}
+
 function statusHoldsReservation(status: string) {
   return status === "unfulfilled" || status === "allocated" || status === "packed";
 }
@@ -100,6 +131,107 @@ async function findInventoryItemByFlavor(flavorRaw: string) {
     .limit(1);
 
   return rows?.[0] ?? null;
+}
+
+async function sendRestockEmailsForInventoryItem(args: {
+  inventoryItemId: string;
+  flavor: string;
+  productName: string | null | undefined;
+  availableQuantity: number;
+}) {
+  const flavor = normalizeFlavorSlug(args.flavor);
+  if (!flavor) return { attempted: 0, sent: 0 };
+
+  const availableQuantity = Number(args.availableQuantity ?? 0) || 0;
+  if (availableQuantity <= 0) return { attempted: 0, sent: 0 };
+
+  const pendingAlerts = await db
+    .select({
+      id: restockAlerts.id,
+      email: restockAlerts.email,
+      requestedQuantity: restockAlerts.requestedQuantity,
+      productKey: restockAlerts.productKey,
+      flavor: restockAlerts.flavor,
+      status: restockAlerts.status,
+      createdAt: restockAlerts.createdAt,
+    })
+    .from(restockAlerts)
+    .where(
+      and(
+        eq(restockAlerts.flavor, flavor),
+        eq(restockAlerts.status, "pending"),
+      ),
+    )
+    .orderBy(desc(restockAlerts.createdAt))
+    .limit(500);
+
+  if (!pendingAlerts.length) {
+    return { attempted: 0, sent: 0 };
+  }
+
+  if (!resend) {
+    console.warn("[inventory] RESEND_API_KEY missing; skipping restock email send.");
+    return { attempted: pendingAlerts.length, sent: 0 };
+  }
+
+  const siteUrl = getSiteUrl();
+  const from = getRestockEmailFromAddress();
+  const productLabel = safeString(args.productName || "", 200) || "Kimora";
+  const flavorLabel = titleizeSlug(flavor);
+  let sent = 0;
+
+  for (const alert of pendingAlerts) {
+    const requestedQty = Number(alert.requestedQuantity ?? 0) || 0;
+
+    if (requestedQty > 0 && availableQuantity < requestedQty) {
+      continue;
+    }
+
+    try {
+      await resend.emails.send({
+        from,
+        to: alert.email,
+        subject: `${flavorLabel} is back in stock`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
+            <p>Hi there,</p>
+            <p><strong>${flavorLabel}</strong> is back in stock.</p>
+            <p>You can shop it here:</p>
+            <p>
+              <a href="${siteUrl}/shop" style="color: #111; font-weight: 700;">
+                ${siteUrl}/shop
+              </a>
+            </p>
+            <p>${productLabel}</p>
+            <p style="color: #666; font-size: 12px; margin-top: 24px;">
+              You’re receiving this because you asked to be notified when this item was available again.
+            </p>
+          </div>
+        `,
+      });
+
+      await db
+        .update(restockAlerts)
+        .set({
+          status: "notified",
+          notifiedAt: new Date(),
+        })
+        .where(eq(restockAlerts.id, alert.id));
+
+      sent += 1;
+    } catch (e) {
+      console.warn(
+        "[inventory] failed sending restock email to",
+        alert.email,
+        safeErrSummary(e),
+      );
+    }
+  }
+
+  return {
+    attempted: pendingAlerts.length,
+    sent,
+  };
 }
 
 export async function applyInventoryForOrderItem(args: {
@@ -439,6 +571,9 @@ export async function adjustAdminInventoryHandler(req: Request, res: Response) {
       return res.json({ ok: true, item: existing });
     }
 
+    const currentAvailable = Math.max(0, currentOnHand - currentReserved);
+    const nextAvailable = Math.max(0, nextOnHand - nextReserved);
+
     const updatedRows = await db
       .update(inventoryItems)
       .set({
@@ -487,7 +622,31 @@ export async function adjustAdminInventoryHandler(req: Request, res: Response) {
       },
     });
 
-    return res.json({ ok: true, item: updated });
+    let restockEmailsAttempted = 0;
+    let restockEmailsSent = 0;
+
+    if (currentAvailable <= 0 && nextAvailable > 0 && updated.isActive) {
+      try {
+        const result = await sendRestockEmailsForInventoryItem({
+          inventoryItemId: updated.id,
+          flavor: updated.flavor,
+          productName: updated.productName,
+          availableQuantity: nextAvailable,
+        });
+
+        restockEmailsAttempted = result.attempted;
+        restockEmailsSent = result.sent;
+      } catch (e) {
+        console.warn("[inventory] sendRestockEmailsForInventoryItem failed:", safeErrSummary(e));
+      }
+    }
+
+    return res.json({
+      ok: true,
+      item: updated,
+      restockEmailsAttempted,
+      restockEmailsSent,
+    });
   } catch (err: any) {
     const s = safeErrSummary(err);
     console.error("POST /api/admin/inventory/:id/adjust error:", s);

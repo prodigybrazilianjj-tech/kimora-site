@@ -1,10 +1,10 @@
 // server/routes/checkoutRoutes.ts
-import type { Express } from "express";
-import { desc, eq, inArray } from "drizzle-orm";
+import type { Express, Request } from "express";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { stripe } from "../stripe";
 import { db } from "../db";
-import { orders, inventoryItems } from "../../shared/schema";
+import { orders, inventoryItems, restockAlerts } from "../../shared/schema";
 
 type CheckoutItem = {
   flavor: string;
@@ -12,6 +12,15 @@ type CheckoutItem = {
   frequency?: "2" | "4" | "6";
   quantity: number;
 };
+
+type InventoryFailureDetail = {
+  flavor: string;
+  requested: number;
+  available: number;
+  reason: "missing" | "inactive" | "out_of_stock" | "insufficient";
+};
+
+const RESTOCK_ALERT_PRODUCT_KEY = "creatine-electrolytes";
 
 function slugToEnvKey(slug: string) {
   return slug.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
@@ -79,6 +88,22 @@ function getPriceId(item: CheckoutItem) {
   return priceId;
 }
 
+function getRequestMetadata(req: Request) {
+  const forwardedFor = safeString(req.headers["x-forwarded-for"], 512);
+  const ip = safeString(
+    forwardedFor ? forwardedFor.split(",")[0] : req.ip || req.socket?.remoteAddress || "",
+    256,
+  );
+  const userAgent = safeString(req.get("user-agent") || "", 1000);
+  const referer = safeString(req.get("referer") || req.get("referrer") || "", 2000);
+
+  return {
+    ip: ip || null,
+    userAgent: userAgent || null,
+    referer: referer || null,
+  };
+}
+
 async function findStripeCustomerIdByEmail(email: string): Promise<string | null> {
   const normalized = normalizeEmail(email);
   if (!normalized || !isValidEmail(normalized)) return null;
@@ -110,7 +135,7 @@ async function findStripeCustomerIdByEmail(email: string): Promise<string | null
 }
 
 async function computeCartSubtotalCentsFromStripePrices(
-  lineItems: Array<{ price: string; quantity: number }>
+  lineItems: Array<{ price: string; quantity: number }>,
 ): Promise<number> {
   const cache = new Map<string, any>();
   let subtotal = 0;
@@ -178,6 +203,7 @@ async function assertInventoryAvailableForCheckout(items: CheckoutItem[]) {
   }
 
   const failures: string[] = [];
+  const failureDetails: InventoryFailureDetail[] = [];
 
   for (const flavor of flavors) {
     const requested = qtyByFlavor.get(flavor) || 0;
@@ -185,11 +211,23 @@ async function assertInventoryAvailableForCheckout(items: CheckoutItem[]) {
 
     if (!row) {
       failures.push(`${titleizeSlug(flavor)} is not currently available.`);
+      failureDetails.push({
+        flavor,
+        requested,
+        available: 0,
+        reason: "missing",
+      });
       continue;
     }
 
     if (!row.isActive) {
       failures.push(`${titleizeSlug(flavor)} is not currently active.`);
+      failureDetails.push({
+        flavor,
+        requested,
+        available: 0,
+        reason: "inactive",
+      });
       continue;
     }
 
@@ -200,12 +238,24 @@ async function assertInventoryAvailableForCheckout(items: CheckoutItem[]) {
     if (available < requested) {
       if (available <= 0) {
         failures.push(`${titleizeSlug(flavor)} is currently out of stock.`);
+        failureDetails.push({
+          flavor,
+          requested,
+          available,
+          reason: "out_of_stock",
+        });
       } else {
         failures.push(
           `Only ${available} ${titleizeSlug(flavor)} ${
             available === 1 ? "is" : "are"
-          } left in stock. Please adjust your cart.`
+          } left in stock. Please adjust your cart.`,
         );
+        failureDetails.push({
+          flavor,
+          requested,
+          available,
+          reason: "insufficient",
+        });
       }
     }
   }
@@ -214,8 +264,70 @@ async function assertInventoryAvailableForCheckout(items: CheckoutItem[]) {
     const err: any = new Error(failures.join(" "));
     err.statusCode = 409;
     err.publicMessage = failures.join(" ");
+    err.inventoryFailures = failureDetails;
     throw err;
   }
+}
+
+async function saveRestockAlertsForFailedCheckout(params: {
+  email: string;
+  items: CheckoutItem[];
+  failures: InventoryFailureDetail[];
+  req: Request;
+}) {
+  const email = normalizeEmail(params.email);
+  if (!email || !isValidEmail(email)) return 0;
+  if (!params.failures.length) return 0;
+
+  const itemsByFlavor = new Map<string, CheckoutItem>();
+  for (const item of params.items) {
+    const flavor = normalizeFlavorSlug(item.flavor);
+    if (!flavor || itemsByFlavor.has(flavor)) continue;
+    itemsByFlavor.set(flavor, item);
+  }
+
+  const metadataBase = getRequestMetadata(params.req);
+  let savedCount = 0;
+
+  for (const failure of params.failures) {
+    const flavor = normalizeFlavorSlug(failure.flavor);
+    if (!flavor) continue;
+
+    const sourceItem = itemsByFlavor.get(flavor);
+    const requestedQuantity = Math.max(
+      1,
+      Math.floor(Number(sourceItem?.quantity ?? failure.requested ?? 1) || 1),
+    );
+
+    await db
+      .delete(restockAlerts)
+      .where(
+        and(
+          eq(restockAlerts.email, email),
+          eq(restockAlerts.productKey, RESTOCK_ALERT_PRODUCT_KEY),
+          eq(restockAlerts.flavor, flavor),
+          eq(restockAlerts.status, "pending"),
+        ),
+      );
+
+    await db.insert(restockAlerts).values({
+      email,
+      productKey: RESTOCK_ALERT_PRODUCT_KEY,
+      flavor,
+      requestedQuantity,
+      status: "pending",
+      metadata: {
+        source: "checkout",
+        ...metadataBase,
+        purchaseType: sourceItem?.type ?? null,
+        frequency: sourceItem?.frequency ?? null,
+      },
+    });
+
+    savedCount += 1;
+  }
+
+  return savedCount;
 }
 
 function buildShippingOptions(params: { currency: string; subtotalCents: number }): any[] {
@@ -362,7 +474,51 @@ export function registerCheckoutRoutes(app: Express) {
       }
 
       if (Number(err?.statusCode) === 409) {
-        return res.status(409).json({ message: publicMessage });
+        let restockAlertsSaved = 0;
+
+        try {
+          const email = normalizeEmail(String(req.body?.email ?? ""));
+          const itemsRaw: any[] = Array.isArray(req.body?.items) ? req.body.items : [];
+          const items: CheckoutItem[] = itemsRaw
+            .map((it: any) => {
+              const flavor = normalizeFlavorSlug(String(it?.flavor ?? ""));
+              const type: CheckoutItem["type"] =
+                it?.type === "subscribe" ? "subscribe" : "onetime";
+              const frequency: CheckoutItem["frequency"] | undefined =
+                type === "subscribe" &&
+                (it?.frequency === "2" || it?.frequency === "4" || it?.frequency === "6")
+                  ? it.frequency
+                  : undefined;
+              const qRaw = Number(it?.quantity);
+              const quantity = Number.isFinite(qRaw) ? Math.max(1, Math.floor(qRaw)) : 1;
+              return { flavor, type, frequency, quantity };
+            })
+            .filter((it: CheckoutItem) => {
+              if (!it.flavor) return false;
+              if (it.type === "subscribe" && !it.frequency) return false;
+              if (!Number.isInteger(it.quantity) || it.quantity < 1) return false;
+              return true;
+            });
+
+          const failures: InventoryFailureDetail[] = Array.isArray(err?.inventoryFailures)
+            ? err.inventoryFailures
+            : [];
+
+          restockAlertsSaved = await saveRestockAlertsForFailedCheckout({
+            email,
+            items,
+            failures,
+            req,
+          });
+        } catch (restockErr) {
+          console.warn("[checkout] Failed to save restock alerts:", safeErrSummary(restockErr));
+        }
+
+        return res.status(409).json({
+          message: publicMessage,
+          restockAlertSaved: restockAlertsSaved > 0,
+          restockAlertCount: restockAlertsSaved,
+        });
       }
 
       return res.status(500).json({

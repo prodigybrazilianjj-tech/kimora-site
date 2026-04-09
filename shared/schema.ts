@@ -360,3 +360,56 @@ export const insertWaitlistEmailSchema = createInsertSchema(waitlistEmails).pick
 
 export type WaitlistEmail = typeof waitlistEmails.$inferSelect;
 export type InsertWaitlistEmail = typeof waitlistEmails.$inferInsert;
+
+/** RESTOCK ALERTS */
+export const restockAlerts = pgTable(
+  "restock_alerts",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    email: varchar("email", { length: 320 }).notNull(),
+
+    productKey: varchar("product_key", { length: 128 }).notNull(),
+    flavor: text("flavor").notNull(),
+
+    requestedQuantity: integer("requested_quantity").notNull().default(1),
+
+    status: varchar("status", { length: 32 }).notNull().default("pending"),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+
+    metadata: jsonb("metadata").$type<{
+      source?: string | null;
+      ip?: string | null;
+      userAgent?: string | null;
+      referer?: string | null;
+      purchaseType?: "onetime" | "subscribe" | null;
+      frequency?: "2" | "4" | "6" | null;
+    }>(),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    restockAlertsEmailIdx: index("restock_alerts_email_idx").on(t.email),
+    restockAlertsProductKeyIdx: index("restock_alerts_product_key_idx").on(t.productKey),
+    restockAlertsFlavorIdx: index("restock_alerts_flavor_idx").on(t.flavor),
+    restockAlertsStatusIdx: index("restock_alerts_status_idx").on(t.status),
+    restockAlertsCreatedAtIdx: index("restock_alerts_created_at_idx").on(t.createdAt),
+
+    restockAlertsUniquePendingIdx: uniqueIndex("restock_alerts_unique_pending_idx").on(
+      t.email,
+      t.productKey,
+      t.flavor,
+      t.status,
+    ),
+
+    restockAlertsRequestedQuantityPositiveChk: check(
+      "restock_alerts_requested_quantity_positive_chk",
+      sql`${t.requestedQuantity} > 0`,
+    ),
+  }),
+);
+
+export type RestockAlert = typeof restockAlerts.$inferSelect;
+export type InsertRestockAlert = typeof restockAlerts.$inferInsert;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
+import { Footer } from "@/components/sections/Footer";
 
 export default function ComingSoon() {
   const [email, setEmail] = useState("");
@@ -84,24 +85,25 @@ export default function ComingSoon() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-black text-white">
+    <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#020202_0%,#060606_42%,#030303_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,rgba(255,255,255,0.72)_0.55px,transparent_0.7px)] [background-size:6px_6px]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-gradient-to-b from-[#1a120b]/10 via-transparent to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black to-transparent" />
 
       <main className="relative z-10">
-        <header className="border-b border-white/8">
+        {/* Simplified header — no nav links on pre-launch page */}
+        <header className="border-b border-border">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-5 md:px-8 lg:px-10">
             <Link
               href="/"
-              className="text-xl font-semibold uppercase tracking-[0.24em] text-white sm:text-2xl"
+              className="text-3xl font-display font-bold tracking-wider text-white hover:text-primary transition-colors"
             >
               KIMORA
             </Link>
 
             <div className="hidden items-center gap-3 sm:flex">
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-[#d9b161] backdrop-blur-sm">
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary backdrop-blur-sm">
                 Creatine · Electrolytes · Daily
               </span>
             </div>
@@ -111,11 +113,11 @@ export default function ComingSoon() {
         <section className="mx-auto w-full max-w-7xl px-6 pb-16 pt-8 md:px-8 lg:px-10 lg:pb-24 lg:pt-10">
           <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,500px)_minmax(0,1fr)] lg:gap-6">
             <div className="relative z-10 max-w-[600px]">
-              <p className="text-sm font-medium uppercase tracking-[0.28em] text-[#d9b161]">
+              <p className="text-sm font-medium uppercase tracking-[0.28em] text-primary">
                 Coming soon
               </p>
 
-              <h1 className="mt-5 text-5xl font-semibold leading-[0.92] tracking-tight text-white sm:text-6xl lg:text-7xl">
+              <h1 className="mt-5 text-5xl font-display font-bold leading-[0.92] tracking-tight text-white sm:text-6xl lg:text-7xl">
                 OUT-TRAIN.
                 <br />
                 OUT-SMART.
@@ -123,83 +125,83 @@ export default function ComingSoon() {
                 OUT-LAST.
               </h1>
 
-              <div className="mt-8 h-px w-40 bg-gradient-to-r from-[#d7ad57] via-[#f1d18a] to-transparent" />
+              <div className="mt-8 h-px w-40 bg-gradient-to-r from-primary via-primary/40 to-transparent" />
 
-              <p className="mt-8 max-w-[520px] text-lg leading-8 text-white/78 sm:text-xl">
+              <p className="mt-8 max-w-[520px] text-lg leading-8 text-white/80 sm:text-xl">
                 Creatine + electrolytes built for fighters.
               </p>
 
-              <p className="mt-5 max-w-[560px] text-base leading-7 text-zinc-400 sm:text-lg sm:leading-8">
+              <p className="mt-5 max-w-[560px] text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
                 Single-serve daily performance support with no scooping, no mess,
                 and no friction between intention and consistency.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-2.5">
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-white/82">
+                <span className="rounded-full border border-border bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80">
                   5 g Creatine Monohydrate
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-white/82">
+                <span className="rounded-full border border-border bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80">
                   Electrolytes Included
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-white/82">
+                <span className="rounded-full border border-border bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80">
                   Monk Fruit Sweetened
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-white/82">
+                <span className="rounded-full border border-border bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80">
                   Nothing Artificial
                 </span>
               </div>
 
-              <div className="mt-10 rounded-[30px] border border-white/10 bg-white/[0.035] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.4)] backdrop-blur-sm sm:p-6">
+              <div className="mt-10 rounded-[30px] border border-border bg-white/[0.035] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.4)] backdrop-blur-sm sm:p-6">
                 <div className="flex flex-col gap-6">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                         First drop
                       </p>
-                      <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+                      <h2 className="mt-2 text-3xl font-display font-bold tracking-tight text-white">
                         Get early access
                       </h2>
                     </div>
 
-                    <p className="max-w-[240px] text-sm leading-6 text-zinc-400 sm:text-right">
+                    <p className="max-w-[240px] text-sm leading-6 text-muted-foreground sm:text-right">
                       Join the list before launch and hear about the first batch
                       first.
                     </p>
                   </div>
 
                   <div className="grid grid-cols-4 gap-3">
-                    <div className="rounded-2xl border border-white/10 bg-black/35 px-3 py-4 text-center">
+                    <div className="rounded-2xl border border-border bg-black/35 px-3 py-4 text-center">
                       <div className="text-3xl font-bold tracking-tight text-white md:text-4xl">
                         {countdown.days}
                       </div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                         Days
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/35 px-3 py-4 text-center">
+                    <div className="rounded-2xl border border-border bg-black/35 px-3 py-4 text-center">
                       <div className="text-3xl font-bold tracking-tight text-white md:text-4xl">
                         {countdown.hours}
                       </div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                         Hours
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/35 px-3 py-4 text-center">
+                    <div className="rounded-2xl border border-border bg-black/35 px-3 py-4 text-center">
                       <div className="text-3xl font-bold tracking-tight text-white md:text-4xl">
                         {countdown.minutes}
                       </div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                         Minutes
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-[#d7ad57]/30 bg-[#d7ad57]/10 px-3 py-4 text-center shadow-[0_0_28px_rgba(215,173,87,0.08)]">
+                    <div className="rounded-2xl border border-primary/30 bg-primary/10 px-3 py-4 text-center shadow-[0_0_28px_rgba(0,191,165,0.08)]">
                       <div className="text-3xl font-bold tracking-tight text-white md:text-4xl">
                         {countdown.seconds}
                       </div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-[#d7ad57]">
+                      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-primary">
                         Seconds
                       </div>
                     </div>
@@ -216,13 +218,13 @@ export default function ComingSoon() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={submitting}
-                      className="h-14 flex-1 rounded-2xl border border-white/10 bg-black/40 px-5 text-sm text-white placeholder:text-zinc-500 focus:border-[#d7ad57]/40 focus:outline-none disabled:opacity-60"
+                      className="h-14 flex-1 rounded-2xl border border-border bg-black/40 px-5 text-sm text-white placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none disabled:opacity-60"
                     />
 
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="h-14 rounded-2xl bg-[#b51212] px-7 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(130,0,0,0.28)] transition-all duration-300 hover:bg-[#c81616] disabled:opacity-60"
+                      className="h-14 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(0,191,165,0.25)] transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
                     >
                       {submitting ? "Submitting..." : "Get First Access"}
                     </button>
@@ -230,10 +232,10 @@ export default function ComingSoon() {
 
                   {submitted ? (
                     <p className="text-sm font-medium text-emerald-400">
-                      You’re on the list. We’ll let you know first.
+                      You're on the list. We'll let you know first.
                     </p>
                   ) : (
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-muted-foreground">
                       Limited first batch. No spam. Unsubscribe anytime.
                     </p>
                   )}
@@ -244,8 +246,8 @@ export default function ComingSoon() {
             <div className="relative">
               <div className="relative flex min-h-[520px] items-center justify-center lg:min-h-[780px]">
                 <div className="pointer-events-none absolute inset-0 bg-black/70" />
-                <div className="pointer-events-none absolute left-1/2 top-[8%] h-[180px] w-[180px] -translate-x-1/2 rounded-full bg-[rgba(234,178,91,0.12)] blur-[110px]" />
-                <div className="pointer-events-none absolute left-1/2 top-[18%] h-[260px] w-[260px] -translate-x-1/2 rounded-full bg-[rgba(185,106,45,0.06)] blur-[140px]" />
+                <div className="pointer-events-none absolute left-1/2 top-[8%] h-[180px] w-[180px] -translate-x-1/2 rounded-full bg-primary/10 blur-[110px]" />
+                <div className="pointer-events-none absolute left-1/2 top-[18%] h-[260px] w-[260px] -translate-x-1/2 rounded-full bg-primary/5 blur-[140px]" />
                 <div className="pointer-events-none absolute bottom-[16%] left-1/2 h-[70px] w-[44%] -translate-x-1/2 rounded-full bg-black/80 blur-[28px]" />
 
                 <div className="relative z-10 flex w-full items-center justify-center bg-black">
@@ -260,24 +262,24 @@ export default function ComingSoon() {
           </div>
         </section>
 
-        <section className="border-t border-white/8 bg-[#050505]">
+        <section className="border-t border-border bg-card">
           <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
             <div className="max-w-3xl">
-              <p className="text-sm font-medium uppercase tracking-[0.26em] text-[#d7ad57]">
+              <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
                 Why Kimora exists
               </p>
 
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
                 Consistency wins.
               </h2>
 
-              <p className="mt-6 leading-8 text-zinc-400">
+              <p className="mt-6 leading-8 text-muted-foreground">
                 You do not get stronger from one lift. You do not get better
                 from one roll. And you do not get results from taking creatine
                 only when you remember.
               </p>
 
-              <p className="mt-4 leading-8 text-zinc-300">
+              <p className="mt-4 leading-8 text-white/80">
                 Kimora was built to remove the friction so daily use becomes the
                 default.
               </p>
@@ -285,25 +287,25 @@ export default function ComingSoon() {
           </div>
         </section>
 
-        <section className="border-t border-white/8 bg-black">
+        <section className="border-t border-border bg-background">
           <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
             <div className="mb-10 max-w-3xl">
-              <p className="text-sm font-medium uppercase tracking-[0.26em] text-[#d7ad57]">
+              <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
                 Flavor lineup
               </p>
 
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
                 Three flavors. One system.
               </h2>
 
-              <p className="mt-5 leading-7 text-zinc-400">
+              <p className="mt-5 leading-7 text-muted-foreground">
                 Designed to feel premium, clean, and actually enjoyable to take
                 every day.
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-              <article className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.03] transition-colors duration-300 hover:border-white/15">
+              <article className="overflow-hidden rounded-[24px] border border-border bg-card transition-colors duration-300 hover:border-white/15">
                 <div className="relative aspect-[3/4] bg-[radial-gradient(circle_at_50%_16%,rgba(255,149,86,0.18),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-6">
                   <img
                     src="/assets/products/strawberry-guava/pouch.webp"
@@ -311,18 +313,18 @@ export default function ComingSoon() {
                     className="h-full w-full object-contain drop-shadow-2xl"
                   />
                 </div>
-                <div className="border-t border-white/8 p-6 text-center">
-                  <h3 className="text-2xl font-semibold text-white">
+                <div className="border-t border-border p-6 text-center">
+                  <h3 className="text-2xl font-display font-bold text-white">
                     Strawberry Guava
                   </h3>
-                  <p className="mt-3 text-sm leading-7 text-zinc-400">
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
                     Tropical, richer, and fruit-forward with a fuller flavor
                     profile.
                   </p>
                 </div>
               </article>
 
-              <article className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.03] transition-colors duration-300 hover:border-white/15">
+              <article className="overflow-hidden rounded-[24px] border border-border bg-card transition-colors duration-300 hover:border-white/15">
                 <div className="relative aspect-[3/4] bg-[radial-gradient(circle_at_50%_16%,rgba(255,213,88,0.18),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-6">
                   <img
                     src="/assets/products/lemon-yuzu/pouch.webp"
@@ -330,17 +332,17 @@ export default function ComingSoon() {
                     className="h-full w-full object-contain drop-shadow-2xl"
                   />
                 </div>
-                <div className="border-t border-white/8 p-6 text-center">
-                  <h3 className="text-2xl font-semibold text-white">
+                <div className="border-t border-border p-6 text-center">
+                  <h3 className="text-2xl font-display font-bold text-white">
                     Lemon Yuzu
                   </h3>
-                  <p className="mt-3 text-sm leading-7 text-zinc-400">
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
                     Bright citrus with a cleaner, sharper finish.
                   </p>
                 </div>
               </article>
 
-              <article className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.03] transition-colors duration-300 hover:border-white/15">
+              <article className="overflow-hidden rounded-[24px] border border-border bg-card transition-colors duration-300 hover:border-white/15">
                 <div className="relative aspect-[3/4] bg-[radial-gradient(circle_at_50%_16%,rgba(255,86,149,0.18),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-6">
                   <img
                     src="/assets/products/raspberry-dragonfruit/pouch.webp"
@@ -348,11 +350,11 @@ export default function ComingSoon() {
                     className="h-full w-full object-contain drop-shadow-2xl"
                   />
                 </div>
-                <div className="border-t border-white/8 p-6 text-center">
-                  <h3 className="text-2xl font-semibold text-white">
+                <div className="border-t border-border p-6 text-center">
+                  <h3 className="text-2xl font-display font-bold text-white">
                     Raspberry Dragonfruit
                   </h3>
-                  <p className="mt-3 text-sm leading-7 text-zinc-400">
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
                     Smooth, balanced, and built to be the daily driver.
                   </p>
                 </div>
@@ -362,71 +364,7 @@ export default function ComingSoon() {
         </section>
       </main>
 
-      <footer className="relative z-20 border-t border-white/8 bg-black">
-        <div className="mx-auto w-full max-w-7xl px-6 py-14 md:px-8 lg:px-10">
-          <div className="flex flex-col items-center gap-5 text-center">
-            <p className="text-2xl font-semibold uppercase tracking-[0.25em] text-white">
-              KIMORA
-            </p>
-
-            <p className="text-xs uppercase tracking-[0.35em] text-white/30">
-              OUT-TRAIN. OUT-SMART. OUT-LAST.
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-white/60">
-              <a
-                href="mailto:support@kimoraco.com"
-                className="transition hover:text-white"
-              >
-                support@kimoraco.com
-              </a>
-
-              <a
-                href="https://instagram.com/kimoracreatine"
-                target="_blank"
-                rel="noreferrer"
-                className="transition hover:text-white"
-              >
-                @kimoracreatine
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-4 text-xs uppercase tracking-[0.18em] text-white/40">
-            <Link href="/terms" className="transition hover:text-white">
-              Terms
-            </Link>
-
-            <Link href="/privacy" className="transition hover:text-white">
-              Privacy
-            </Link>
-
-            <Link href="/refunds" className="transition hover:text-white">
-              Refunds
-            </Link>
-
-            <Link
-              href="/wholesale/apply"
-              className="transition hover:text-white"
-            >
-              Wholesale Apply
-            </Link>
-          </div>
-
-          <div className="mt-10 border-t border-white/6 pt-6 text-center">
-            <p className="text-xs text-white/30">
-              © 2026 Kimora Co. All rights reserved.
-            </p>
-
-            <p className="mx-auto mt-4 max-w-2xl text-[10px] leading-relaxed text-white/20">
-              These statements have not been evaluated by the Food and Drug
-              Administration. This product is not intended to diagnose, treat,
-              cure, or prevent any disease. Always consult your healthcare
-              provider before starting any new supplement.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+
+
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Footer } from "@/components/sections/Footer";
@@ -88,7 +90,6 @@ export default function ComingSoon() {
     <>
     <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#020202_0%,#060606_42%,#030303_100%)]" />
-      
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black to-transparent" />
 
@@ -376,3 +377,4 @@ export default function ComingSoon() {
     </>
   );
 }
+

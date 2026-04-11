@@ -255,14 +255,14 @@ export default function ComingSoon() {
                   <img
                     src="/assets/products/full_lineup.png"
                     alt="Kimora creatine and electrolytes product lineup"
-                    className="relative z-10 h-auto w-full max-w-[1120px] object-contain brightness-[1.03] contrast-[1.04] saturate-[1.02] drop-shadow-[0_42px_90px_rgba(0,0,0,0.55)] xl:max-w-[1240px]"
+                    className="h-auto w-full max-w-[1120px] object-contain brightness-[1.03] contrast-[1.04] saturate-[1.02] drop-shadow-[0_42px_90px_rgba(0,0,0,0.55)] xl:max-w-[1240px]"
                   />
-
-                  {/* Edge fades — dissolve image into pure black on left, right, and bottom */}
-                  <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-black to-transparent z-20" />
-                  <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-black to-transparent z-20" />
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black to-transparent z-20" />
                 </div>
+
+                {/* Edge fades — dissolve image into pure black on left, right, and bottom */}
+                <div className="pointer-events-none absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-black to-transparent z-20" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-black to-transparent z-20" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black to-transparent z-20" />
               </div>
             </div>
           </div>

@@ -244,25 +244,26 @@ export default function ComingSoon() {
               </div>
             </div>
 
-            <div className="relative">
+            {/* Solid black column — covers the dot texture for the entire image area */}
+            <div className="relative bg-black">
               <div className="relative flex min-h-[520px] items-center justify-center lg:min-h-[780px]">
-                <div className="pointer-events-none absolute inset-0 bg-black/70" />
                 <div className="pointer-events-none absolute left-1/2 top-[8%] h-[180px] w-[180px] -translate-x-1/2 rounded-full bg-primary/10 blur-[110px]" />
                 <div className="pointer-events-none absolute left-1/2 top-[18%] h-[260px] w-[260px] -translate-x-1/2 rounded-full bg-primary/5 blur-[140px]" />
                 <div className="pointer-events-none absolute bottom-[16%] left-1/2 h-[70px] w-[44%] -translate-x-1/2 rounded-full bg-black/80 blur-[28px]" />
 
-                <div className="relative z-10 flex w-full items-center justify-center bg-black">
+                {/* Image wrapper — fades position against this */}
+                <div className="relative z-10 w-full max-w-[1120px] xl:max-w-[1240px]">
                   <img
                     src="/assets/products/full_lineup.png"
                     alt="Kimora creatine and electrolytes product lineup"
-                    className="h-auto w-full max-w-[1120px] object-contain brightness-[1.03] contrast-[1.04] saturate-[1.02] drop-shadow-[0_42px_90px_rgba(0,0,0,0.55)] xl:max-w-[1240px]"
+                    className="h-auto w-full object-contain brightness-[1.03] contrast-[1.04] saturate-[1.02] drop-shadow-[0_42px_90px_rgba(0,0,0,0.55)]"
                   />
-                </div>
 
-                {/* Edge fades — dissolve image into pure black on left, right, and bottom */}
-                <div className="pointer-events-none absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-black to-transparent z-20" />
-                <div className="pointer-events-none absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-black to-transparent z-20" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black to-transparent z-20" />
+                  {/* Edge fades — dissolve image into pure black on left, right, and bottom */}
+                  <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-black to-transparent z-20" />
+                  <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-black to-transparent z-20" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black to-transparent z-20" />
+                </div>
               </div>
             </div>
           </div>

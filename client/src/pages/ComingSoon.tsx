@@ -88,7 +88,7 @@ export default function ComingSoon() {
     <>
     <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#020202_0%,#060606_42%,#030303_100%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,rgba(255,255,255,0.72)_0.55px,transparent_0.7px)] [background-size:6px_6px]" />
+      
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black to-transparent" />
 

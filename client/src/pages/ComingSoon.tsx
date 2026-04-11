@@ -247,13 +247,13 @@ export default function ComingSoon() {
 
             {/* Solid black column — covers the dot texture for the entire image area */}
             <div className="relative bg-black">
-              <div className="relative flex min-h-[520px] items-center justify-center lg:min-h-[780px]">
+              <div className="relative flex min-h-[560px] items-center justify-center lg:min-h-[900px]">
                 <div className="pointer-events-none absolute left-1/2 top-[8%] h-[180px] w-[180px] -translate-x-1/2 rounded-full bg-primary/10 blur-[110px]" />
                 <div className="pointer-events-none absolute left-1/2 top-[18%] h-[260px] w-[260px] -translate-x-1/2 rounded-full bg-primary/5 blur-[140px]" />
                 <div className="pointer-events-none absolute bottom-[16%] left-1/2 h-[70px] w-[44%] -translate-x-1/2 rounded-full bg-black/80 blur-[28px]" />
 
                 {/* Image wrapper — fades position against this */}
-                <div className="relative z-10 w-full max-w-[1120px] xl:max-w-[1240px]">
+                <div className="relative z-10 w-full max-w-[1120px] xl:max-w-[1240px] scale-[1.22] origin-center">
                   <img
                     src="/assets/products/full_lineup.png"
                     alt="Kimora creatine and electrolytes product lineup"

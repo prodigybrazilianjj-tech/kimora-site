@@ -85,6 +85,7 @@ export default function ComingSoon() {
   }
 
   return (
+    <>
     <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#020202_0%,#060606_42%,#030303_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,rgba(255,255,255,0.72)_0.55px,transparent_0.7px)] [background-size:6px_6px]" />
@@ -363,8 +364,9 @@ export default function ComingSoon() {
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
+
+    <Footer />
+    </>
   );
 }

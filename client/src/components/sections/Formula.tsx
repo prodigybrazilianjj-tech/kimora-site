@@ -29,7 +29,7 @@ export function Formula() {
               <ul className="space-y-4">
                 <li className="flex justify-between items-baseline border-b border-white/5 pb-2">
                   <span className="text-white font-medium">
-                    5 g Creatine Monohydrate
+                    5g Creatine Monohydrate
                   </span>
                   <span className="text-sm text-muted-foreground">
                     Strength & Power

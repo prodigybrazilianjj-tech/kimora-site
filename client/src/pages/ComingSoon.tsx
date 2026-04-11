@@ -139,7 +139,7 @@ export default function ComingSoon() {
 
               <div className="mt-8 flex flex-wrap gap-2.5">
                 <span className="rounded-full border border-border bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80">
-                  5 g Creatine Monohydrate
+                  5g Creatine Monohydrate
                 </span>
                 <span className="rounded-full border border-border bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80">
                   Electrolytes Included

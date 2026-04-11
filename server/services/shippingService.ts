@@ -3,7 +3,9 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { orders, orderItems } from "../../shared/schema";
 import { reconcileInventoryReservationForOrderItem } from "./inventoryService";
-import { sendShippingNotificationEmail } from "./emailService";
+import { sendShippingNotificationEmail, maybeSendShippingEmailForOrder } from "./emailService";
+
+export { maybeSendShippingEmailForOrder };
 
 function safeString(v: any, maxLen = 20000) {
   const s = String(v ?? "").trim();
@@ -329,58 +331,6 @@ export async function getOrderLabelByOrderId(orderId: string) {
       order.shippingTrackingNumber ?? null
     ),
   };
-}
-
-export async function maybeSendShippingEmailForOrder(orderId: string) {
-  try {
-    const row = await db
-      .select({
-        id: orders.id,
-        customerEmail: orders.customerEmail,
-        shippingName: orders.shippingName,
-        shippingCarrier: orders.shippingCarrier,
-        shippingTrackingNumber: orders.shippingTrackingNumber,
-      })
-      .from(orders)
-      .where(eq(orders.id, orderId))
-      .limit(1);
-
-    const order = row?.[0];
-    if (!order?.customerEmail) return;
-
-    if (order.shippingTrackingNumber) {
-      await sendShippingNotificationEmail({
-        customerEmail: order.customerEmail,
-        shippingName: order.shippingName ?? null,
-        orderId: order.id,
-        carrier: order.shippingCarrier ?? null,
-        trackingNumber: order.shippingTrackingNumber ?? null,
-      });
-      return;
-    }
-
-    const itemRow = await db
-      .select({
-        carrier: orderItems.carrier,
-        trackingNumber: orderItems.trackingNumber,
-      })
-      .from(orderItems)
-      .where(eq(orderItems.orderId, orderId))
-      .limit(1);
-
-    const item = itemRow?.[0];
-    if (item?.trackingNumber) {
-      await sendShippingNotificationEmail({
-        customerEmail: order.customerEmail,
-        shippingName: order.shippingName ?? null,
-        orderId: order.id,
-        carrier: item.carrier ?? null,
-        trackingNumber: item.trackingNumber ?? null,
-      });
-    }
-  } catch (e) {
-    console.warn("[shipping-email] maybeSendShippingEmailForOrder failed:", safeErrSummary(e));
-  }
 }
 
 export async function createBatchLabels(args: { orderIds?: string[] }) {

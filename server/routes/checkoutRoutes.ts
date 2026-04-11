@@ -333,7 +333,7 @@ async function saveRestockAlertsForFailedCheckout(params: {
 function buildShippingOptions(params: { currency: string; subtotalCents: number }): any[] {
   const currency = params.currency || "usd";
 
-  const FREE_THRESHOLD_CENTS = 5000;
+  const FREE_THRESHOLD_CENTS = 10000;
   const isFree = params.subtotalCents >= FREE_THRESHOLD_CENTS;
 
   if (isFree) {

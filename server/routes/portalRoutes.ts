@@ -148,35 +148,22 @@ export function registerPortalRoutes(app: Express) {
       if (!resendKey || !fromEmail) return genericOk();
 
       const resend = new Resend(resendKey);
+      const supportEmail = String(process.env.SUPPORT_EMAIL || "support@kimoraco.com").trim();
 
       const subject = "Manage your Kimora subscription";
-      const text = `Manage your Kimora subscription
+      const text = `Manage your Kimora subscription\n\nSecure link (expires in 15 minutes):\n${portalLink}\n\nIf your link expired, request a fresh one here:\n${fallbackLink}\n\nNeed help? Reply to this email or contact ${supportEmail}\n`;
 
-Secure link (expires in 15 minutes):
-${portalLink}
-
-If your link expired, request a fresh one here:
-${fallbackLink}
-
-Need help? Reply to this email or contact support@kimoraco.com
-`;
-
-      const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
-  <h2 style="margin:0 0 8px;">Manage your Kimora subscription</h2>
-  <p style="margin:0 0 16px;">Use the secure link below (expires in <b>15 minutes</b>):</p>
-  <p style="margin:0 0 18px;">
-    <a href="${portalLink}" style="display:inline-block;padding:12px 16px;border-radius:10px;background:#111;color:#fff;text-decoration:none;">
-      Open subscription portal
-    </a>
-  </p>
-  <p style="margin:0 0 10px;font-size:14px;color:#444;">
-    If this link expired, request a fresh one here:
-    <a href="${fallbackLink}">${fallbackLink}</a>
-  </p>
-  <p style="margin:18px 0 0;font-size:12px;color:#666;">
-    Need help? Reply to this email or contact <a href="mailto:support@kimoraco.com">support@kimoraco.com</a>.
-  </p>
-</div>`;
+      const { render } = await import("@react-email/render");
+      const React = await import("react");
+      const { PortalLinkEmail } = await import("../emails/PortalLinkEmail");
+      const html = await render(
+        React.createElement(PortalLinkEmail, {
+          siteUrl,
+          supportEmail,
+          portalUrl: portalLink,
+          expiresMinutes: 15,
+        })
+      );
 
       try {
         const from = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;

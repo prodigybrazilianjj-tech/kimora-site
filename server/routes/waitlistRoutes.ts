@@ -46,36 +46,8 @@ export function registerWaitlistRoutes(app: Express) {
 
       if (resendKey && fromEmail) {
         try {
-          const resend = new Resend(resendKey);
-
-          await resend.emails.send({
-            from: fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`,
-            to: emailRaw,
-            subject: "You're on the Kimora waitlist 🐙",
-            html: `
-              <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111;">
-                <h2 style="margin:0 0 12px;">You're in.</h2>
-                <p style="margin:0 0 12px;">
-                  You’ve been added to the Kimora Co waitlist.
-                </p>
-                <p style="margin:0 0 12px;">
-                  We’ll let you know as soon as early access opens.
-                </p>
-                <p style="margin:0 0 12px;">
-                  Built for performance. Built for fighters.
-                </p>
-                <div style="margin-top:20px;font-size:12px;letter-spacing:0.08em;color:#666;text-transform:uppercase;">
-                  OUT-TRAIN. OUT-SMART. OUT-LAST.
-                </div>
-              </div>
-            `,
-            text:
-              "You're in.\n\n" +
-              "You’ve been added to the Kimora Co waitlist.\n\n" +
-              "We’ll let you know as soon as early access opens.\n\n" +
-              "Built for performance. Built for fighters.\n\n" +
-              "OUT-TRAIN. OUT-SMART. OUT-LAST.",
-          } as any);
+          const { sendWaitlistConfirmationEmail } = await import("../services/emailService");
+          await sendWaitlistConfirmationEmail({ email: emailRaw });
         } catch (emailErr) {
           console.error("Waitlist welcome email error:", emailErr);
         }

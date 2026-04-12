@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -Command \"Expand-Archive -Path 'C:\\\\Users\\\\aestr\\\\Downloads\\\\KIMORA LOGO 2 \\(2\\).rar' -DestinationPath 'C:\\\\Users\\\\aestr\\\\Downloads\\\\kimora_logo_extracted' -Force\")",
+      "Bash(node -e \"console.log\\('node ok'\\)\")",
+      "Bash(node -e ':*)",
+      "Bash(where magick:*)",
+      "Bash(where convert:*)",
+      "Bash(where gs:*)",
+      "Bash(where inkscape:*)",
+      "Bash(powershell.exe -Command \"Get-Command magick,gs,inkscape -ErrorAction SilentlyContinue | Select-Object Name,Source\")",
+      "Bash(node -e \"require\\('sharp'\\); console.log\\('sharp ok'\\)\")",
+      "Bash(node -e \"require\\('jimp'\\); console.log\\('jimp ok'\\)\")",
+      "Bash(npm install:*)",
+      "Bash(node -e \"require\\('@react-email/render'\\); console.log\\('ok'\\)\")",
+      "Bash(ls c:/Users/aestr/kimora-site/tsconfig*.json)",
+      "Bash(npx tsc:*)",
+      "Bash(powershell.exe -Command ':*)"
+    ]
+  }
+}

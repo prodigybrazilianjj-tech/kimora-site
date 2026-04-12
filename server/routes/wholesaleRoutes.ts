@@ -316,37 +316,21 @@ export function registerWholesaleRoutes(app: Express) {
           `We received your application for ${businessName} and will review it shortly.\n\n` +
           `If you need to add anything, reply to this email or contact support@kimoraco.com.\n`;
 
-        const applicantHtml = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
-  <h2 style="margin:0 0 10px;">Wholesale application received</h2>
-  <p style="margin:0 0 12px;">
-    Thanks${
-      contactName ? `, ${escapeHtml(safeString(contactName))}` : ""
-    }! We received your wholesale application for <b>${escapeHtml(
-          safeString(businessName)
-        )}</b>.
-  </p>
-  <p style="margin:0 0 12px;">We’ll review it and get back to you shortly.</p>
-  <p style="margin:16px 0 0;font-size:12px;color:#666;">
-    Need to add something? Reply to this email or contact
-    <a href="mailto:support@kimoraco.com">support@kimoraco.com</a>.
-  </p>
-</div>`;
 
         try {
-          await resend.emails.send({
-            from,
-            to: notifyTo,
-            subject: internalSubject,
-            text: internalText,
-            html: internalHtml,
-            replyTo: email,
-          } as any);
-        } catch (e: any) {
-          const s = safeErrSummary(e);
-          console.error("[wholesale] internal email send failed:", s);
-        }
-
-        try {
+          const { render } = await import("@react-email/render");
+          const React = await import("react");
+          const { WholesaleApplicantEmail } = await import("../emails/WholesaleApplicantEmail");
+          const wsiteUrl = process.env.PUBLIC_SITE_URL || "https://kimoraco.com";
+          const wsupportEmail = String(process.env.SUPPORT_EMAIL || "support@kimoraco.com").trim();
+          const applicantHtml = await render(
+            React.createElement(WholesaleApplicantEmail, {
+              siteUrl: wsiteUrl,
+              supportEmail: wsupportEmail,
+              businessName: safeString(businessName),
+              contactName: safeString(contactName),
+            })
+          );
           await resend.emails.send({
             from,
             to: email,

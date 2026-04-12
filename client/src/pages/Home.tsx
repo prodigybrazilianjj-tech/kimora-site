@@ -6,6 +6,7 @@ import { Benefits } from "@/components/sections/Benefits";
 import { Formula } from "@/components/sections/Formula";
 import { Comparison } from "@/components/sections/Comparison";
 import { About } from "@/components/sections/About";
+import { Testimonials } from "@/components/sections/Testimonials";
 import { FAQPreview } from "@/components/sections/FAQPreview";
 import { Footer } from "@/components/sections/Footer";
 
@@ -57,6 +58,7 @@ export default function Home() {
         <Benefits />
         <Formula />
         <Comparison />
+        <Testimonials />
         <About />
         <FAQPreview />
       </main>

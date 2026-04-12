@@ -1,6 +1,14 @@
 // server/services/emailService.ts
+import * as React from "react";
+import { render } from "@react-email/render";
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
+
+import { OrderConfirmationEmail } from "../emails/OrderConfirmationEmail";
+import { ShippingNotificationEmail } from "../emails/ShippingNotificationEmail";
+import { WaitlistWelcomeEmail } from "../emails/WaitlistWelcomeEmail";
+import { EarlyAccessDropEmail } from "../emails/EarlyAccessDropEmail";
+import { MarketingWelcomeEmail } from "../emails/MarketingWelcomeEmail";
 
 import { db } from "../db";
 import { stripe } from "../stripe";
@@ -226,6 +234,15 @@ export async function sendOrderConfirmationEmail(args: {
   const manageLink = `${siteUrl}/manage-subscription`;
   const supportEmail = getSupportEmail();
 
+  const formattedLines = lines.map((l: any) => ({
+    qty: l.qty,
+    flavor: titleizeSlug(l.flavor),
+    purchaseType: l.purchaseType,
+    frequencyWeeks: l.frequencyWeeks,
+    unitAmount: l.unitAmount,
+    lineTotal: l.lineTotal != null ? formatMoney(l.lineTotal, currency) : null,
+  }));
+
   const itemsText = lines
     .map((l: any) => {
       const flavor = titleizeSlug(l.flavor);
@@ -249,96 +266,24 @@ export async function sendOrderConfirmationEmail(args: {
       ? `\nShipping to:\n${shippingName || "(name)"}\n${addressToOneLine(shippingAddr)}\n`
       : "") +
     (args.isSubscription ? `\nManage your subscription anytime:\n${manageLink}\n` : "") +
-    `\nNeed help? Reply to this email or contact ${supportEmail}.\n\n` +
-    `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
+    `\nNeed help? Reply to this email or contact ${supportEmail}.\n\nOUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
 
-  const itemsHtml = lines
-    .map((l: any) => {
-      const flavor = escapeHtml(titleizeSlug(l.flavor));
-      const cadence =
-        l.purchaseType === "subscribe" && l.frequencyWeeks
-          ? ` <span style="color:#666;">(Subscription — every ${l.frequencyWeeks} weeks)</span>`
-          : "";
-      const money =
-        l.unitAmount != null
-          ? ` <span style="color:#666;">@ ${escapeHtml(formatMoney(l.unitAmount, currency))}</span>`
-          : "";
-      const total =
-        l.lineTotal != null
-          ? ` <span style="color:#111;font-weight:600;">${escapeHtml(
-              formatMoney(l.lineTotal, currency)
-            )}</span>`
-          : "";
-      return `<li style="margin:6px 0;">${flavor} <b>x${l.qty}</b>${cadence}${money}${
-        total ? ` — ${total}` : ""
-      }</li>`;
+  const html = await render(
+    React.createElement(OrderConfirmationEmail, {
+      siteUrl,
+      supportEmail,
+      shippingName,
+      orderNumber,
+      lines: formattedLines,
+      subtotal: amountSubtotal != null ? formatMoney(amountSubtotal, currency) : "",
+      total: amountTotal != null ? formatMoney(amountTotal, currency) : "",
+      shippingAddress: shippingAddr
+        ? `${shippingName || ""}, ${addressToOneLine(shippingAddr)}`.replace(/^,\s*/, "")
+        : "",
+      isSubscription: args.isSubscription,
+      manageLink,
     })
-    .join("");
-
-  const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
-  <h2 style="margin:0 0 10px;">Order confirmed 🎉</h2>
-  <p style="margin:0 0 14px;">
-    Thanks${shippingName ? `, <b>${escapeHtml(shippingName)}</b>` : ""}. Your Kimora order is confirmed.
-  </p>
-
-  ${
-    orderNumber
-      ? `<div style="margin:0 0 12px;color:#444;"><b>Order:</b> ${escapeHtml(orderNumber)}</div>`
-      : ""
-  }
-
-  ${
-    itemsHtml
-      ? `<div style="margin:0 0 10px;"><b>Items</b></div>
-  <ul style="margin:0 0 14px;padding-left:18px;">${itemsHtml}</ul>`
-      : ""
-  }
-
-  <div style="margin:0 0 12px;">
-    ${
-      amountSubtotal != null
-        ? `<div><b>Subtotal:</b> ${escapeHtml(formatMoney(amountSubtotal, currency))}</div>`
-        : ""
-    }
-    ${
-      amountTotal != null
-        ? `<div><b>Total:</b> ${escapeHtml(formatMoney(amountTotal, currency))}</div>`
-        : ""
-    }
-  </div>
-
-  ${
-    shippingAddr
-      ? `<div style="margin:0 0 14px;">
-          <div><b>Shipping to</b></div>
-          <div style="color:#444;">${escapeHtml(shippingName || "(name)")}</div>
-          <div style="color:#444;">${escapeHtml(addressToOneLine(shippingAddr))}</div>
-        </div>`
-      : ""
-  }
-
-  ${
-    args.isSubscription
-      ? `<div style="margin:16px 0 12px;">
-          <a href="${manageLink}" style="display:inline-block;padding:12px 16px;border-radius:10px;background:#111;color:#fff;text-decoration:none;">
-            Manage subscription
-          </a>
-          <div style="margin-top:8px;font-size:12px;color:#666;">
-            Pause, cancel, or change frequency anytime.
-          </div>
-        </div>`
-      : ""
-  }
-
-  <div style="margin:16px 0 0;font-size:12px;color:#666;">
-    Need help? Reply to this email or contact
-    <a href="mailto:${supportEmail}">${supportEmail}</a>.
-  </div>
-
-  <div style="margin:14px 0 0;font-size:12px;letter-spacing:0.08em;color:#999;text-transform:uppercase;">
-    OUT-TRAIN. OUT-SMART. OUT-LAST.
-  </div>
-</div>`;
+  );
 
   try {
     await resend.emails.send({
@@ -388,47 +333,19 @@ export async function sendShippingNotificationEmail(args: {
     orderLine +
     trackingLine +
     (trackingUrl ? `Track package: ${trackingUrl}\n` : "") +
-    `\nNeed help? Reply to this email or contact ${supportEmail}.\n` +
-    `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
+    `\nNeed help? Reply to this email or contact ${supportEmail}.\nOUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
 
-  const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
-  <h2 style="margin:0 0 10px;">Shipped ✅</h2>
-  <p style="margin:0 0 14px;">
-    Hey${name ? ` <b>${escapeHtml(name)}</b>` : ""}, your Kimora order is on the way.
-  </p>
-
-  ${
-    args.orderId
-      ? `<div style="margin:0 0 8px;color:#444;"><b>Order:</b> ${escapeHtml(
-          String(args.orderId)
-        )}</div>`
-      : ""
-  }
-
-  <div style="margin:0 0 14px;color:#444;">
-    <b>Tracking${carrier ? ` (${escapeHtml(carrier)})` : ""}:</b>
-    ${tracking ? escapeHtml(tracking) : "(pending)"}
-  </div>
-
-  ${
-    trackingUrl
-      ? `<div style="margin:0 0 14px;">
-          <a href="${trackingUrl}" style="display:inline-block;padding:12px 16px;border-radius:10px;background:#111;color:#fff;text-decoration:none;">
-            Track package
-          </a>
-        </div>`
-      : ""
-  }
-
-  <div style="margin:16px 0 0;font-size:12px;color:#666;">
-    Need help? Reply to this email or contact
-    <a href="mailto:${supportEmail}">${supportEmail}</a>.
-  </div>
-
-  <div style="margin:14px 0 0;font-size:12px;letter-spacing:0.08em;color:#999;text-transform:uppercase;">
-    OUT-TRAIN. OUT-SMART. OUT-LAST.
-  </div>
-</div>`;
+  const html = await render(
+    React.createElement(ShippingNotificationEmail, {
+      siteUrl: getSiteUrl(),
+      supportEmail,
+      name,
+      orderId: String(args.orderId || ""),
+      carrier,
+      trackingNumber: tracking,
+      trackingUrl,
+    })
+  );
 
   try {
     await resend.emails.send({
@@ -478,27 +395,13 @@ export async function sendWaitlistConfirmationEmail(args: {
     `Need help? Reply to this email or contact ${supportEmail}.\n\n` +
     `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
 
-  const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
-  <h2 style="margin:0 0 10px;">You’re on the list 🔥</h2>
-  <p style="margin:0 0 14px;">
-    Thanks${firstName ? `, <b>${escapeHtml(firstName)}</b>` : ""}. You’ve joined the Kimora Co waitlist.
-  </p>
-  <p style="margin:0 0 14px;color:#444;">
-    We’re dialing in flavor, performance, and the full launch experience. You’ll be among the first to hear when early access opens.
-  </p>
-  <div style="margin:16px 0 12px;">
-    <a href="${siteUrl}" style="display:inline-block;padding:12px 16px;border-radius:10px;background:#111;color:#fff;text-decoration:none;">
-      Visit Kimora Co
-    </a>
-  </div>
-  <div style="margin:16px 0 0;font-size:12px;color:#666;">
-    Need help? Reply to this email or contact
-    <a href="mailto:${supportEmail}">${supportEmail}</a>.
-  </div>
-  <div style="margin:14px 0 0;font-size:12px;letter-spacing:0.08em;color:#999;text-transform:uppercase;">
-    OUT-TRAIN. OUT-SMART. OUT-LAST.
-  </div>
-</div>`;
+  const html = await render(
+    React.createElement(WaitlistWelcomeEmail, {
+      siteUrl,
+      supportEmail,
+      firstName: firstName || null,
+    })
+  );
 
   try {
     await resend.emails.send({
@@ -598,40 +501,24 @@ export async function sendEarlyAccessDropEmail(args: {
   const supportEmail = getSupportEmail();
 
   const subject = "Kimora Co — Early access is live";
-  const discountBlockText = discountCode ? `Discount code: ${discountCode}\n` : "";
-  const discountBlockHtml = discountCode
-    ? `<div style="margin:0 0 14px;color:#111;"><b>Discount code:</b> <span style="letter-spacing:0.04em;">${escapeHtml(
-        discountCode
-      )}</span></div>`
-    : "";
-
   const text =
     `Early access is live${firstName ? `, ${firstName}` : ""}.\n\n` +
     `${windowText}\n\n` +
-    `${discountBlockText}` +
+    (discountCode ? `Discount code: ${discountCode}\n` : "") +
     `Shop now: ${launchUrl}\n\n` +
     `Need help? Reply to this email or contact ${supportEmail}.\n\n` +
     `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
 
-  const html = `<div style="font-family: ui-sans-serif, system-ui; line-height:1.5; color:#111;">
-  <h2 style="margin:0 0 10px;">Early access is live 🚀</h2>
-  <p style="margin:0 0 14px;">
-    ${firstName ? `Hey <b>${escapeHtml(firstName)}</b>, ` : ""}${escapeHtml(windowText)}
-  </p>
-  ${discountBlockHtml}
-  <div style="margin:16px 0 12px;">
-    <a href="${launchUrl}" style="display:inline-block;padding:12px 16px;border-radius:10px;background:#111;color:#fff;text-decoration:none;">
-      Shop early access
-    </a>
-  </div>
-  <div style="margin:16px 0 0;font-size:12px;color:#666;">
-    Need help? Reply to this email or contact
-    <a href="mailto:${supportEmail}">${supportEmail}</a>.
-  </div>
-  <div style="margin:14px 0 0;font-size:12px;letter-spacing:0.08em;color:#999;text-transform:uppercase;">
-    OUT-TRAIN. OUT-SMART. OUT-LAST.
-  </div>
-</div>`;
+  const html = await render(
+    React.createElement(EarlyAccessDropEmail, {
+      siteUrl: getSiteUrl(),
+      supportEmail,
+      firstName: firstName || null,
+      launchUrl,
+      discountCode: discountCode || null,
+      windowText,
+    })
+  );
 
   try {
     await resend.emails.send({
@@ -697,6 +584,53 @@ export async function maybeSendShippingEmailForOrder(orderId: string) {
     }
   } catch (e) {
     console.warn("[shipping-email] maybeSendShippingEmailForOrder failed:", safeErrSummary(e));
+  }
+}
+
+export async function sendMarketingWelcomeEmail(args: {
+  email: string;
+  discountCode: string;
+}) {
+  const client = getResendClient();
+  if (!client) return;
+
+  const { resend, from } = client;
+  const email = normalizeEmail(String(args.email || ""));
+  if (!email || !isValidEmail(email)) return;
+
+  const siteUrl = getSiteUrl();
+  const supportEmail = getSupportEmail();
+  const shopUrl = `${siteUrl}/shop`;
+
+  const subject = "Kimora Co — Here's your 10% off";
+  const text =
+    `Welcome to Kimora Co.\n\n` +
+    `Your discount code: ${args.discountCode}\n\n` +
+    `Shop now: ${shopUrl}\n\n` +
+    `Creatine + electrolytes in a single daily stick. Clean formula, three flavors, nothing artificial.\n\n` +
+    `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
+
+  const html = await render(
+    React.createElement(MarketingWelcomeEmail, {
+      siteUrl,
+      supportEmail,
+      discountCode: args.discountCode,
+      shopUrl,
+    })
+  );
+
+  try {
+    await resend.emails.send({
+      from,
+      to: email,
+      subject,
+      text,
+      html,
+      replyTo: supportEmail,
+    } as any);
+  } catch (e: any) {
+    const s = safeErrSummary(e);
+    console.error("[marketing-email] send failed:", s);
   }
 }
 

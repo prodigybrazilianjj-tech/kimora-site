@@ -1,5 +1,15 @@
 import { Link } from "wouter";
 
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function Footer() {
   return (
     <footer className="py-12 bg-black border-t border-white/5">
@@ -9,6 +19,16 @@ export function Footer() {
         </p>
 
         <div className="flex flex-col items-center gap-4 mb-10 text-sm text-muted-foreground">
+          <a
+            href="https://instagram.com/kimoracreatine"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Kimora on Instagram"
+            className="hover:text-white transition-colors"
+          >
+            <InstagramIcon className="w-5 h-5" />
+          </a>
+
           <span>Kimora Co. © 2025. All rights reserved.</span>
 
           <a

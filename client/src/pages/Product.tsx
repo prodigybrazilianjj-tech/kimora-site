@@ -177,7 +177,7 @@ export default function Product() {
                   "Zero Sugar / Zero Stevia",
                   "Natural Monk Fruit Sweetener",
                   "Micronized for Solubility",
-                  "Third-Party Tested",
+                  "Manufactured to GMP Standards",
                 ].map((item) => (
                   <li
                     key={item}

@@ -182,4 +182,12 @@ export const styles = {
   tag: {
     display: "inline-block",
     padding: "4px 10px",
-    borderRadius: "999px"
+    borderRadius: "999px",
+    backgroundColor: "#1a1a1a",
+    border: "1px solid #2a2a2a",
+    fontSize: "11px",
+    letterSpacing: "0.1em",
+    textTransform: "uppercase" as const,
+    color: PRIMARY,
+  } as React.CSSProperties,
+};

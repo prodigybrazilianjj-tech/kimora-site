@@ -656,4 +656,15 @@ export async function getStripeCustomerIdFromCheckoutSession(
       const subId =
         typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
 
-      if (su
+      if (subId) {
+        const sub = await stripe.subscriptions.retrieve(subId);
+        stripeCustomerId =
+          typeof sub.customer === "string" ? sub.customer : (sub.customer as any)?.id ?? null;
+      }
+    } catch {
+      // best-effort; return what we have
+    }
+  }
+
+  return stripeCustomerId;
+}

@@ -122,4 +122,24 @@ export function OrderConfirmationEmail({
       ) : null}
 
       {isSubscription ? (
-        <Section style={{ marginBottom: "24px", padding: "16px", background
+        <Section style={{ marginBottom: "24px", padding: "16px", backgroundColor: "#0a1a16", borderRadius: "10px", border: `1px solid #0f3028` }}>
+          <Text style={{ margin: "0 0 10px", fontSize: "13px", color: styles.TEXT_MUTED }}>
+            Pause, cancel, or change your delivery frequency anytime.
+          </Text>
+          <Link href={manageLink} style={styles.button}>
+            Manage subscription
+          </Link>
+        </Section>
+      ) : null}
+
+      <Text style={styles.muted}>
+        Questions? Reply to this email or reach us at{" "}
+        <Link href={`mailto:${supportEmail}`} style={{ color: styles.PRIMARY }}>
+          {supportEmail}
+        </Link>
+        .
+      </Text>
+
+    </KimoraEmailLayout>
+  );
+}

@@ -260,10 +260,11 @@ export default function ComingSoon() {
                     className="h-auto w-full object-contain brightness-[1.03] contrast-[1.04] saturate-[1.02] drop-shadow-[0_42px_90px_rgba(0,0,0,0.55)]"
                   />
 
-                  {/* Edge fades — dissolve image into pure black on left, right, and bottom */}
-                  <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-black to-transparent z-20" />
-                  <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-black to-transparent z-20" />
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black to-transparent z-20" />
+                  {/* Edge fades — dissolve image into pure black on all sides */}
+                  <div className="pointer-events-none absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-black to-transparent z-20" />
+                  <div className="pointer-events-none absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-black to-transparent z-20" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-black to-transparent z-20" />
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black to-transparent z-20" />
                 </div>
               </div>
             </div>

@@ -1,10 +1,12 @@
 import * as React from "react";
-import { Section, Text, Hr, Link } from "@react-email/components";
+import { Img, Section, Text, Hr, Link } from "@react-email/components";
 import { KimoraEmailLayout, styles } from "./KimoraEmailLayout";
 
 export interface OrderLineItem {
   qty: number;
   flavor: string;
+  /** Absolute URL to the flavor's product pouch image */
+  imageUrl?: string | null;
   purchaseType: "onetime" | "subscribe";
   frequencyWeeks: number | null;
   unitAmount: number | null;
@@ -67,16 +69,31 @@ export function OrderConfirmationEmail({
 
       <Text style={{ ...styles.label, marginBottom: "12px" }}>What you ordered</Text>
       {lines.map((l, i) => (
-        <Section key={i} style={{ marginBottom: "10px", padding: "12px 14px", backgroundColor: "#141414", borderRadius: "8px", border: "1px solid #1f1f1f" }}>
-          <Text style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: "700", color: "#ffffff" }}>
-            {l.flavor} <span style={{ color: styles.TEXT_MUTED, fontWeight: "400" }}>× {l.qty}</span>
-          </Text>
-          <Text style={{ margin: "0", fontSize: "12px", color: styles.TEXT_MUTED }}>
-            {l.purchaseType === "subscribe" && l.frequencyWeeks
-              ? `Subscription — renews every ${l.frequencyWeeks} weeks`
-              : "One-time purchase"}
-            {l.lineTotal ? `  ·  ${l.lineTotal}` : ""}
-          </Text>
+        <Section key={i} style={{ marginBottom: "12px", backgroundColor: "#141414", borderRadius: "8px", border: "1px solid #1f1f1f", overflow: "hidden" }}>
+          {/* Flavor image banner */}
+          {l.imageUrl ? (
+            <Section style={{ backgroundColor: "#111111", textAlign: "center", padding: "16px 0" }}>
+              <Img
+                src={l.imageUrl}
+                alt={l.flavor}
+                width="180"
+                height="180"
+                style={{ display: "block", margin: "0 auto", objectFit: "contain" }}
+              />
+            </Section>
+          ) : null}
+          {/* Line item details */}
+          <Section style={{ padding: "12px 14px" }}>
+            <Text style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: "700", color: "#ffffff" }}>
+              {l.flavor} <span style={{ color: styles.TEXT_MUTED, fontWeight: "400" }}>× {l.qty}</span>
+            </Text>
+            <Text style={{ margin: "0", fontSize: "12px", color: styles.TEXT_MUTED }}>
+              {l.purchaseType === "subscribe" && l.frequencyWeeks
+                ? `Subscription — renews every ${l.frequencyWeeks} weeks`
+                : "One-time purchase"}
+              {l.lineTotal ? `  ·  ${l.lineTotal}` : ""}
+            </Text>
+          </Section>
         </Section>
       ))}
 
@@ -105,24 +122,4 @@ export function OrderConfirmationEmail({
       ) : null}
 
       {isSubscription ? (
-        <Section style={{ marginBottom: "24px", padding: "16px", backgroundColor: "#0a1a16", borderRadius: "10px", border: `1px solid #0f3028` }}>
-          <Text style={{ margin: "0 0 10px", fontSize: "13px", color: styles.TEXT_MUTED }}>
-            Pause, cancel, or change your delivery frequency anytime.
-          </Text>
-          <Link href={manageLink} style={styles.button}>
-            Manage subscription
-          </Link>
-        </Section>
-      ) : null}
-
-      <Text style={styles.muted}>
-        Questions? Reply to this email or reach us at{" "}
-        <Link href={`mailto:${supportEmail}`} style={{ color: styles.PRIMARY }}>
-          {supportEmail}
-        </Link>
-        .
-      </Text>
-
-    </KimoraEmailLayout>
-  );
-}
+        <Section style={{ marginBottom: "24px", padding: "16px", background

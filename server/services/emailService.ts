@@ -234,9 +234,20 @@ export async function sendOrderConfirmationEmail(args: {
   const manageLink = `${siteUrl}/manage-subscription`;
   const supportEmail = getSupportEmail();
 
+  const EMAIL_IMAGE_BASE = "https://kimoraco.com";
+
+  function flavorImageUrl(slug: string): string | null {
+    const known = ["strawberry-guava", "lemon-yuzu", "raspberry-dragonfruit"];
+    const normalized = normalizeFlavorSlug(slug);
+    return known.includes(normalized)
+      ? `${EMAIL_IMAGE_BASE}/assets/products/${normalized}/pouch.png`
+      : null;
+  }
+
   const formattedLines = lines.map((l: any) => ({
     qty: l.qty,
     flavor: titleizeSlug(l.flavor),
+    imageUrl: flavorImageUrl(l.flavor),
     purchaseType: l.purchaseType,
     frequencyWeeks: l.frequencyWeeks,
     unitAmount: l.unitAmount,
@@ -645,17 +656,4 @@ export async function getStripeCustomerIdFromCheckoutSession(
       const subId =
         typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
 
-      if (subId) {
-        const subscription = await stripe.subscriptions.retrieve(subId);
-        stripeCustomerId =
-          typeof subscription.customer === "string"
-            ? subscription.customer
-            : subscription.customer?.id ?? null;
-      }
-    } catch (err) {
-      console.warn("Failed to retrieve subscription to backfill stripe customer id:", err);
-    }
-  }
-
-  return stripeCustomerId;
-}
+      if (su

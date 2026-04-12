@@ -20,6 +20,10 @@ const TEXT_MAIN = "#e8e8e8";
 const TEXT_MUTED = "#888888";
 const TEXT_DIM = "#444444";
 
+// Always use the public production URL for images so they render in email clients
+// regardless of whether emails are sent from localhost or production.
+const IMAGE_BASE_URL = "https://kimoraco.com";
+
 export interface KimoraEmailLayoutProps {
   preview: string;
   children: React.ReactNode;
@@ -33,7 +37,7 @@ export function KimoraEmailLayout({
   siteUrl,
   supportEmail = "support@kimoraco.com",
 }: KimoraEmailLayoutProps) {
-  const artworkUrl = `${siteUrl}/assets/brand/octopus-bear-white.png`;
+  const artworkUrl = `${IMAGE_BASE_URL}/assets/brand/octopus-bear-white.png`;
 
   return (
     <Html lang="en">
@@ -178,12 +182,4 @@ export const styles = {
   tag: {
     display: "inline-block",
     padding: "4px 10px",
-    borderRadius: "999px",
-    backgroundColor: "#1a1a1a",
-    border: "1px solid #2a2a2a",
-    fontSize: "11px",
-    letterSpacing: "0.1em",
-    textTransform: "uppercase" as const,
-    color: PRIMARY,
-  } as React.CSSProperties,
-};
+    borderRadius: "999px"

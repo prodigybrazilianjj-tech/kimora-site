@@ -7,6 +7,7 @@ import { Formula } from "@/components/sections/Formula";
 import { Comparison } from "@/components/sections/Comparison";
 import { About } from "@/components/sections/About";
 import { Testimonials } from "@/components/sections/Testimonials";
+import { EmailCapture } from "@/components/sections/EmailCapture";
 import { FAQPreview } from "@/components/sections/FAQPreview";
 import { Footer } from "@/components/sections/Footer";
 
@@ -60,6 +61,7 @@ export default function Home() {
         <Comparison />
         <Testimonials />
         <About />
+        <EmailCapture />
         <FAQPreview />
       </main>
       <Footer />

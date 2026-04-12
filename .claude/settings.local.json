@@ -15,7 +15,8 @@
       "Bash(node -e \"require\\('@react-email/render'\\); console.log\\('ok'\\)\")",
       "Bash(ls c:/Users/aestr/kimora-site/tsconfig*.json)",
       "Bash(npx tsc:*)",
-      "Bash(powershell.exe -Command ':*)"
+      "Bash(powershell.exe -Command ':*)",
+      "Bash(grep -n \"registerWaitlistRoutes\\\\|registerCheckout\\\\|registerWholesale\\\\|registerPortal\\\\|registerWebhook\\\\|registerAdmin\" c:/Users/aestr/kimora-site/server/routes/*.ts c:/Users/aestr/kimora-site/server/*.ts)"
     ]
   }
 }

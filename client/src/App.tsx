@@ -48,8 +48,8 @@ function Router() {
       <ScrollToTop />
 
       <Switch>
-        <Route path="/" component={ComingSoon} />
-        <Route path="/home" component={Home} />
+        <Route path="/" component={Home} />
+        <Route path="/coming-soon" component={ComingSoon} />
         <Route path="/faq" component={FAQ} />
 
         {/* Testing mode: temporarily unlock consumer purchase routes */}

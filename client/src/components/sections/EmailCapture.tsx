@@ -1,0 +1,99 @@
+import { useState } from "react";
+
+type State = "idle" | "loading" | "success" | "error";
+
+export function EmailCapture() {
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<State>("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (state === "loading") return;
+
+    const trimmed = email.trim();
+    if (!trimmed) return;
+
+    setState("loading");
+    setErrorMsg("");
+
+    try {
+      const res = await fetch("/api/email-capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        setErrorMsg(data.message || "Something went wrong. Please try again.");
+        setState("error");
+        return;
+      }
+
+      setState("success");
+    } catch {
+      setErrorMsg("Network error. Please try again.");
+      setState("error");
+    }
+  }
+
+  return (
+    <section className="py-24 bg-background border-t border-white/5">
+      <div className="container px-4 mx-auto max-w-2xl text-center">
+        <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary mb-5">
+          Limited launch offer
+        </p>
+
+        <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-4 leading-[0.95]">
+          10% OFF YOUR FIRST ORDER
+        </h2>
+
+        <p className="text-muted-foreground text-lg mb-10 leading-relaxed">
+          Drop your email and we'll send you a discount code to use at checkout.
+          No spam — just the code.
+        </p>
+
+        {state === "success" ? (
+          <div className="bg-card border border-primary/40 rounded-2xl px-8 py-10">
+            <div
+              className="text-primary text-5xl font-display font-bold tracking-widest mb-3"
+              style={{ fontFamily: "ui-monospace, monospace" }}
+            >
+              WELCOME10
+            </div>
+            <p className="text-white text-lg font-medium mb-1">Check your inbox.</p>
+            <p className="text-muted-foreground text-sm">
+              We sent your code to <span className="text-white">{email}</span>. Apply it at
+              checkout for 10% off.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+            <input
+              type="email"
+              required
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={state === "loading"}
+              className="flex-1 bg-card border border-white/10 text-white placeholder:text-muted-foreground rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={state === "loading"}
+              className="bg-primary hover:bg-primary/90 text-white font-semibold text-sm px-6 py-3 rounded-xl transition disabled:opacity-60 whitespace-nowrap"
+            >
+              {state === "loading" ? "Sending…" : "Get 10% off"}
+            </button>
+          </form>
+        )}
+
+        {state === "error" && (
+          <p className="mt-4 text-sm text-red-400">{errorMsg}</p>
+        )}
+      </div>
+    </section>
+  );
+}

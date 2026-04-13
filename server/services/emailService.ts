@@ -132,6 +132,14 @@ function mapPriceIdToItem(priceId: string): {
   return { flavor: "unknown", purchaseType: "onetime", frequencyWeeks: null };
 }
 
+function flavorFromDescription(description: string | null | undefined): string | null {
+  const desc = String(description || "").toLowerCase();
+  if (desc.includes("strawberry")) return "strawberry-guava";
+  if (desc.includes("lemon") || desc.includes("yuzu")) return "lemon-yuzu";
+  if (desc.includes("raspberry") || desc.includes("dragonfruit")) return "raspberry-dragonfruit";
+  return null;
+}
+
 function formatMoney(amountCents: number | null | undefined, currency: string | null | undefined) {
   if (amountCents === null || amountCents === undefined) return "";
   const ccy = String(currency || "usd").toUpperCase();
@@ -206,12 +214,14 @@ export async function sendOrderConfirmationEmail(args: {
   const lines = (args.lineItems || []).map((li: any) => {
     const qty = Number(li?.quantity ?? 1) || 1;
     const priceId = li?.price?.id ?? null;
-    const mapped = priceId
-      ? mapPriceIdToItem(String(priceId))
+    const mappedByPrice = priceId ? mapPriceIdToItem(String(priceId)) : null;
+    const flavorFallback = flavorFromDescription(li?.description ?? li?.price?.product?.name);
+    const mapped = mappedByPrice && mappedByPrice.flavor !== "unknown"
+      ? mappedByPrice
       : {
-          flavor: "unknown",
-          purchaseType: args.isSubscription ? "subscribe" : "onetime",
-          frequencyWeeks: null,
+          flavor: flavorFallback ?? mappedByPrice?.flavor ?? "unknown",
+          purchaseType: (mappedByPrice?.purchaseType ?? (args.isSubscription ? "subscribe" : "onetime")) as "onetime" | "subscribe",
+          frequencyWeeks: mappedByPrice?.frequencyWeeks ?? null,
         };
 
     const unit = li?.price?.unit_amount ?? null;

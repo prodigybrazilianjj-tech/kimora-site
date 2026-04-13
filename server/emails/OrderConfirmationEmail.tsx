@@ -101,16 +101,20 @@ export function OrderConfirmationEmail({
 
       <Section style={{ marginBottom: "20px" }}>
         {subtotal ? (
-          <Section style={{ display: "flex" as any, justifyContent: "space-between", marginBottom: "6px" }}>
-            <Text style={{ ...styles.muted, display: "inline" }}>Subtotal</Text>
-            <Text style={{ ...styles.muted, display: "inline" }}>{subtotal}</Text>
-          </Section>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "6px" }}>
+            <tr>
+              <td style={{ margin: "0", fontSize: "13px", color: styles.TEXT_MUTED, padding: "0" }}>Subtotal</td>
+              <td style={{ margin: "0", fontSize: "13px", color: styles.TEXT_MUTED, padding: "0", textAlign: "right" }}>{subtotal}</td>
+            </tr>
+          </table>
         ) : null}
         {total ? (
-          <Section style={{ display: "flex" as any, justifyContent: "space-between" }}>
-            <Text style={{ margin: "0", fontSize: "15px", fontWeight: "700", color: "#ffffff", display: "inline" }}>Total</Text>
-            <Text style={{ margin: "0", fontSize: "15px", fontWeight: "700", color: styles.PRIMARY, display: "inline" }}>{total}</Text>
-          </Section>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <tr>
+              <td style={{ margin: "0", fontSize: "15px", fontWeight: "700", color: "#ffffff", padding: "0" }}>Total</td>
+              <td style={{ margin: "0", fontSize: "15px", fontWeight: "700", color: styles.PRIMARY, padding: "0", textAlign: "right" }}>{total}</td>
+            </tr>
+          </table>
         ) : null}
       </Section>
 

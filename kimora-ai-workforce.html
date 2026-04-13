@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kimora Co. — AI Workforce System</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0a0a; color: #e8e8e8; line-height: 1.6; }
+  .header { background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%); border-bottom: 1px solid #2a2a2a; padding: 48px 60px 40px; }
+  .header h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.5px; color: #fff; }
+  .header .sub { color: #888; font-size: 1rem; margin-top: 6px; letter-spacing: 0.3px; }
+  .header .tag { display: inline-block; background: #c8a96e22; border: 1px solid #c8a96e55; color: #c8a96e; font-size: 0.72rem; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; margin-bottom: 16px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 60px 80px; }
+  h2 { font-size: 1.5rem; font-weight: 700; color: #fff; margin: 56px 0 20px; padding-bottom: 12px; border-bottom: 1px solid #222; }
+  h3 { font-size: 1.1rem; font-weight: 600; color: #c8a96e; margin: 28px 0 10px; }
+  h4 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #666; margin: 16px 0 6px; }
+  p { color: #aaa; font-size: 0.95rem; margin-bottom: 10px; }
+  /* ORG CHART */
+  .org { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 40px 0; }
+  .org-level { display: flex; justify-content: center; gap: 12px; position: relative; }
+  .org-node { background: #141414; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px 16px; min-width: 140px; text-align: center; position: relative; }
+  .org-node.exec { background: #1a1408; border-color: #c8a96e; min-width: 220px; }
+  .org-node.lead { background: #111; border-color: #333; }
+  .org-node.sub { background: #0e0e0e; border-color: #222; min-width: 110px; font-size: 0.82rem; }
+  .org-node .title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 4px; }
+  .org-node .name { font-size: 0.9rem; font-weight: 600; color: #e8e8e8; }
+  .org-node.exec .name { color: #c8a96e; font-size: 1rem; }
+  .org-connector { width: 1px; height: 28px; background: #333; margin: 0 auto; }
+  .org-h-line { height: 1px; background: #333; }
+  .org-branch { display: flex; flex-direction: column; align-items: center; }
+  .dept-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+  .dept-col { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .sub-row { display: flex; gap: 8px; margin-top: 0; }
+  /* AGENT CARDS */
+  .dept-section { margin-bottom: 48px; }
+  .dept-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .dept-badge { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dept-header h2 { margin: 0; border: none; padding: 0; font-size: 1.3rem; }
+  .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .agent-card { background: #111; border: 1px solid #1e1e1e; border-radius: 10px; padding: 24px; position: relative; overflow: hidden; }
+  .agent-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .agent-card.lead-card { border-color: #2a2a2a; }
+  .agent-card .agent-role { font-size: 0.68rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 6px; }
+  .agent-card .agent-name { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 14px; }
+  .agent-card .agent-obj { font-size: 0.88rem; color: #999; margin-bottom: 16px; border-left: 2px solid #333; padding-left: 10px; line-height: 1.5; }
+  .detail-group { margin-bottom: 14px; }
+  .detail-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; color: #555; margin-bottom: 5px; }
+  .detail-items { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag-item { background: #1a1a1a; border: 1px solid #252525; color: #888; font-size: 0.76rem; padding: 3px 8px; border-radius: 4px; }
+  .kpi-list { list-style: none; }
+  .kpi-list li { font-size: 0.8rem; color: #777; padding: 3px 0; display: flex; align-items: flex-start; gap: 6px; }
+  .kpi-list li::before { content: '→'; color: #444; flex-shrink: 0; }
+  /* COLORS PER DEPT */
+  .c-mkt { color: #5b8def; } .bg-mkt::before { background: #5b8def; } .badge-mkt { background: #5b8def; }
+  .c-web { color: #56cfb2; } .bg-web::before { background: #56cfb2; } .badge-web { background: #56cfb2; }
+  .c-cre { color: #e868a2; } .bg-cre::before { background: #e868a2; } .badge-cre { background: #e868a2; }
+  .c-rnd { color: #f0a500; } .bg-rnd::before { background: #f0a500; } .badge-rnd { background: #f0a500; }
+  .c-prd { color: #a78bfa; } .bg-prd::before { background: #a78bfa; } .badge-prd { background: #a78bfa; }
+  .c-ops { color: #f87171; } .bg-ops::before { background: #f87171; } .badge-ops { background: #f87171; }
+  .c-sal { color: #34d399; } .bg-sal::before { background: #34d399; } .badge-sal { background: #34d399; }
+  .c-cx  { color: #fb923c; } .bg-cx::before  { background: #fb923c; } .badge-cx  { background: #fb923c; }
+  /* COMMS SYSTEM */
+  .comms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .comms-card { background: #111; border: 1px solid #1e1e1e; border-radius: 10px; padding: 20px; }
+  .comms-card h4 { color: #c8a96e; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .comms-card ul { list-style: none; }
+  .comms-card li { font-size: 0.84rem; color: #888; padding: 5px 0; border-bottom: 1px solid #1a1a1a; display: flex; gap: 8px; }
+  .comms-card li:last-child { border-bottom: none; }
+  .comms-card li .freq { color: #c8a96e; font-size: 0.72rem; font-weight: 600; flex-shrink: 0; min-width: 60px; }
+  /* WORKFLOW */
+  .workflow { display: flex; flex-direction: column; gap: 0; }
+  .wf-step { display: flex; gap: 20px; }
+  .wf-left { display: flex; flex-direction: column; align-items: center; width: 40px; flex-shrink: 0; }
+  .wf-num { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
+  .wf-line { width: 1px; flex: 1; background: #222; min-height: 20px; }
+  .wf-body { background: #111; border: 1px solid #1e1e1e; border-radius: 10px; padding: 18px 20px; margin-bottom: 8px; flex: 1; }
+  .wf-body .wf-title { font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .wf-body .wf-agents { font-size: 0.78rem; color: #c8a96e; margin-bottom: 6px; font-weight: 600; }
+  .wf-body .wf-desc { font-size: 0.84rem; color: #777; }
+  /* GAPS TABLE */
+  .gap-table { width: 100%; border-collapse: collapse; }
+  .gap-table th { background: #141414; color: #666; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; padding: 10px 14px; text-align: left; border-bottom: 1px solid #222; }
+  .gap-table td { padding: 12px 14px; border-bottom: 1px solid #1a1a1a; font-size: 0.86rem; color: #888; vertical-align: top; }
+  .gap-table td:first-child { color: #fff; font-weight: 600; }
+  .severity { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 3px; }
+  .sev-high { background: #f8717122; color: #f87171; border: 1px solid #f8717144; }
+  .sev-med { background: #f0a50022; color: #f0a500; border: 1px solid #f0a50044; }
+  .sev-low { background: #34d39922; color: #34d399; border: 1px solid #34d39944; }
+  .footer { text-align: center; padding: 40px; color: #333; font-size: 0.8rem; border-top: 1px solid #151515; margin-top: 60px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="tag">Internal Operating System — v1.0</div>
+  <h1>Kimora Co. AI Workforce</h1>
+  <p class="sub">Chief Operations Architect · Executive Operator System Design · April 2026</p>
+</div>
+
+<div class="container">
+
+  <!-- ORG CHART -->
+  <h2>1. Organizational Chart</h2>
+  <div class="org">
+    <!-- Exec -->
+    <div class="org-node exec">
+      <div class="title">Executive Layer</div>
+      <div class="name">Executive Operator</div>
+    </div>
+    <div class="org-connector"></div>
+
+    <!-- Dept Leads Row -->
+    <div class="dept-row">
+
+      <div class="dept-col">
+        <div class="org-node lead"><div class="title c-mkt">Lead</div><div class="name">Marketing</div></div>
+        <div class="org-connector"></div>
+        <div class="sub-row">
+          <div class="org-node sub"><div class="name">Content</div></div>
+          <div class="org-node sub"><div class="name">Paid Ads</div></div>
+          <div class="org-node sub"><div class="name">Social</div></div>
+          <div class="org-node sub"><div class="name">Email/SMS</div></div>
+        </div>
+      </div>
+
+      <div class="dept-col">
+        <div class="org-node lead"><div class="title c-web">Lead</div><div class="name">Web/CRO</div></div>
+        <div class="org-connector"></div>
+        <div class="sub-row">
+          <div class="org-node sub"><div class="name">CRO</div></div>
+          <div class="org-node sub"><div class="name">Analytics</div></div>
+          <div class="org-node sub"><div class="name">UX/Dev</div></div>
+        </div>
+      </div>
+
+      <div class="dept-col">
+        <div class="org-node lead"><div class="title c-cre">Lead</div><div class="name">Creative</div></div>
+        <div class="org-connector"></div>
+        <div class="sub-row">
+          <div class="org-node sub"><div class="name">Copy</div></div>
+          <div class="org-node sub"><div class="name">Visual</div></div>
+          <div class="org-node sub"><div class="name">Video</div></div>
+        </div>
+      </div>
+
+      <div class="dept-col">
+        <div class="org-node lead"><div class="title c-rnd">Lead</div><div class="name">R&amp;D</div></div>
+        <div class="org-connector"></div>
+        <div class="sub-row">
+          <div class="org-node sub"><div class="name">Competitor</div></div>
+          <div class="org-node sub"><div class="name">Trends</div></div>
+          <div class="org-node sub"><div class="name">Science</div></div>
+        </div>
+      </div>
+
+      <div class="dept-col">
+        <div class="org-node lead"><div class="title c-prd">Lead</div><div class="name">Product Dev</div></div>
+        <div class="org-connector"></div>
+        <div class="sub-row">
+          <div class="org-node sub"><div class="name">Formulation</div></div>
+          <div class="org-node sub"><div class="name">Apparel</div></div>
+          <div class="org-node sub"><div class="name">Supplier</div></div>
+        </div>
+      </div>
+
+      <div class="dept-col">
+        <div class="org-node lead"><div class="title c-ops">Lead</div><div class="name">Operations</div></div>
+        <div class="org-connector"></div>
+        <div class="sub-row">
+          <div class="org-node sub"><div class="name">Inventory</div></div>
+          <div class="org-node sub"><div class="name">Fulfillment</div></div>
+          <div class="org-node sub"><div class="name">Finance</div></div>
+        </div>
+      </div>
+
+      <div class="dept-col">
+        <div class="org-node lead"><div class="title c-sal">Lead</div><div class="name">Sales/Partners</div></div>
+        <div class="org-connector"></div>
+        <div class="sub-row">
+          <div class="org-node sub"><div class="name">Gym Deals</div></div>
+          <div class="org-node sub"><div class="name">B2B</div></div>
+          <div class="org-node sub"><div class="name">Influencer</div></div>
+        </div>
+      </div>
+
+      <div class="dept-col">
+        <div class="org-node lead"><div class="title c-cx">Lead</div><div class="name">Customer XP</div></div>
+        <div class="org-connector"></div>
+        <div class="sub-row">
+          <div class="org-node sub"><div class="name">Support</div></div>
+          <div class="org-node sub"><div class="name">Retention</div></div>
+          <div class="org-node sub"><div class="name">Reputation</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- DEPT 1: MARKETING -->
+  <!-- ================================================================ -->
+  <h2>2. Agent Definitions</h2>
+
+  <div class="dept-section">
+    <div class="dept-header">
+      <div class="dept-badge badge-mkt"></div>
+      <h2>Department 1 — Marketing</h2>
+    </div>
+    <div class="agent-grid">
+
+      <!-- Marketing Lead -->
+      <div class="agent-card lead-card bg-mkt">
+        <div class="agent-role c-mkt">Marketing · Lead Agent</div>
+        <div class="agent-name">ARIA — Marketing Lead</div>
+        <div class="agent-obj">Own the full demand-generation engine. Coordinate all marketing sub-agents, enforce brand consistency, and deliver measurable CAC reduction and revenue growth week over week.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items">
+            <span class="tag-item">Weekly campaign briefs</span><span class="tag-item">Budget allocation</span><span class="tag-item">Cross-channel orchestration</span><span class="tag-item">KPI reporting to Exec</span><span class="tag-item">Sub-agent task assignment</span>
+          </div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Inputs</div>
+          <div class="detail-items"><span class="tag-item">Revenue targets</span><span class="tag-item">Ad spend data</span><span class="tag-item">R&D trend reports</span><span class="tag-item">CX feedback loops</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Outputs</div>
+          <div class="detail-items"><span class="tag-item">Weekly marketing report</span><span class="tag-item">Campaign briefs</span><span class="tag-item">Budget recommendations</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>CAC ≤ $28 blended</li>
+            <li>MoM revenue growth ≥ 15%</li>
+            <li>ROAS ≥ 3.0 across paid channels</li>
+            <li>Email list growth ≥ 8% MoM</li>
+          </ul>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Reports To / Collaborates With</div>
+          <div class="detail-items"><span class="tag-item">→ Executive Operator</span><span class="tag-item">↔ Creative Lead</span><span class="tag-item">↔ Web/CRO Lead</span></div>
+        </div>
+      </div>
+
+      <!-- Content & SEO -->
+      <div class="agent-card bg-mkt">
+        <div class="agent-role c-mkt">Marketing · Sub-Agent</div>
+        <div class="agent-name">SCOUT — Content &amp; SEO Agent</div>
+        <div class="agent-obj">Own organic acquisition. Build topical authority in the combat sports and performance supplement space through high-intent content that ranks and converts.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Keyword research</span><span class="tag-item">Blog/article production</span><span class="tag-item">On-page SEO audits</span><span class="tag-item">Product page copy optimization</span><span class="tag-item">Content calendar management</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Inputs</div>
+          <div class="detail-items"><span class="tag-item">Competitor content gaps (R&D)</span><span class="tag-item">Search console data</span><span class="tag-item">Product details</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Outputs</div>
+          <div class="detail-items"><span class="tag-item">2x blog posts/week</span><span class="tag-item">SEO audit reports</span><span class="tag-item">Optimized PDP copy</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Organic traffic +20% QoQ</li>
+            <li>Top-10 rankings for 15+ target keywords</li>
+            <li>Content-attributed revenue ≥ 12% of total</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Paid Ads -->
+      <div class="agent-card bg-mkt">
+        <div class="agent-role c-mkt">Marketing · Sub-Agent</div>
+        <div class="agent-name">PULSE — Paid Ads Agent</div>
+        <div class="agent-obj">Run and optimize all paid acquisition across Meta, TikTok, and Google. Constantly test creative, audiences, and bidding strategies to drive profitable scale.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Campaign structure &amp; setup</span><span class="tag-item">A/B creative testing</span><span class="tag-item">Audience segmentation</span><span class="tag-item">Daily bid adjustments</span><span class="tag-item">Spend pacing</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Inputs</div>
+          <div class="detail-items"><span class="tag-item">Creative assets (Creative Agent)</span><span class="tag-item">Conversion data (Analytics)</span><span class="tag-item">Budget from Marketing Lead</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Outputs</div>
+          <div class="detail-items"><span class="tag-item">Daily performance reports</span><span class="tag-item">Creative test results</span><span class="tag-item">Scaled winning campaigns</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>ROAS ≥ 3.5 on Meta, ≥ 2.8 on TikTok</li>
+            <li>CTR ≥ 2.2% on top creatives</li>
+            <li>CPA trending down week-over-week</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Social -->
+      <div class="agent-card bg-mkt">
+        <div class="agent-role c-mkt">Marketing · Sub-Agent</div>
+        <div class="agent-name">NOVA — Social Media Agent</div>
+        <div class="agent-obj">Build community and brand presence across Instagram, TikTok, and X. Generate consistent organic reach that supports paid efforts and builds brand equity in the combat sports scene.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Daily post scheduling</span><span class="tag-item">Caption writing</span><span class="tag-item">Engagement monitoring</span><span class="tag-item">Trend hijacking</span><span class="tag-item">Community management cues</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Outputs</div>
+          <div class="detail-items"><span class="tag-item">7 posts/week per platform</span><span class="tag-item">Weekly engagement report</span><span class="tag-item">Trending content alerts</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Follower growth ≥ 5% MoM per platform</li>
+            <li>Avg engagement rate ≥ 4%</li>
+            <li>3+ viral posts (100K+ reach) per quarter</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Email/SMS -->
+      <div class="agent-card bg-mkt">
+        <div class="agent-role c-mkt">Marketing · Sub-Agent</div>
+        <div class="agent-name">RELAY — Email &amp; SMS Agent</div>
+        <div class="agent-obj">Maximize LTV through retention-focused owned channels. Own flows, campaigns, segmentation, and list health to turn first-time buyers into loyal Kimora members.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Flow creation &amp; optimization</span><span class="tag-item">Weekly campaign sends</span><span class="tag-item">Segmentation logic</span><span class="tag-item">A/B subject line testing</span><span class="tag-item">List hygiene</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Outputs</div>
+          <div class="detail-items"><span class="tag-item">3 campaigns/week</span><span class="tag-item">Automated flow library</span><span class="tag-item">Monthly retention report</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Email revenue ≥ 25% of total DTC revenue</li>
+            <li>Open rate ≥ 38%, Click rate ≥ 3.5%</li>
+            <li>Klaviyo health score ≥ 85</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- DEPT 2: WEBSITE / CRO -->
+  <!-- ================================================================ -->
+  <div class="dept-section">
+    <div class="dept-header">
+      <div class="dept-badge badge-web"></div>
+      <h2>Department 2 — Website / Conversion Optimization</h2>
+    </div>
+    <div class="agent-grid">
+
+      <div class="agent-card lead-card bg-web">
+        <div class="agent-role c-web">Web/CRO · Lead Agent</div>
+        <div class="agent-name">APEX — Web &amp; CRO Lead</div>
+        <div class="agent-obj">Own site performance end-to-end. Every page, every flow, every millisecond of load time is a conversion lever. This agent relentlessly tests, iterates, and removes friction.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">CRO roadmap management</span><span class="tag-item">A/B test prioritization</span><span class="tag-item">Site speed ownership</span><span class="tag-item">Funnel analysis</span><span class="tag-item">Dev task briefing</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Sitewide CVR ≥ 3.5%</li>
+            <li>Core Web Vitals: all green</li>
+            <li>Add-to-cart rate ≥ 12%</li>
+            <li>Checkout abandonment ≤ 65%</li>
+          </ul>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Reports To / Collaborates With</div>
+          <div class="detail-items"><span class="tag-item">→ Executive Operator</span><span class="tag-item">↔ Marketing Lead</span><span class="tag-item">↔ Creative Lead</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card bg-web">
+        <div class="agent-role c-web">Web/CRO · Sub-Agent</div>
+        <div class="agent-name">LENS — Analytics Agent</div>
+        <div class="agent-obj">Instrument everything. Translate raw behavioral data into clear signals that drive decisions across every department. Nothing ships without LENS validating the impact.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">GA4 / Shopify analytics</span><span class="tag-item">Funnel mapping</span><span class="tag-item">Heatmap analysis</span><span class="tag-item">A/B test result interpretation</span><span class="tag-item">Weekly data briefs</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Outputs</div>
+          <div class="detail-items"><span class="tag-item">Weekly analytics report</span><span class="tag-item">Drop-off maps</span><span class="tag-item">Test result verdicts</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>100% event tracking accuracy</li>
+            <li>Weekly report delivered every Monday 7AM</li>
+            <li>A/B test velocity ≥ 2 tests/week</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-web">
+        <div class="agent-role c-web">Web/CRO · Sub-Agent</div>
+        <div class="agent-name">FORGE — UX &amp; Dev Agent</div>
+        <div class="agent-obj">Translate CRO and design directives into live site changes fast. Implement, QA, and ship — no bureaucracy, no slow agency timelines.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Shopify theme development</span><span class="tag-item">Landing page builds</span><span class="tag-item">Speed optimization</span><span class="tag-item">App integration</span><span class="tag-item">Bug triage</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Outputs</div>
+          <div class="detail-items"><span class="tag-item">Shipped page variants</span><span class="tag-item">Performance fix reports</span><span class="tag-item">Changelog logs</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Page load ≤ 2.5s (LCP)</li>
+            <li>Zero broken builds in production</li>
+            <li>Task-to-ship cycle ≤ 48 hours</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- DEPT 3: CREATIVE / BRANDING -->
+  <!-- ================================================================ -->
+  <div class="dept-section">
+    <div class="dept-header">
+      <div class="dept-badge badge-cre"></div>
+      <h2>Department 3 — Creative / Branding</h2>
+    </div>
+    <div class="agent-grid">
+
+      <div class="agent-card lead-card bg-cre">
+        <div class="agent-role c-cre">Creative · Lead Agent</div>
+        <div class="agent-name">MUSE — Creative Director Agent</div>
+        <div class="agent-obj">Guard the Kimora brand identity with precision while producing creative output at startup speed. Every asset must feel premium, intentional, and on-brand — without slowing the machine down.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Brand standards enforcement</span><span class="tag-item">Creative brief production</span><span class="tag-item">Asset review &amp; approval</span><span class="tag-item">Creative calendar ownership</span><span class="tag-item">Style guide maintenance</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Zero off-brand assets shipped</li>
+            <li>Asset delivery SLA ≤ 24h for standard, ≤ 4h for urgent</li>
+            <li>Creative output: ≥ 30 assets/week across all formats</li>
+          </ul>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Reports To / Collaborates With</div>
+          <div class="detail-items"><span class="tag-item">→ Executive Operator</span><span class="tag-item">↔ Marketing Lead</span><span class="tag-item">↔ Product Dev Lead</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card bg-cre">
+        <div class="agent-role c-cre">Creative · Sub-Agent</div>
+        <div class="agent-name">INK — Copywriting Agent</div>
+        <div class="agent-obj">Write copy that converts and connects. Every word — from ad hooks to product descriptions — must carry the Kimora voice: aggressive confidence, aspirational, no filler.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Ad copy (all platforms)</span><span class="tag-item">Email copy</span><span class="tag-item">Product descriptions</span><span class="tag-item">Landing page copy</span><span class="tag-item">UGC scripts</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Hook performance: top creative CTR ≥ 3%</li>
+            <li>Copy turnaround ≤ 4 hours per brief</li>
+            <li>Email copy open rates ≥ 40%</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-cre">
+        <div class="agent-role c-cre">Creative · Sub-Agent</div>
+        <div class="agent-name">FRAME — Visual Design Agent</div>
+        <div class="agent-obj">Produce all static visual assets — ads, organic posts, product mockups, and brand collateral — at volume, without sacrificing the premium aesthetic Kimora demands.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Ad creative production</span><span class="tag-item">Product lifestyle shots (AI)</span><span class="tag-item">Social templates</span><span class="tag-item">Email visual design</span><span class="tag-item">Packaging mockups</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>≥ 20 static assets/week</li>
+            <li>Creative refresh cycle ≤ 14 days for winning ads</li>
+            <li>Brand audit score ≥ 95%</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-cre">
+        <div class="agent-role c-cre">Creative · Sub-Agent</div>
+        <div class="agent-name">REEL — Video &amp; UGC Agent</div>
+        <div class="agent-obj">Build a relentless video content machine. Scripts, hooks, edit briefs, UGC direction — REEL keeps Kimora's video pipeline full and TikTok-native content performing.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Video scripts (ads + organic)</span><span class="tag-item">UGC creator briefs</span><span class="tag-item">Edit direction</span><span class="tag-item">Short-form hooks testing</span><span class="tag-item">Repurposing content</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>≥ 10 video scripts/week</li>
+            <li>Video ad hook rate ≥ 30%</li>
+            <li>UGC pipeline: ≥ 8 active creators</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- DEPT 4: R&D -->
+  <!-- ================================================================ -->
+  <div class="dept-section">
+    <div class="dept-header">
+      <div class="dept-badge badge-rnd"></div>
+      <h2>Department 4 — R&amp;D (Product + Competitive Intelligence)</h2>
+    </div>
+    <div class="agent-grid">
+
+      <div class="agent-card lead-card bg-rnd">
+        <div class="agent-role c-rnd">R&amp;D · Lead Agent</div>
+        <div class="agent-name">ORACLE — R&amp;D Lead Agent</div>
+        <div class="agent-obj">Make Kimora the most informed operator in the room. Surface market intelligence, product opportunities, and competitive threats before they become obvious to everyone else.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Intelligence brief (weekly)</span><span class="tag-item">Competitor monitoring</span><span class="tag-item">Market sizing</span><span class="tag-item">Product opportunity scoring</span><span class="tag-item">Feed findings to Product Dev</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Weekly R&D brief delivered every Friday</li>
+            <li>≥ 2 product opportunity flags per month</li>
+            <li>Competitor alert latency ≤ 24h of launch</li>
+          </ul>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Reports To / Collaborates With</div>
+          <div class="detail-items"><span class="tag-item">→ Executive Operator</span><span class="tag-item">↔ Product Dev Lead</span><span class="tag-item">↔ Marketing Lead</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card bg-rnd">
+        <div class="agent-role c-rnd">R&amp;D · Sub-Agent</div>
+        <div class="agent-name">SHADOW — Competitive Intelligence Agent</div>
+        <div class="agent-obj">Track every meaningful competitor move — product launches, pricing shifts, ad angles, partnership announcements, review sentiment. Nothing slips through.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Competitor ad monitoring</span><span class="tag-item">Pricing intelligence</span><span class="tag-item">Review mining (Amazon/DTC)</span><span class="tag-item">Social listening</span><span class="tag-item">Launch tracking</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Outputs</div>
+          <div class="detail-items"><span class="tag-item">Competitor weekly snapshot</span><span class="tag-item">Opportunity gap reports</span><span class="tag-item">Alert pings on major moves</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>100% coverage of 15 tracked competitors</li>
+            <li>Zero missed product launches &gt; 48h</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-rnd">
+        <div class="agent-role c-rnd">R&amp;D · Sub-Agent</div>
+        <div class="agent-name">SIGNAL — Trend Analysis Agent</div>
+        <div class="agent-obj">Spot what's coming before it's mainstream. Monitor social, search, and cultural signals to give Kimora a positioning edge 90 days before competitors react.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">TikTok/Reddit trend scraping</span><span class="tag-item">Google Trends analysis</span><span class="tag-item">Combat sports event monitoring</span><span class="tag-item">Supplement ingredient trends</span><span class="tag-item">Cultural moment mapping</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>≥ 1 validated trend opportunity/month acted on</li>
+            <li>Trend-to-content lead time ≤ 72 hours</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-rnd">
+        <div class="agent-role c-rnd">R&amp;D · Sub-Agent</div>
+        <div class="agent-name">CHEM — Sports Science Agent</div>
+        <div class="agent-obj">Ensure every Kimora supplement product is built on real science. Review clinical literature, validate ingredient efficacy, and prevent any claims that could create legal or reputational risk.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Ingredient literature review</span><span class="tag-item">Dosage validation</span><span class="tag-item">Claim compliance checks</span><span class="tag-item">Emerging ingredient research</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Zero FDA non-compliant claims shipped</li>
+            <li>Formulation brief reviewed within 48h</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- DEPT 5: PRODUCT DEVELOPMENT -->
+  <!-- ================================================================ -->
+  <div class="dept-section">
+    <div class="dept-header">
+      <div class="dept-badge badge-prd"></div>
+      <h2>Department 5 — Product Development</h2>
+    </div>
+    <div class="agent-grid">
+
+      <div class="agent-card lead-card bg-prd">
+        <div class="agent-role c-prd">Product Dev · Lead Agent</div>
+        <div class="agent-name">BUILD — Product Development Lead</div>
+        <div class="agent-obj">Take ideas from concept to market-ready product. Coordinate formulation, manufacturing, and apparel development so Kimora can launch new SKUs faster than any competitor.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Product roadmap</span><span class="tag-item">Launch timelines</span><span class="tag-item">Supplier coordination</span><span class="tag-item">Sample review process</span><span class="tag-item">SKU performance tracking</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>New SKU launch cycle ≤ 90 days (supplements)</li>
+            <li>New apparel SKU cycle ≤ 120 days</li>
+            <li>Gross margin ≥ 65% on supplements, ≥ 55% on apparel</li>
+          </ul>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Reports To / Collaborates With</div>
+          <div class="detail-items"><span class="tag-item">→ Executive Operator</span><span class="tag-item">↔ R&D Lead</span><span class="tag-item">↔ Operations Lead</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card bg-prd">
+        <div class="agent-role c-prd">Product Dev · Sub-Agent</div>
+        <div class="agent-name">FORMULA — Supplement Formulation Agent</div>
+        <div class="agent-obj">Design best-in-class supplement formulations that are scientifically sound, legally compliant, and strategically differentiated from what's already on shelves.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Formulation design</span><span class="tag-item">COA review</span><span class="tag-item">Label claim drafting</span><span class="tag-item">Manufacturer briefing</span><span class="tag-item">Flavor/form factor decisions</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Sample approval rate ≥ 85% on first submission</li>
+            <li>No regulatory violations at launch</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-prd">
+        <div class="agent-role c-prd">Product Dev · Sub-Agent</div>
+        <div class="agent-name">STITCH — Apparel &amp; Textile Agent</div>
+        <div class="agent-obj">Develop performance apparel and combat sports gear that athletes actually wear. Manage design specs, tech packs, fabric sourcing, and sampling with manufacturers.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Tech pack creation</span><span class="tag-item">Fabric &amp; trim sourcing</span><span class="tag-item">Size grading specs</span><span class="tag-item">Sampling feedback</span><span class="tag-item">Production file management</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Fit approval within 2 sample rounds</li>
+            <li>Defect rate ≤ 1.5% at goods receipt</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-prd">
+        <div class="agent-role c-prd">Product Dev · Sub-Agent</div>
+        <div class="agent-name">SOURCE — Supplier Relations Agent</div>
+        <div class="agent-obj">Build and maintain a lean, reliable supplier network. Negotiate favorable terms, ensure quality compliance, and maintain redundant supply chains so Kimora never stock-outs.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Supplier vetting</span><span class="tag-item">MOQ negotiation</span><span class="tag-item">Lead time tracking</span><span class="tag-item">PO management</span><span class="tag-item">Backup supplier identification</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>On-time delivery rate ≥ 95%</li>
+            <li>COGS reduction ≥ 5% YoY via negotiations</li>
+            <li>≥ 2 backup suppliers per category</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- DEPT 6: OPERATIONS -->
+  <!-- ================================================================ -->
+  <div class="dept-section">
+    <div class="dept-header">
+      <div class="dept-badge badge-ops"></div>
+      <h2>Department 6 — Operations / Logistics</h2>
+    </div>
+    <div class="agent-grid">
+
+      <div class="agent-card lead-card bg-ops">
+        <div class="agent-role c-ops">Operations · Lead Agent</div>
+        <div class="agent-name">CORE — Operations Lead Agent</div>
+        <div class="agent-obj">Keep the engine running without friction. Own inventory health, fulfillment accuracy, and financial reporting so that the business never has a blind spot in its physical operations.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Ops dashboard ownership</span><span class="tag-item">3PL relationship management</span><span class="tag-item">Escalation handling</span><span class="tag-item">P&amp;L reporting</span><span class="tag-item">Process documentation</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Order accuracy rate ≥ 99.5%</li>
+            <li>Monthly P&L delivered by the 3rd of each month</li>
+            <li>Zero stock-outs on core SKUs</li>
+          </ul>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Reports To / Collaborates With</div>
+          <div class="detail-items"><span class="tag-item">→ Executive Operator</span><span class="tag-item">↔ Product Dev Lead</span><span class="tag-item">↔ Sales Lead</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card bg-ops">
+        <div class="agent-role c-ops">Operations · Sub-Agent</div>
+        <div class="agent-name">STOCK — Inventory Agent</div>
+        <div class="agent-obj">Predict demand, prevent stock-outs, and eliminate overstock. Own the reorder cadence and ensure every SKU has the right amount of inventory at the right time.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Demand forecasting</span><span class="tag-item">Reorder point management</span><span class="tag-item">SKU velocity tracking</span><span class="tag-item">Dead stock alerts</span><span class="tag-item">PO generation triggers</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Inventory accuracy ≥ 98%</li>
+            <li>Days of inventory on hand: 45–90 days target</li>
+            <li>Zero stock-outs on hero SKUs</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-ops">
+        <div class="agent-role c-ops">Operations · Sub-Agent</div>
+        <div class="agent-name">SHIP — Fulfillment Agent</div>
+        <div class="agent-obj">Own the customer's post-purchase experience from warehouse to doorstep. Monitor 3PL performance, catch exceptions early, and resolve delivery issues before customers do.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">3PL SLA monitoring</span><span class="tag-item">Shipping exception alerts</span><span class="tag-item">Returns processing oversight</span><span class="tag-item">Carrier performance tracking</span><span class="tag-item">Shipping cost optimization</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>On-time ship rate ≥ 98%</li>
+            <li>WISMO contacts ≤ 2% of orders</li>
+            <li>Return processing time ≤ 3 business days</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-ops">
+        <div class="agent-role c-ops">Operations · Sub-Agent</div>
+        <div class="agent-name">LEDGER — Finance &amp; Reporting Agent</div>
+        <div class="agent-obj">Maintain financial clarity across every dollar in and out. Produce accurate P&amp;Ls, flag anomalies, and give leadership the data they need to make fast capital decisions.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Weekly cash flow tracking</span><span class="tag-item">COGS reconciliation</span><span class="tag-item">Ad spend vs. revenue mapping</span><span class="tag-item">Contribution margin by SKU</span><span class="tag-item">Budget variance reporting</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Financial reports delivered on-time, 100%</li>
+            <li>Contribution margin maintained ≥ 45%</li>
+            <li>Forecast accuracy within ±8%</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- DEPT 7: SALES / PARTNERSHIPS -->
+  <!-- ================================================================ -->
+  <div class="dept-section">
+    <div class="dept-header">
+      <div class="dept-badge badge-sal"></div>
+      <h2>Department 7 — Sales / Partnerships</h2>
+    </div>
+    <div class="agent-grid">
+
+      <div class="agent-card lead-card bg-sal">
+        <div class="agent-role c-sal">Sales · Lead Agent</div>
+        <div class="agent-name">DEAL — Sales &amp; Partnerships Lead</div>
+        <div class="agent-obj">Open doors and close them. Own the B2B pipeline, gym partnership network, and influencer relationships that create distribution advantages Kimora's competitors can't easily replicate.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Partnership pipeline management</span><span class="tag-item">Deal structuring</span><span class="tag-item">Revenue from B2B channels</span><span class="tag-item">Ambassador program oversight</span><span class="tag-item">Gym account onboarding</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>B2B revenue ≥ 20% of total revenue by Month 12</li>
+            <li>≥ 25 active gym partnerships by end of Q2</li>
+            <li>Partnership close rate ≥ 30%</li>
+          </ul>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Reports To / Collaborates With</div>
+          <div class="detail-items"><span class="tag-item">→ Executive Operator</span><span class="tag-item">↔ Marketing Lead</span><span class="tag-item">↔ Operations Lead</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card bg-sal">
+        <div class="agent-role c-sal">Sales · Sub-Agent</div>
+        <div class="agent-name">MAT — Gym Partnership Agent</div>
+        <div class="agent-obj">Build Kimora's physical distribution network through gyms, fight clubs, and combat sports facilities. Identify prospects, pitch the partnership value, and manage ongoing relationships.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Gym prospect research</span><span class="tag-item">Outreach sequence management</span><span class="tag-item">Partnership deck &amp; terms</span><span class="tag-item">Account check-ins</span><span class="tag-item">Revenue share tracking</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>≥ 50 outreach contacts/week</li>
+            <li>≥ 5 new gym accounts activated/month</li>
+            <li>Gym partner retention rate ≥ 85%</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-sal">
+        <div class="agent-role c-sal">Sales · Sub-Agent</div>
+        <div class="agent-name">CHAIN — B2B Sales Agent</div>
+        <div class="agent-obj">Pursue wholesale and distributor relationships that extend Kimora's reach beyond DTC. Target specialty retailers, online marketplaces, and regional distributors in the fitness and combat space.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Retailer prospecting</span><span class="tag-item">Wholesale pricing structure</span><span class="tag-item">Account management</span><span class="tag-item">Distributor negotiation support</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>≥ 3 wholesale accounts per month</li>
+            <li>Wholesale margin maintained ≥ 40%</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-sal">
+        <div class="agent-role c-sal">Sales · Sub-Agent</div>
+        <div class="agent-name">REACH — Influencer &amp; Ambassador Agent</div>
+        <div class="agent-obj">Build and manage Kimora's athlete and creator ambassador program. Identify authentic partners in the combat sports world who move product, not just followers.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Influencer vetting</span><span class="tag-item">Contract structuring</span><span class="tag-item">Content brief delivery</span><span class="tag-item">Performance tracking</span><span class="tag-item">Commission management</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Ambassador-attributed revenue ≥ 15% of total</li>
+            <li>≥ 20 active ambassadors at any time</li>
+            <li>Average ambassador ROAS ≥ 4.0</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- DEPT 8: CUSTOMER EXPERIENCE -->
+  <!-- ================================================================ -->
+  <div class="dept-section">
+    <div class="dept-header">
+      <div class="dept-badge badge-cx"></div>
+      <h2>Department 8 — Customer Experience</h2>
+    </div>
+    <div class="agent-grid">
+
+      <div class="agent-card lead-card bg-cx">
+        <div class="agent-role c-cx">Customer XP · Lead Agent</div>
+        <div class="agent-name">ANCHOR — CX Lead Agent</div>
+        <div class="agent-obj">Make every customer interaction a reason to buy again. Own NPS, response quality, and the feedback loops that feed product and marketing decisions. Customers should feel like Kimora actually gives a damn.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">CX team oversight</span><span class="tag-item">Escalation handling</span><span class="tag-item">Feedback synthesis report</span><span class="tag-item">Policy &amp; SOP management</span><span class="tag-item">NPS tracking</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>NPS ≥ 65</li>
+            <li>First response time ≤ 2 hours</li>
+            <li>Resolution rate within 24h ≥ 90%</li>
+          </ul>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">Reports To / Collaborates With</div>
+          <div class="detail-items"><span class="tag-item">→ Executive Operator</span><span class="tag-item">↔ Operations Lead</span><span class="tag-item">↔ Marketing Lead</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card bg-cx">
+        <div class="agent-role c-cx">Customer XP · Sub-Agent</div>
+        <div class="agent-name">REPLY — Support Agent</div>
+        <div class="agent-obj">Handle all inbound customer inquiries across email, chat, and social DMs with speed, empathy, and product knowledge that reinforces brand premium.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Ticket resolution (Gorgias/Zendesk)</span><span class="tag-item">Order issue handling</span><span class="tag-item">Refund/return processing</span><span class="tag-item">FAQ management</span><span class="tag-item">DM response (social)</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>CSAT ≥ 4.6/5.0</li>
+            <li>Ticket backlog ≤ 50 at any time</li>
+            <li>Refund rate ≤ 3%</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-cx">
+        <div class="agent-role c-cx">Customer XP · Sub-Agent</div>
+        <div class="agent-name">LOYALTY — Retention Agent</div>
+        <div class="agent-obj">Fight churn proactively. Identify at-risk customers, trigger win-back campaigns, and maximize the lifetime value of every Kimora buyer through personalized engagement.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Churn risk scoring</span><span class="tag-item">Win-back flow triggers</span><span class="tag-item">Subscription retention</span><span class="tag-item">Loyalty program management</span><span class="tag-item">VIP customer identification</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Repeat purchase rate ≥ 40% at 90 days</li>
+            <li>LTV growth ≥ 20% YoY</li>
+            <li>Subscription churn ≤ 6%/month</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="agent-card bg-cx">
+        <div class="agent-role c-cx">Customer XP · Sub-Agent</div>
+        <div class="agent-name">SIGNAL-CX — Reputation Agent</div>
+        <div class="agent-obj">Protect and grow Kimora's brand reputation across all review platforms. Respond strategically, amplify positive reviews, and surface product issues before they become patterns.</div>
+        <div class="detail-group">
+          <div class="detail-label">Key Responsibilities</div>
+          <div class="detail-items"><span class="tag-item">Review platform monitoring</span><span class="tag-item">Review response drafting</span><span class="tag-item">Negative review escalation</span><span class="tag-item">Review generation campaigns</span><span class="tag-item">Sentiment trend reporting</span></div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">KPIs</div>
+          <ul class="kpi-list">
+            <li>Average review rating ≥ 4.5★ across platforms</li>
+            <li>≥ 50 new reviews/month</li>
+            <li>Negative review response time ≤ 4 hours</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- COMMUNICATION SYSTEM -->
+  <!-- ================================================================ -->
+  <h2>3. Communication System Design</h2>
+  <div class="comms-grid">
+
+    <div class="comms-card">
+      <h4>Daily Automated Signals</h4>
+      <ul>
+        <li><span class="freq">DAILY 6AM</span>Analytics brief → all department leads</li>
+        <li><span class="freq">DAILY 8AM</span>Ad performance digest → Marketing Lead + Exec</li>
+        <li><span class="freq">DAILY</span>Support ticket summary → CX Lead</li>
+        <li><span class="freq">DAILY</span>Inventory level report → Ops Lead</li>
+        <li><span class="freq">DAILY</span>Social engagement snapshot → Marketing Lead</li>
+      </ul>
+    </div>
+
+    <div class="comms-card">
+      <h4>Weekly Structured Reports</h4>
+      <ul>
+        <li><span class="freq">MON 7AM</span>Full analytics report (LENS → All Leads)</li>
+        <li><span class="freq">FRI 9AM</span>R&D intelligence brief (ORACLE → Exec + Product)</li>
+        <li><span class="freq">FRI 2PM</span>Marketing performance report (ARIA → Exec)</li>
+        <li><span class="freq">FRI 3PM</span>Operations health report (CORE → Exec)</li>
+        <li><span class="freq">FRI 4PM</span>Executive weekly summary (Exec → record)</li>
+      </ul>
+    </div>
+
+    <div class="comms-card">
+      <h4>Escalation Protocol</h4>
+      <ul>
+        <li><span class="freq">LEVEL 1</span>Sub-agent flags issue → Department Lead reviews within 2h</li>
+        <li><span class="freq">LEVEL 2</span>Lead unable to resolve → Escalate to Exec Operator within 4h</li>
+        <li><span class="freq">LEVEL 3</span>Critical issue (fraud, PR crisis, stock-out) → Exec Operator + human alert immediately</li>
+        <li><span class="freq">RULE</span>Any issue affecting revenue &gt;$5K or NPS risk triggers Level 3</li>
+      </ul>
+    </div>
+
+    <div class="comms-card">
+      <h4>Cross-Dept Information Flows</h4>
+      <ul>
+        <li><span class="freq">R&D → MKT</span>Trend &amp; competitor data for campaign angles</li>
+        <li><span class="freq">CX → MKT</span>Customer language &amp; objections for copy</li>
+        <li><span class="freq">ANALYTICS → ALL</span>Conversion &amp; behavior data</li>
+        <li><span class="freq">OPS → SALES</span>Inventory availability for deal capacity</li>
+        <li><span class="freq">PRODUCT → CREATIVE</span>New SKU specs for asset production</li>
+      </ul>
+    </div>
+
+    <div class="comms-card">
+      <h4>Conflict Resolution</h4>
+      <ul>
+        <li><span class="freq">STEP 1</span>Conflicting agents document their position in structured format</li>
+        <li><span class="freq">STEP 2</span>Department Lead arbitrates using KPI impact as primary criterion</li>
+        <li><span class="freq">STEP 3</span>If unresolved in 24h, escalates to Executive Operator</li>
+        <li><span class="freq">RULE</span>Revenue impact always supersedes operational preference</li>
+      </ul>
+    </div>
+
+    <div class="comms-card">
+      <h4>Task Assignment Flow</h4>
+      <ul>
+        <li><span class="freq">SOURCE</span>Exec Operator generates weekly priority stack every Monday</li>
+        <li><span class="freq">ASSIGN</span>Department Leads receive their tasks and break down to sub-agents</li>
+        <li><span class="freq">TRACK</span>All tasks logged with owner, deadline, and output format</li>
+        <li><span class="freq">REVIEW</span>Outputs reviewed by Lead before passing upstream</li>
+        <li><span class="freq">AUDIT</span>Exec Operator reviews all Lead outputs weekly</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- EXAMPLE WORKFLOW -->
+  <!-- ================================================================ -->
+  <h2>4. Example Workflow — New Product Launch</h2>
+  <p style="margin-bottom: 28px; color: #666;">Scenario: Launching a new pre-workout formulation targeting Brazilian Jiu-Jitsu athletes. Timeline: 90 days to first sale.</p>
+
+  <div class="workflow">
+
+    <div class="wf-step">
+      <div class="wf-left">
+        <div class="wf-num" style="background:#f0a50022; border:1px solid #f0a50044; color:#f0a500;">01</div>
+        <div class="wf-line"></div>
+      </div>
+      <div class="wf-body">
+        <div class="wf-title">Market Validation — Week 1</div>
+        <div class="wf-agents">ORACLE + SHADOW + SIGNAL + CHEM</div>
+        <div class="wf-desc">R&D Lead commissions a full market report: competitor pre-workouts targeting BJJ/grappling, ingredient trends in endurance + focus, pricing benchmarks, and review sentiment analysis on top 5 competitors. CHEM validates top 3 ingredient candidates against clinical literature. ORACLE synthesizes into a 1-page opportunity brief for Exec approval.</div>
+      </div>
+    </div>
+
+    <div class="wf-step">
+      <div class="wf-left">
+        <div class="wf-num" style="background:#a78bfa22; border:1px solid #a78bfa44; color:#a78bfa;">02</div>
+        <div class="wf-line"></div>
+      </div>
+      <div class="wf-body">
+        <div class="wf-title">Product Briefing — Week 2</div>
+        <div class="wf-agents">BUILD + FORMULA + SOURCE</div>
+        <div class="wf-desc">Executive Operator approves. BUILD creates a full product brief: target efficacy claims, flavor profile, form factor (powder), packaging direction. FORMULA designs formulation and selects manufacturer. SOURCE identifies 3 qualified manufacturers, requests quotes, and benchmarks lead times. Draft formulation submitted for CHEM review within 72h.</div>
+      </div>
+    </div>
+
+    <div class="wf-step">
+      <div class="wf-left">
+        <div class="wf-num" style="background:#e868a222; border:1px solid #e868a244; color:#e868a2;">03</div>
+        <div class="wf-line"></div>
+      </div>
+      <div class="wf-body">
+        <div class="wf-title">Brand &amp; Creative Development — Weeks 3–5</div>
+        <div class="wf-agents">MUSE + INK + FRAME + REEL</div>
+        <div class="wf-desc">Parallel track: MUSE creates the product creative brief. INK writes product name options, positioning statement, and PDP copy. FRAME produces packaging design concepts and lifestyle mockups. REEL scripts 3 launch video concepts. All assets reviewed by MUSE before presenting to Exec Operator for final selection.</div>
+      </div>
+    </div>
+
+    <div class="wf-step">
+      <div class="wf-left">
+        <div class="wf-num" style="background:#56cfb222; border:1px solid #56cfb244; color:#56cfb2;">04</div>
+        <div class="wf-line"></div>
+      </div>
+      <div class="wf-body">
+        <div class="wf-title">Website &amp; Funnel Build — Weeks 5–7</div>
+        <div class="wf-agents">APEX + FORGE + LENS</div>
+        <div class="wf-body">APEX scopes the required landing page and PDP updates. FORGE builds the landing page, integrates upsell logic, and configures Shopify variant. LENS sets up tracking events and conversion goals before launch. A/B test of two headline variants is queued for day one.</div>
+      </div>
+    </div>
+
+    <div class="wf-step">
+      <div class="wf-left">
+        <div class="wf-num" style="background:#34d39922; border:1px solid #34d39944; color:#34d399;">05</div>
+        <div class="wf-line"></div>
+      </div>
+      <div class="wf-body">
+        <div class="wf-title">Pre-Launch Sales &amp; Partnership Activation — Weeks 6–8</div>
+        <div class="wf-agents">DEAL + MAT + REACH</div>
+        <div class="wf-desc">DEAL briefs the sales team on the product. MAT identifies 15 BJJ gyms for product seeding and pre-order partnerships. REACH activates 8 ambassador/athlete partners with product samples and content briefs. CHAIN begins outreach to specialty retailers for wholesale pre-orders.</div>
+      </div>
+    </div>
+
+    <div class="wf-step">
+      <div class="wf-left">
+        <div class="wf-num" style="background:#5b8def22; border:1px solid #5b8def44; color:#5b8def;">06</div>
+        <div class="wf-line"></div>
+      </div>
+      <div class="wf-body">
+        <div class="wf-title">Launch Campaign Execution — Week 9–10</div>
+        <div class="wf-agents">ARIA + PULSE + NOVA + RELAY + SCOUT</div>
+        <div class="wf-desc">ARIA runs launch week. PULSE launches paid campaigns on Meta and TikTok with 3 creative variants in rotation. NOVA executes organic content calendar with athlete content. RELAY sends launch email + SMS sequence to full list (segmented by BJJ interest). SCOUT publishes the launch blog post optimized for "pre-workout for BJJ" keywords.</div>
+      </div>
+    </div>
+
+    <div class="wf-step">
+      <div class="wf-left">
+        <div class="wf-num" style="background:#fb923c22; border:1px solid #fb923c44; color:#fb923c;">07</div>
+        <div class="wf-line"></div>
+      </div>
+      <div class="wf-body">
+        <div class="wf-title">Post-Launch Optimization — Weeks 10–13</div>
+        <div class="wf-agents">LENS + PULSE + LOYALTY + SIGNAL-CX + ORACLE</div>
+        <div class="wf-desc">LENS publishes day-3, day-7, and day-14 performance reviews. PULSE kills underperforming creative and scales winners. LOYALTY activates a 14-day post-purchase email sequence to drive second purchase. SIGNAL-CX monitors early reviews and flags any quality issues to FORMULA immediately. ORACLE compiles a 30-day post-launch intelligence report for the next product decision.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- GAPS, BOTTLENECKS, AUTOMATION -->
+  <!-- ================================================================ -->
+  <h2>5. Gaps, Bottlenecks &amp; Automation Opportunities</h2>
+  <table class="gap-table">
+    <thead>
+      <tr>
+        <th>Issue</th>
+        <th>Type</th>
+        <th>Severity</th>
+        <th>Recommended Fix</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>No dedicated PR / Media Agent</td>
+        <td>Missing Role</td>
+        <td><span class="severity sev-high">HIGH</span></td>
+        <td>Spin up PRESS agent under Marketing to handle fight night sponsorships, editorial outreach, and brand press coverage — especially as combat sports partnerships scale.</td>
+      </tr>
+      <tr>
+        <td>No Legal / Compliance Agent</td>
+        <td>Missing Role</td>
+        <td><span class="severity sev-high">HIGH</span></td>
+        <td>Supplement claims, influencer contracts, and wholesale agreements create real legal exposure. A COUNSEL agent that reviews copy, contracts, and claims is non-negotiable as revenue grows.</td>
+      </tr>
+      <tr>
+        <td>Creative ↔ Paid Ads handoff</td>
+        <td>Bottleneck</td>
+        <td><span class="severity sev-high">HIGH</span></td>
+        <td>Ad creative production is the most common velocity bottleneck in DTC. Establish a 48-hour SLA between FRAME/REEL outputs and PULSE activation. Use a shared creative queue with priority flags.</td>
+      </tr>
+      <tr>
+        <td>No affiliate / referral system agent</td>
+        <td>Missing Role</td>
+        <td><span class="severity sev-med">MED</span></td>
+        <td>REACH handles ambassadors but not a broader affiliate channel. A REFER agent managing a structured affiliate program (Impact, ShareASale) could add 5–10% revenue with near-zero CAC.</td>
+      </tr>
+      <tr>
+        <td>Customer feedback → Product loop latency</td>
+        <td>Bottleneck</td>
+        <td><span class="severity sev-med">MED</span></td>
+        <td>Currently ANCHOR synthesizes CX data weekly. This should be automated: SIGNAL-CX should push real-time product quality flags directly to FORMULA and BUILD, not wait for weekly reports.</td>
+      </tr>
+      <tr>
+        <td>No international expansion agent</td>
+        <td>Missing Role</td>
+        <td><span class="severity sev-med">MED</span></td>
+        <td>Combat sports is global. As volume justifies it, a GLOBAL agent handling localization, duties, international 3PL partnerships, and market entry research is a natural next hire.</td>
+      </tr>
+      <tr>
+        <td>No data / BI layer agent</td>
+        <td>Missing Role</td>
+        <td><span class="severity sev-med">MED</span></td>
+        <td>LEDGER handles finance and LENS handles site analytics but no agent owns the unified data layer (Shopify + Meta + Klaviyo + Gorgias combined view). A DATA agent building and maintaining a central BI dashboard would reduce report lag significantly.</td>
+      </tr>
+      <tr>
+        <td>Manual review of creative performance</td>
+        <td>Automation Opportunity</td>
+        <td><span class="severity sev-low">LOW</span></td>
+        <td>PULSE should automatically pause any ad with CTR below threshold after 500 impressions, and flag winning creatives for FRAME to produce 3 variants within 24h — no manual trigger needed.</td>
+      </tr>
+      <tr>
+        <td>Influencer vetting is time-intensive</td>
+        <td>Automation Opportunity</td>
+        <td><span class="severity sev-low">LOW</span></td>
+        <td>REACH should run all influencer candidates through an automated scoring model (engagement rate, audience overlap, combat sports relevance, past brand partnerships) before any human or Lead review.</td>
+      </tr>
+    </tbody>
+  </table>
+
+</div>
+
+<div class="footer">
+  Kimora Co. Internal AI Workforce Blueprint · Executive Operator System Design · Confidential · v1.0 · April 2026
+</div>
+
+</body>
+</html>

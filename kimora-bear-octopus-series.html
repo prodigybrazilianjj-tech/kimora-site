@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kimora Co. — The Mats: Bear & Octopus Series</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0a0a; color: #e8e8e8; line-height: 1.6; }
+  .header { background: #0f0f0f; border-bottom: 1px solid #1e1e1e; padding: 40px 60px; }
+  .header .tag { display: inline-block; background: #c8a96e22; border: 1px solid #c8a96e55; color: #c8a96e; font-size: 0.7rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; margin-bottom: 14px; }
+  .header h1 { font-size: 2rem; font-weight: 700; color: #fff; }
+  .header p { color: #666; font-size: 0.9rem; margin-top: 6px; }
+  .container { max-width: 980px; margin: 0 auto; padding: 40px 60px 80px; }
+  h2 { font-size: 1.2rem; font-weight: 700; color: #fff; margin: 48px 0 16px; padding-bottom: 10px; border-bottom: 1px solid #1a1a1a; }
+  h3 { font-size: 0.95rem; font-weight: 700; color: #c8a96e; margin: 24px 0 10px; }
+
+  /* CONCEPT CARDS */
+  .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  .char-card { border-radius: 12px; padding: 28px; border: 1px solid; }
+  .char-card.bear { background: #120e08; border-color: #3a2a10; }
+  .char-card.octo { background: #080d14; border-color: #102040; }
+  .char-name { font-size: 1.5rem; font-weight: 900; margin-bottom: 4px; }
+  .char-name.bear { color: #e8a020; }
+  .char-name.octo { color: #4a9eff; }
+  .char-role { font-size: 0.7rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 16px; }
+  .char-role.bear { color: #9a6010; }
+  .char-role.octo { color: #2060a0; }
+  .char-trait { display: flex; gap: 8px; margin-bottom: 7px; align-items: flex-start; }
+  .char-trait-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; min-width: 80px; padding-top: 2px; flex-shrink: 0; }
+  .char-trait-label.bear { color: #9a6010; }
+  .char-trait-label.octo { color: #2060a0; }
+  .char-trait-val { font-size: 0.84rem; color: #888; }
+
+  /* PROMPT BLOCKS */
+  .prompt-block { background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 10px; padding: 20px; margin-bottom: 14px; }
+  .prompt-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #c8a96e; margin-bottom: 10px; }
+  .prompt-text { font-size: 0.84rem; color: #999; line-height: 1.7; font-family: 'Courier New', monospace; background: #080808; padding: 14px; border-radius: 6px; border: 1px solid #151515; white-space: pre-wrap; }
+  .prompt-note { font-size: 0.76rem; color: #444; margin-top: 10px; font-style: italic; }
+
+  /* EPISODE CARDS */
+  .episode { border: 1px solid #1a1a1a; border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
+  .ep-header { background: #111; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1a1a1a; }
+  .ep-meta { display: flex; align-items: center; gap: 12px; }
+  .ep-num { font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: #1a1a1a; color: #666; padding: 3px 9px; border-radius: 3px; }
+  .ep-title { font-size: 1rem; font-weight: 700; color: #fff; }
+  .ep-day { font-size: 0.75rem; color: #555; }
+  .ep-body { padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .ep-body.full { grid-template-columns: 1fr; }
+
+  /* SCRIPT */
+  .script { background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 8px; padding: 18px; }
+  .script-line { display: flex; gap: 14px; padding: 8px 0; border-bottom: 1px solid #111; align-items: flex-start; }
+  .script-line:last-child { border-bottom: none; }
+  .speaker { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; min-width: 72px; padding-top: 2px; flex-shrink: 0; }
+  .sp-bear { color: #e8a020; }
+  .sp-octo { color: #4a9eff; }
+  .sp-dir  { color: #555; font-style: italic; }
+  .sp-kimora { color: #c8a96e; }
+  .line-text { font-size: 0.86rem; color: #888; line-height: 1.6; }
+  .line-text.spoken { color: #ccc; }
+  .script-footer { font-size: 0.72rem; color: #333; margin-top: 10px; display: flex; gap: 16px; }
+
+  /* NANO BANANA */
+  .nb-section { background: #111; border: 1px solid #1e1e1e; border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+  .nb-section h3 { margin-top: 0; }
+  .step { display: flex; gap: 16px; margin-bottom: 16px; align-items: flex-start; }
+  .step-num { width: 28px; height: 28px; border-radius: 50%; background: #c8a96e22; border: 1px solid #c8a96e44; color: #c8a96e; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-body { font-size: 0.84rem; color: #777; line-height: 1.6; }
+  .step-body strong { color: #ccc; }
+
+  /* TIPS */
+  .tip-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .tip-card { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 16px; }
+  .tip-card h4 { font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #c8a96e; margin-bottom: 8px; }
+  .tip-card p { font-size: 0.8rem; color: #666; line-height: 1.6; }
+
+  .divider { height: 1px; background: #151515; margin: 40px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="tag">Agent: MUSE · Creative Series Production Package</div>
+  <h1>"The Mats" — Bear &amp; Octopus Podcast Series</h1>
+  <p>Kimora Co. · AI-generated character video content · Nano Banana production guide · Phase 1 scripts</p>
+</div>
+
+<div class="container">
+
+  <!-- ═══ THE CONCEPT ═══ -->
+  <h2>The Concept</h2>
+  <p style="color:#777;font-size:0.92rem;margin-bottom:24px;max-width:700px;">Two characters. One mat. A podcast about jiu-jitsu that subtly makes the case that you need both — and that Kimora is built for both. The Bear represents raw strength, pressure, and physicality. The Octopus represents intelligence, adaptability, and technique. Together, they <em>are</em> the Kimora athlete.</p>
+
+  <div class="char-grid">
+    <div class="char-card bear">
+      <div class="char-name bear">BEAR</div>
+      <div class="char-role bear">Strength · Pressure · Top Game</div>
+      <div class="char-trait"><span class="char-trait-label bear">BJJ Game</span><span class="char-trait-val">Top pressure, smashing guard, physical dominance. Believes you can outwork technique with conditioning.</span></div>
+      <div class="char-trait"><span class="char-trait-label bear">Personality</span><span class="char-trait-val">Confident, direct, occasionally dismissive of nuance. Learns over time. Good-natured bravado.</span></div>
+      <div class="char-trait"><span class="char-trait-label bear">Voice</span><span class="char-trait-val">Deep, slow, emphatic. Interrupts when excited. Uses sports metaphors.</span></div>
+      <div class="char-trait"><span class="char-trait-label bear">Visual</span><span class="char-trait-val">Large, muscular bear in athletic wear — Kimora branded rashguard. Gold accent on gear. Sitting on a mat or stool. Powerful but relaxed.</span></div>
+      <div class="char-trait"><span class="char-trait-label bear">Role in show</span><span class="char-trait-val">The "raw athlete" perspective. Represents the Kimora athlete who just goes and trains hard.</span></div>
+    </div>
+    <div class="char-card octo">
+      <div class="char-name octo">OCTOPUS</div>
+      <div class="char-role octo">Intelligence · Technique · Guard Game</div>
+      <div class="char-trait"><span class="char-trait-label octo">BJJ Game</span><span class="char-trait-val">Eight-limb guard work, submissions, transitions, reads opponents. Believes technique always beats strength.</span></div>
+      <div class="char-trait"><span class="char-trait-label octo">Personality</span><span class="char-trait-val">Thoughtful, slightly nerdy, occasionally pedantic. Gets excited about technique details. Dry humor.</span></div>
+      <div class="char-trait"><span class="char-trait-label octo">Voice</span><span class="char-trait-val">Measured, precise, lots of "technically speaking" and "the thing is." Uses multiple arms expressively.</span></div>
+      <div class="char-trait"><span class="char-trait-label octo">Visual</span><span class="char-trait-val">Intelligent-looking octopus in a Kimora Co. branded rashguard. Multiple tentacles active, often gesturing. Holds notes or a tablet.</span></div>
+      <div class="char-trait"><span class="char-trait-label octo">Role in show</span><span class="char-trait-val">The "thinking athlete" perspective. Represents the Kimora athlete who studies the game deeply.</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ SHOW FORMAT ═══ -->
+  <h2>Show Format — "The Mats"</h2>
+  <div class="tip-grid">
+    <div class="tip-card">
+      <h4>Episode Length</h4>
+      <p>30–60 seconds per clip. TikTok/Reels native. Each episode is one self-contained debate or topic. No intros longer than 3 seconds.</p>
+    </div>
+    <div class="tip-card">
+      <h4>Structure</h4>
+      <p>Hook (topic dropped immediately) → Bear's take → Octopus's take → Brief back-and-forth → Kimora brand moment or CTA (never forced, always natural).</p>
+    </div>
+    <div class="tip-card">
+      <h4>Setting</h4>
+      <p>A BJJ gym at night. Mats on the floor. Low lighting. Two stools or crates facing each other like a podcast setup. Kimora Co. subtle branding on the wall or gear.</p>
+    </div>
+    <div class="tip-card">
+      <h4>Tone</h4>
+      <p>Entertaining, knowledgeable, never preachy. The characters genuinely disagree and both are right sometimes. The audience picks a side. Comments section becomes the mat.</p>
+    </div>
+    <div class="tip-card">
+      <h4>Kimora Integration</h4>
+      <p>Never say "our sponsor." Instead: Bear references needing energy for his style. Octopus references focus and sharpness. The product need is implied, never sold.</p>
+    </div>
+    <div class="tip-card">
+      <h4>Cadence</h4>
+      <p>2–3 episodes per week during pre-launch. Replace static posts Day 2, 4, 7, 12 with Bear + Octopus episodes. Higher shareability, higher retention.</p>
+    </div>
+  </div>
+
+  <!-- ═══ NANO BANANA SETUP ═══ -->
+  <h2>Nano Banana Production Guide</h2>
+
+  <div class="nb-section">
+    <h3>Step 1 — Generate Your Base Characters (do this first, save the images)</h3>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">Go to <strong>nanobanana.io</strong> → Text to Image. Generate Bear first, then Octopus. Use the exact prompts below. Save both as reference images — you'll feed them into every video generation to keep the characters consistent.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">Once you have character images you like, use <strong>Image to Video</strong> to animate them. Feed the same reference image each time to maintain character consistency across episodes.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">For dialogue clips, generate each character speaking separately, then edit together in CapCut. Nano Banana 2 supports consistent style across sequential generation — use this to your advantage.</div>
+    </div>
+  </div>
+
+  <div class="prompt-block">
+    <div class="prompt-label">🐻 Bear — Character Image Prompt (Nano Banana)</div>
+    <div class="prompt-text">A large, powerful anthropomorphic grizzly bear sitting on a wooden stool in a dimly lit Brazilian jiu-jitsu gym at night. He is wearing a dark navy blue rashguard with subtle gold lettering that reads "KIMORA" on the chest. He has an athletic, muscular build. His expression is confident and relaxed, arms crossed, slight smirk. The gym has tatami mats on the floor, worn equipment visible in the background, single overhead industrial light creating dramatic shadows. Cinematic lighting, photorealistic, 4K quality, warm-cool contrast, dark atmospheric mood. Character design that works for animation. Slightly stylized but grounded in realism — not cartoonish.</div>
+    <div class="prompt-note">Run this 4–6 times and pick the strongest result. Then use that image as your character reference for all future generation.</div>
+  </div>
+
+  <div class="prompt-block">
+    <div class="prompt-label">🐙 Octopus — Character Image Prompt (Nano Banana)</div>
+    <div class="prompt-text">An intelligent, slender anthropomorphic octopus sitting on a wooden stool in a dimly lit Brazilian jiu-jitsu gym at night. He is wearing a dark rashguard with subtle gold "KIMORA" lettering. Several of his tentacles are gently gesturing, two of them holding a small notebook or tablet. His eyes are large, sharp, and thoughtful — the expression of someone who is always analyzing. The gym setting matches his counterpart: tatami mats, low industrial lighting, dark atmosphere. Cinematic photorealistic rendering, 4K, dramatic contrast lighting. Stylized but grounded — not cartoonish. His posture is engaged and slightly leaning forward, mid-thought.</div>
+    <div class="prompt-note">Octopus is harder to generate consistently — run 6–8 variations and pick the one where the character reads clearly at small sizes (social media thumbnails).</div>
+  </div>
+
+  <div class="prompt-block">
+    <div class="prompt-label">🎙 Podcast Set — Scene Prompt (both characters together)</div>
+    <div class="prompt-text">A grizzly bear and an octopus sitting across from each other on wooden stools in a Brazilian jiu-jitsu gym at night, set up like a podcast. Between them is a small wooden table with two microphones. The bear wears a dark Kimora Co. branded rashguard. The octopus wears a matching rashguard and is gesturing with two tentacles while talking. The gym behind them has tatami mats, chalk-dusted equipment, and a single bright overhead light creating a pool of light around them, with the rest of the gym in shadow. Cinematic, photorealistic, 4K. The mood is focused and intellectual. Like a late-night talk show set inside a fight gym.</div>
+    <div class="prompt-note">This is your establishing shot — use it as the opening frame for every episode to establish the "show" feeling.</div>
+  </div>
+
+  <div class="prompt-block">
+    <div class="prompt-label">🎬 Animation Prompt (Image to Video — apply to each character image)</div>
+    <div class="prompt-text">[CHARACTER] is talking, gesturing with their hands/arms naturally while making a point. Mouth moving in speech. Slight body movement — weight shifts, head nods — as if engaged in a conversation. Cinematic handheld camera slight movement. Warm overhead light. Background remains dark and static. 6–8 seconds of natural talking animation. No sudden movements. The character should feel present and grounded on their stool.</div>
+    <div class="prompt-note">Replace [CHARACTER] with "The grizzly bear" or "The octopus." Generate 3–4 clips per episode, one per speaking moment. Cut together in CapCut.</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ PHASE 1 EPISODES ═══ -->
+  <h2>Phase 1 Episode Scripts — Days 1–14</h2>
+  <p style="color:#666;font-size:0.84rem;margin-bottom:28px;">These replace the static/reel content for Days 2, 4, 7, 12, and 14. They map to the same calendar themes but are dramatically more shareable as character video content.</p>
+
+  <!-- EP 1 -->
+  <div class="episode">
+    <div class="ep-header">
+      <div class="ep-meta">
+        <div class="ep-num">EP 01</div>
+        <div class="ep-title">"Strength vs. Technique — Which Wins?"</div>
+      </div>
+      <div class="ep-day">Day 2 · Apr 14 · TikTok + IG Reel · 45 sec</div>
+    </div>
+    <div class="ep-body full">
+      <div>
+        <h3>Scene Direction</h3>
+        <p style="font-size:0.84rem;color:#666;margin-bottom:16px;">Opening shot: the gym at night. Two stools. Bear and Octopus already mid-debate. No intro. Drop straight into the argument. Camera cuts between close-ups of each character as they speak.</p>
+        <div class="script">
+          <div class="script-line"><span class="speaker sp-dir">VISUAL</span><span class="line-text">Wide establishing shot of both characters. Gym. Night. The "Mats" lower-third title card appears and fades.</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"Okay, I'm just going to say it. Strength wins. If you can't move me, technique doesn't matter."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"That's the most bear thing I've ever heard."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"It's true though—"</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"I have eight limbs. I have been submitted by people half my size. Technique is the great equalizer."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"Okay but those people still trained their conditioning—"</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"So did they. That's the point. It's not strength or technique. It's both."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text">[long pause, thinking] <span class="spoken">"...I hate when you're right."</span></span></div>
+          <div class="script-line"><span class="speaker sp-dir">CTA</span><span class="line-text">Text on screen: "Which are you? 🐻 or 🐙 — Drop it in the comments." KIMORA CO. logo fades in bottom right.</span></div>
+          <div class="script-footer">
+            <span>Runtime: 40–50 sec</span>
+            <span>Caption: "The debate that never ends on the mat. Which side are you? 🐻💪 or 🐙🧠 #kimoraco #bjj #strengthvstechnique"</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EP 2 -->
+  <div class="episode">
+    <div class="ep-header">
+      <div class="ep-meta">
+        <div class="ep-num">EP 02</div>
+        <div class="ep-title">"What Does Your Pre-Workout Actually Do?"</div>
+      </div>
+      <div class="ep-day">Day 4 · Apr 16 · TikTok + IG Reel · 50 sec</div>
+    </div>
+    <div class="ep-body full">
+      <div>
+        <h3>Scene Direction</h3>
+        <p style="font-size:0.84rem;color:#666;margin-bottom:16px;">Bear has a generic supplement tub on the table. Octopus is eyeing it skeptically. This episode seeds the supplement education narrative without pitching Kimora yet.</p>
+        <div class="script">
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"I just slammed my pre-workout. Ready to go."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text">[picks up the tub, reads it] <span class="spoken">"This has a proprietary blend."</span></span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"So?"</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"So they don't tell you how much of anything is actually in it."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"I feel energy though."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"That's 300 milligrams of caffeine. That's it. You're not getting clinical doses of anything else."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text">[stares at tub] <span class="spoken">"...How much citrulline is a clinical dose?"</span></span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"Six to eight grams. Most products give you two."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"That's actually criminal."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"Welcome to the supplement industry."</span></div>
+          <div class="script-line"><span class="speaker sp-dir">CTA</span><span class="line-text">Text on screen: "There's a better way. Something is coming. → kimoraco.com"</span></div>
+          <div class="script-footer">
+            <span>Runtime: 45–55 sec</span>
+            <span>Caption: "If your pre-workout has a 'proprietary blend' this is what's actually happening 👀 #kimoraco #supplementfacts #bjjnutrition #preworkout"</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EP 3 -->
+  <div class="episode">
+    <div class="ep-header">
+      <div class="ep-meta">
+        <div class="ep-num">EP 03</div>
+        <div class="ep-title">"Why We Started This" (Founder Episode)</div>
+      </div>
+      <div class="ep-day">Day 7 · Apr 19 · TikTok · 60 sec</div>
+    </div>
+    <div class="ep-body full">
+      <div>
+        <h3>Scene Direction</h3>
+        <p style="font-size:0.84rem;color:#666;margin-bottom:16px;">More reflective tone. Bear and Octopus are both sitting, less energetic than usual. This episode carries the founder origin story through the characters — it's meta, it's warm, it builds emotional connection.</p>
+        <div class="script">
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"Can I ask you something? Why are we doing this show?"</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"We're doing it because nobody talks about this stuff for athletes like us."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"Like... combat athletes specifically?"</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"Yeah. Every supplement, every brand, every piece of content — it's for bodybuilders. Or weekend warriors. Nobody making stuff for the person training twice a day."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"Cutting weight, still needing to think clearly on the mat..."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"Exactly. So someone is building it. And until then, we're here."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text">[looks at camera] <span class="spoken">"We see you, by the way. If you're out there training twice a day — we see you."</span></span></div>
+          <div class="script-line"><span class="speaker sp-dir">CTA</span><span class="line-text">KIMORA CO. logo appears. Text: "Something is coming for you. July 2. → kimoraco.com"</span></div>
+          <div class="script-footer">
+            <span>Runtime: 55–65 sec</span>
+            <span>Caption: "Nobody makes content for the combat athlete who trains twice a day. We do now. 🐻🐙 #kimoraco #combatathlete #bjjlife #mmatraining"</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EP 4 -->
+  <div class="episode">
+    <div class="ep-header">
+      <div class="ep-meta">
+        <div class="ep-num">EP 04</div>
+        <div class="ep-title">"Signs You're Actually a Combat Athlete"</div>
+      </div>
+      <div class="ep-day">Day 12 · Apr 24 · TikTok · 45 sec</div>
+    </div>
+    <div class="ep-body full">
+      <div>
+        <h3>Scene Direction</h3>
+        <p style="font-size:0.84rem;color:#666;margin-bottom:16px;">Fast, comedic energy. Bear reads items off a list (actual paper list). Octopus reacts to each one. This is the most shareable episode — pure relatable humor for BJJ athletes.</p>
+        <div class="script">
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"Okay I made a list. Signs you're actually a combat athlete and not just someone who goes to the gym."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"Number one. You've weighed yourself three times today."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"Before and after every meal, yes."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"Your warm-up is longer than most people's entire workout."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"Hip mobility doesn't care if you're tired."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"You've had a full conversation while lying flat on your back."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"That's just Tuesday."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"Recovery is a training session."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"The people who skip recovery don't last."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text">[to camera] <span class="spoken">"You know who you are."</span></span></div>
+          <div class="script-line"><span class="speaker sp-dir">CTA</span><span class="line-text">Text: "Drop any we missed 👇 #kimoraco" — KIMORA logo fade.</span></div>
+          <div class="script-footer">
+            <span>Runtime: 40–50 sec</span>
+            <span>Caption: "Signs you're a combat athlete (not a gym bro) 🐻🐙 Drop what we missed 👇 #kimoraco #bjj #grapplerproblems #mmalife"</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EP 5 -->
+  <div class="episode">
+    <div class="ep-header">
+      <div class="ep-meta">
+        <div class="ep-num">EP 05</div>
+        <div class="ep-title">"Two Weeks In — What We Know"</div>
+      </div>
+      <div class="ep-day">Day 14 · Apr 26 · TikTok + IG · 55 sec</div>
+    </div>
+    <div class="ep-body full">
+      <div>
+        <h3>Scene Direction</h3>
+        <p style="font-size:0.84rem;color:#666;margin-bottom:16px;">Phase 1 closer. Reflective tone. Bear and Octopus speak directly to the camera for the first time — breaking the fourth wall slightly. First public mention of July 2 launch date.</p>
+        <div class="script">
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"Two weeks we've been doing this show."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"And the response has been... I don't have a word for it."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"The comments. The DMs. People saying 'finally someone gets it.'"</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"Combat athletes are underserved. We've always known that. Now we know you know that too."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"So here's what's coming. July 2nd—"</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"Something launches that was built specifically for athletes like the ones watching this."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text spoken">"Not for everyone."</span></div>
+          <div class="script-line"><span class="speaker sp-octo">OCTOPUS</span><span class="line-text spoken">"Definitely not for everyone."</span></div>
+          <div class="script-line"><span class="speaker sp-bear">BEAR</span><span class="line-text">[to camera] <span class="spoken">"But probably for you."</span></span></div>
+          <div class="script-line"><span class="speaker sp-dir">CTA</span><span class="line-text">KIMORA CO. logo full reveal. Text: "Early access → kimoraco.com · July 2, 2026"</span></div>
+          <div class="script-footer">
+            <span>Runtime: 50–60 sec</span>
+            <span>Caption: "Two weeks in. Something is coming July 2nd. Built for you. 🐻🐙 Early access → link in bio #kimoraco #combatsports #july2"</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ PRODUCTION WORKFLOW ═══ -->
+  <h2>Production Workflow — How to Make Each Episode</h2>
+  <div class="nb-section">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Generate character images</strong> in Nano Banana using the prompts above. Save 2–3 versions of each character. Pick your canonical Bear and canonical Octopus and save them.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Generate the podcast set shot</strong> — both characters together. This is your establishing shot used at the opening of every episode.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Animate each speaking moment</strong> using Image to Video. Feed the character's reference image + the animation prompt. Generate 4–6 short clips (6–8 sec each) per character per episode.</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Add voiceover</strong> using ElevenLabs or similar — or record yourself doing both voices. Bear: slow, deep, confident. Octopus: measured, slightly nasal, precise.</div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Edit in CapCut</strong> — cut between character clips on dialogue beats, add captions for every spoken line, drop in subtle ambient gym audio underneath, add KIMORA CO. lower thirds and end card.</div></div>
+    <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Export at 1080×1920</strong> (vertical) for TikTok and IG Reels. Post natively on each platform — never cross-post from TikTok to IG (the watermark kills reach).</div></div>
+  </div>
+
+  <!-- SERIES ROADMAP -->
+  <h2>Upcoming Episode Topics — Phases 2–6</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div style="background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:16px;">
+      <div style="font-size:0.68rem;font-weight:700;color:#f0a500;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Phase 2 · Education</div>
+      <div style="font-size:0.82rem;color:#666;line-height:1.8;">
+        EP 06: "What Happens to Your Body in Fight Camp"<br>
+        EP 07: "The Weight Cut Problem" (Octopus goes deep)<br>
+        EP 08: "Caffeine — How Much Is Too Much?"<br>
+        EP 09: "Recovery vs. Rest — Bear Doesn't Know the Difference"
+      </div>
+    </div>
+    <div style="background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:16px;">
+      <div style="font-size:0.68rem;font-weight:700;color:#e868a2;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Phase 3 · Community</div>
+      <div style="font-size:0.82rem;color:#666;line-height:1.8;">
+        EP 10: "Fan Questions" (read and react to comments)<br>
+        EP 11: "Morning vs. Evening Training — The Debate"<br>
+        EP 12: "What Makes a Great Training Partner?"<br>
+        EP 13: "We Visited a Real Gym — Here's What Happened"
+      </div>
+    </div>
+    <div style="background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:16px;">
+      <div style="font-size:0.68rem;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Phase 4 · Behind the Build</div>
+      <div style="font-size:0.82rem;color:#666;line-height:1.8;">
+        EP 14: "We Tried the Formula" (Bear loves it, Octopus analyzes)<br>
+        EP 15: "Why We Rejected 17 Formulas"<br>
+        EP 16: "Proprietary Blends Are a Scam" (Octopus gets heated)<br>
+        EP 17: "The Gear Is Coming Too" (apparel tease episode)
+      </div>
+    </div>
+    <div style="background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:16px;">
+      <div style="font-size:0.68rem;font-weight:700;color:#34d399;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Phases 5–6 · Reveal + Launch</div>
+      <div style="font-size:0.82rem;color:#666;line-height:1.8;">
+        EP 18: "First Look" (Bear and Octopus unbox the product live)<br>
+        EP 19: "Reading Every Ingredient on the Label"<br>
+        EP 20: "The Athletes Tried It — Here's What They Said"<br>
+        EP 21: "It's Launch Day" (Bear and Octopus celebrate)
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

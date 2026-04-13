@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kimora Co. — Something Is Coming</title>
+  <meta name="description" content="Built for athletes who out-train, out-smart, and out-last. Kimora Co. is coming." />
+  <meta property="og:title" content="Kimora Co. — Something Is Coming" />
+  <meta property="og:description" content="Performance is a standard, not a goal." />
+  <meta property="og:image" content="https://kimoraco.com/og-image.jpg" />
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #C8A96E;
+      --gold-dim: #9a7d4e;
+      --white: #F5F3EF;
+      --off-white: #b8b4ae;
+      --bg: #080808;
+      --bg-2: #0f0f0f;
+      --border: rgba(255,255,255,0.07);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--white);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE TEXTURE ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* ── AMBIENT GLOW ── */
+    .glow {
+      position: fixed;
+      width: 700px;
+      height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,169,110,0.06) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── LAYOUT ── */
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 40px 48px;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--white);
+    }
+
+    .logo span { color: var(--gold); }
+
+    .social-links {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .social-links a {
+      color: var(--off-white);
+      text-decoration: none;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .social-links a:hover { color: var(--gold); }
+
+    /* ── MAIN ── */
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      max-width: 780px;
+      padding: 60px 0 0;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow-line {
+      width: 32px;
+      height: 1px;
+      background: var(--gold);
+    }
+
+    .eyebrow-text {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    h1 {
+      font-size: clamp(3rem, 7vw, 5.5rem);
+      font-weight: 900;
+      line-height: 1.0;
+      letter-spacing: -0.03em;
+      color: var(--white);
+      margin-bottom: 12px;
+    }
+
+    h1 em {
+      font-style: normal;
+      color: var(--gold);
+    }
+
+    .tagline {
+      font-size: clamp(0.95rem, 2vw, 1.15rem);
+      font-weight: 400;
+      color: var(--off-white);
+      line-height: 1.65;
+      max-width: 540px;
+      margin: 24px 0 44px;
+    }
+
+    .tagline strong {
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    /* ── EMAIL FORM ── */
+    .form-wrapper {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .form-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--off-white);
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .form-input {
+      flex: 1;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 18px;
+      font-size: 0.9rem;
+      color: var(--white);
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .form-input::placeholder { color: rgba(255,255,255,0.25); }
+    .form-input:focus {
+      border-color: rgba(200,169,110,0.5);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .form-btn {
+      background: var(--gold);
+      color: #080808;
+      border: none;
+      border-radius: 6px;
+      padding: 14px 24px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      white-space: nowrap;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .form-btn:hover {
+      background: #d9bb80;
+      transform: translateY(-1px);
+    }
+
+    .form-btn:active { transform: translateY(0); }
+
+    .form-note {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.25);
+      margin-top: 10px;
+    }
+
+    /* ── SUCCESS STATE ── */
+    .success-msg {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(200,169,110,0.08);
+      border: 1px solid rgba(200,169,110,0.25);
+      border-radius: 6px;
+      padding: 14px 18px;
+      font-size: 0.88rem;
+      color: var(--gold);
+      font-weight: 500;
+    }
+
+    .success-msg.visible { display: flex; }
+
+    /* ── MANIFESTO STRIP ── */
+    .manifesto {
+      margin-top: 60px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+      max-width: 780px;
+    }
+
+    .manifesto-item {}
+
+    .manifesto-num {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .manifesto-text {
+      font-size: 0.88rem;
+      color: var(--off-white);
+      line-height: 1.6;
+    }
+
+    .manifesto-text strong {
+      color: var(--white);
+      display: block;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 40px;
+    }
+
+    .footer-copy {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.2);
+      letter-spacing: 0.05em;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* ── VERTICAL RULE ── */
+    .vert-rule {
+      position: fixed;
+      right: 48px;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--border);
+      z-index: 0;
+    }
+
+    /* ── COUNTER ── */
+    .counter-section {
+      display: flex;
+      gap: 36px;
+      margin-bottom: 44px;
+      align-items: flex-end;
+    }
+
+    .counter-block { text-align: center; }
+
+    .counter-num {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: var(--white);
+      letter-spacing: -0.04em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .counter-label {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: rgba(255,255,255,0.3);
+      margin-top: 4px;
+    }
+
+    .counter-sep {
+      font-size: 1.8rem;
+      font-weight: 300;
+      color: rgba(255,255,255,0.15);
+      padding-bottom: 8px;
+    }
+
+    /* ── MOBILE ── */
+    @media (max-width: 640px) {
+      .page { padding: 28px 24px; }
+      .social-links { display: none; }
+      .manifesto { grid-template-columns: 1fr; gap: 20px; }
+      .vert-rule { display: none; }
+      .form-row { flex-direction: column; }
+      .counter-section { gap: 20px; }
+      .counter-num { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="glow"></div>
+<div class="vert-rule"></div>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">Kimora<span>.</span>Co</div>
+    <nav class="social-links">
+      <a href="https://instagram.com/kimoraco" target="_blank">Instagram</a>
+      <a href="https://tiktok.com/@kimoraco" target="_blank">TikTok</a>
+    </nav>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+
+    <div class="eyebrow">
+      <div class="eyebrow-line"></div>
+      <div class="eyebrow-text">Performance Brand · Est. 2026</div>
+    </div>
+
+    <h1>Built for<br>athletes who<br><em>out-last.</em></h1>
+
+    <p class="tagline">
+      Supplements, gear, and standards — engineered for combat athletes who treat
+      <strong>performance as a baseline, not a destination.</strong>
+      The ones who are still training when everyone else went home.
+    </p>
+
+    <!-- COUNTDOWN -->
+    <div class="counter-section" id="countdown">
+      <div class="counter-block">
+        <div class="counter-num" id="c-days">--</div>
+        <div class="counter-label">Days</div>
+      </div>
+      <div class="counter-sep">:</div>
+      <div class="counter-block">
+        <div class="counter-num" id="c-hours">--</div>
+        <div class="counter-label">Hours</div>
+      </div>
+      <div class="counter-sep">:</div>
+      <div class="counter-block">
+        <div class="counter-num" id="c-mins">--</div>
+        <div class="counter-label">Min</div>
+      </div>
+      <div class="counter-sep">:</div>
+      <div class="counter-block">
+        <div class="counter-num" id="c-secs">--</div>
+        <div class="counter-label">Sec</div>
+      </div>
+    </div>
+
+    <!-- EMAIL CAPTURE -->
+    <div class="form-wrapper">
+      <label class="form-label" for="email-input">Get early access — first in, first to train with it.</label>
+      <div class="form-row" id="form-row">
+        <input
+          class="form-input"
+          type="email"
+          id="email-input"
+          placeholder="your@email.com"
+          autocomplete="email"
+        />
+        <button class="form-btn" onclick="handleSubmit()">Notify Me</button>
+      </div>
+      <p class="form-note">No spam. We only reach out when it matters.</p>
+      <div class="success-msg" id="success-msg">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" stroke="#C8A96E" stroke-width="1.5"/>
+          <path d="M5 8l2 2 4-4" stroke="#C8A96E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        You're in. We'll be in touch before anyone else.
+      </div>
+    </div>
+
+    <!-- MANIFESTO -->
+    <div class="manifesto">
+      <div class="manifesto-item">
+        <div class="manifesto-num">01 — Train</div>
+        <div class="manifesto-text">
+          <strong>Out-train.</strong>
+          Products engineered for the volume and intensity of combat sport athletes — not the weekend warrior.
+        </div>
+      </div>
+      <div class="manifesto-item">
+        <div class="manifesto-num">02 — Smart</div>
+        <div class="manifesto-text">
+          <strong>Out-smart.</strong>
+          Every formula, every material, every decision — built on evidence and obsession, not marketing fluff.
+        </div>
+      </div>
+      <div class="manifesto-item">
+        <div class="manifesto-num">03 — Last</div>
+        <div class="manifesto-text">
+          <strong>Out-last.</strong>
+          The athlete who's still standing in round five. Still drilling at midnight. Still showing up tomorrow.
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-copy">© 2026 Kimora Co. All rights reserved.</div>
+    <div class="status-dot">
+      <div class="dot"></div>
+      Launch in progress
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  // ── COUNTDOWN ──
+  // Set your launch date here (YYYY, MM-1, DD, HH, MM, SS)
+  const LAUNCH_DATE = new Date(2026, 6, 2, 0, 0, 0); // July 2, 2026
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function updateCountdown() {
+    const now = new Date();
+    const diff = LAUNCH_DATE - now;
+    if (diff <= 0) {
+      document.getElementById('countdown').style.display = 'none';
+      return;
+    }
+    const days  = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const mins  = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const secs  = Math.floor((diff % (1000 * 60)) / 1000);
+    document.getElementById('c-days').textContent  = pad(days);
+    document.getElementById('c-hours').textContent = pad(hours);
+    document.getElementById('c-mins').textContent  = pad(mins);
+    document.getElementById('c-secs').textContent  = pad(secs);
+  }
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  // ── EMAIL CAPTURE ──
+  function handleSubmit() {
+    const input = document.getElementById('email-input');
+    const email = input.value.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+      input.style.borderColor = 'rgba(248,113,113,0.6)';
+      input.focus();
+      setTimeout(() => { input.style.borderColor = ''; }, 1500);
+      return;
+    }
+
+    // Replace this with your actual form handler (Klaviyo, Mailchimp, etc.)
+    // fetch('/api/subscribe', { method: 'POST', body: JSON.stringify({ email }) })
+
+    document.getElementById('form-row').style.display = 'none';
+    document.querySelector('.form-note').style.display = 'none';
+    document.getElementById('success-msg').classList.add('visible');
+
+    // Log for now — wire to Klaviyo/Mailchimp when ready
+    console.log('Subscriber:', email);
+  }
+
+  // Allow Enter key to submit
+  document.getElementById('email-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') handleSubmit();
+  });
+</script>
+
+</body>
+</html>

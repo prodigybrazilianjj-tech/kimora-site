@@ -1,5 +1,7 @@
 // server/services/stripeWebhookService.ts
 import { eq } from "drizzle-orm";
+import { Resend } from "resend";
+import { generateReorderToken, inferUnitPrice } from "./wholesaleTokenService";
 
 import { stripe } from "../stripe";
 import { db } from "../db";
@@ -264,6 +266,133 @@ export async function processStripeWebhook(rawBody: Buffer, signature: string) {
         eventType: event.type,
         ...result,
       };
+    }
+
+    case "invoice.paid": {
+      const invoice = event.data.object as any;
+
+      // Only handle wholesale invoices created by the order sheet
+      if (invoice.metadata?.source !== "kimora-wholesale-sheet") {
+        return { received: true as const, eventId: event.id, eventType: event.type, ignored: true as const };
+      }
+
+      try {
+        const resendKey = process.env.RESEND_API_KEY;
+        const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "";
+        const notifyTo  = process.env.WHOLESALE_NOTIFY_TO || "alex@kimoraco.com";
+
+        if (resendKey && fromEmail) {
+          const resend   = new Resend(resendKey);
+          const from     = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
+
+          const businessName  = invoice.metadata?.businessName || "Unknown Gym";
+          const tier          = invoice.metadata?.tier || "";
+          const invoiceRef    = invoice.metadata?.invoiceRef || "";
+          const customerEmail = invoice.customer_email || "";
+          const invoiceNumber = invoice.number || "";
+          const amountPaid    = ((invoice.amount_paid ?? 0) / 100).toFixed(2);
+          const invoiceUrl    = invoice.hosted_invoice_url || "";
+
+          const subject = `💰 Wholesale invoice paid — ${businessName} ($${amountPaid})`;
+
+          const text =
+            `Wholesale invoice paid\n\n` +
+            `Gym: ${businessName}\n` +
+            `Tier: ${tier}\n` +
+            `Contact email: ${customerEmail}\n` +
+            `Stripe invoice #: ${invoiceNumber}${invoiceRef ? ` (Ref: ${invoiceRef})` : ""}\n` +
+            `Amount paid: $${amountPaid} USD\n` +
+            `Invoice URL: ${invoiceUrl}\n\n` +
+            `Time to fulfill the order and update your inventory.`;
+
+          const html = `
+<div style="font-family:ui-sans-serif,system-ui;line-height:1.6;color:#111;max-width:520px;">
+  <h2 style="margin:0 0 4px;font-size:20px;">💰 Wholesale invoice paid</h2>
+  <p style="margin:0 0 20px;color:#555;font-size:14px;">A gym just paid their Kimora Co. wholesale invoice.</p>
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;color:#888;width:40%">Gym</td><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:600">${businessName}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;color:#888">Tier</td><td style="padding:8px 0;border-bottom:1px solid #eee">${tier}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;color:#888">Contact</td><td style="padding:8px 0;border-bottom:1px solid #eee">${customerEmail}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;color:#888">Invoice #</td><td style="padding:8px 0;border-bottom:1px solid #eee">${invoiceNumber}${invoiceRef ? ` (Ref: ${invoiceRef})` : ""}</td></tr>
+    <tr><td style="padding:8px 0;color:#888">Amount paid</td><td style="padding:8px 0;font-size:18px;font-weight:800;color:#2a7a3b">$${amountPaid} USD</td></tr>
+  </table>
+  ${invoiceUrl ? `<p style="margin:20px 0 0"><a href="${invoiceUrl}" style="background:#111;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;font-size:13px;font-weight:600">View Stripe invoice →</a></p>` : ""}
+  <p style="margin:24px 0 0;font-size:13px;color:#888">Time to fulfill the order and update your inventory.</p>
+</div>`;
+
+          // ── Notify Alex ────────────────────────────────────────────────
+          await resend.emails.send({ from, to: notifyTo, subject, text, html } as any);
+          console.log(`[webhook] invoice.paid notification sent for ${businessName} ($${amountPaid})`);
+
+          // ── Send reorder magic link to the gym ─────────────────────────
+          if (customerEmail) {
+            try {
+              const stripeCustomerId = String(invoice.customer ?? "");
+              const unitPrice =
+                parseFloat(invoice.metadata?.unitPrice || "0") ||
+                inferUnitPrice(tier);
+
+              const token = generateReorderToken({
+                email: customerEmail,
+                businessName,
+                tier,
+                unitPrice,
+                stripeCustomerId,
+              });
+
+              const siteUrl =
+                process.env.PUBLIC_SITE_URL ||
+                (process.env.NODE_ENV === "production"
+                  ? "https://kimoraco.com"
+                  : "http://localhost:5173");
+
+              const reorderUrl = `${siteUrl}/kimora-reorder.html?token=${token}`;
+
+              const gymSubject = `Kimora Co. — your order is confirmed + your reorder link`;
+              const gymText =
+                `Hey ${businessName},\n\n` +
+                `Your Kimora Co. wholesale payment has been received — thanks!\n\n` +
+                `We've set up a personal reorder link for your account. Whenever you're running low, just use this link and a new invoice will be sent straight to your inbox:\n\n` +
+                `${reorderUrl}\n\n` +
+                `Bookmark it — it's yours to use as many times as you need.\n\n` +
+                `Questions? Reply to this email or reach us at support@kimoraco.com.\n\n` +
+                `— Kimora Co.`;
+
+              const gymHtml = `
+<div style="font-family:ui-sans-serif,system-ui;line-height:1.65;color:#111;max-width:520px;">
+  <p style="font-size:22px;font-weight:900;letter-spacing:0.05em;margin:0 0 4px;">KIMORA<span style="color:#C8A96E">.</span></p>
+  <p style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#888;margin:0 0 28px;">OUT-TRAIN. OUT-SMART. OUT-LAST.</p>
+  <h2 style="margin:0 0 8px;font-size:18px;">Payment confirmed ✓</h2>
+  <p style="margin:0 0 20px;color:#444;">Hey <strong>${businessName}</strong> — your wholesale payment landed. You're all set.</p>
+  <p style="margin:0 0 12px;color:#444;">We've created a personal reorder link for your account. When you're running low, just click it — no forms, no back and forth. A new invoice goes straight to your inbox.</p>
+  <p style="margin:0 0 24px;">
+    <a href="${reorderUrl}" style="display:inline-block;background:#C8A96E;color:#111;padding:12px 24px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:800;letter-spacing:0.06em;">REORDER NOW →</a>
+  </p>
+  <p style="margin:0 0 6px;font-size:12px;color:#888;">Or copy this link to bookmark it:</p>
+  <p style="margin:0 0 24px;font-size:12px;word-break:break-all;color:#555;">${reorderUrl}</p>
+  <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+  <p style="font-size:12px;color:#888;">Questions? Reply to this email or reach us at <a href="mailto:support@kimoraco.com" style="color:#C8A96E;">support@kimoraco.com</a></p>
+</div>`;
+
+              await resend.emails.send({
+                from,
+                to: customerEmail,
+                subject: gymSubject,
+                text: gymText,
+                html: gymHtml,
+              } as any);
+
+              console.log(`[webhook] reorder link emailed to ${customerEmail}`);
+            } catch (linkErr: any) {
+              console.error("[webhook] reorder link email failed:", safeErrSummary(linkErr));
+            }
+          }
+        }
+      } catch (e: any) {
+        console.error("[webhook] invoice.paid email failed:", safeErrSummary(e));
+      }
+
+      return { received: true as const, eventId: event.id, eventType: event.type, handled: "invoice.paid" as const };
     }
 
     default:

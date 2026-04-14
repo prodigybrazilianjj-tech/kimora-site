@@ -129,6 +129,15 @@
   .tip-box p + p { margin-top: 8px; }
   .tip-box strong { color: var(--white); }
 
+  /* SUBMIT */
+  .submit-section { margin: 28px 0 0; }
+  .btn-submit { display: block; width: 100%; padding: 18px; background: var(--gold); color: #080808; font-size: 14px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+  .btn-submit:hover { background: var(--gold-lt); }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  #submit-msg { margin-top: 14px; padding: 14px 16px; border-radius: 4px; font-size: 13px; display: none; }
+  #submit-msg.success { display: block; background: rgba(111,207,122,0.1); border: 1px solid #6fcf7a; color: #6fcf7a; }
+  #submit-msg.error { display: block; background: rgba(224,112,112,0.1); border: 1px solid #e07070; color: #e07070; }
+
   @media (max-width: 580px) {
     .pay-grid { grid-template-columns: repeat(2, 1fr); }
     .field-row.three { grid-template-columns: 1fr 1fr; }
@@ -234,21 +243,46 @@
 <div class="section">
   <div class="section-label">② Gym / Account Info</div>
   <div class="field-row">
-    <div class="field"><label>Gym / Academy Name</label><input type="text" placeholder="e.g. Alliance BJJ Austin"></div>
-    <div class="field"><label>Owner / Buyer Name</label><input type="text"></div>
+    <div class="field"><label>Gym / Academy Name *</label><input type="text" id="f-gymName" placeholder="e.g. Alliance BJJ Austin"></div>
+    <div class="field"><label>Owner / Buyer Name *</label><input type="text" id="f-contactName"></div>
   </div>
   <div class="field-row three">
-    <div class="field"><label>Email</label><input type="email"></div>
-    <div class="field"><label>Phone</label><input type="tel"></div>
-    <div class="field"><label>Instagram</label><input type="text" placeholder="@"></div>
+    <div class="field"><label>Email *</label><input type="email" id="f-email"></div>
+    <div class="field"><label>Phone *</label><input type="tel" id="f-phone"></div>
+    <div class="field"><label>Instagram</label><input type="text" id="f-instagram" placeholder="@"></div>
+  </div>
+  <div class="field-row">
+    <div class="field">
+      <label>Business Type *</label>
+      <select id="f-businessType" style="width:100%;background:transparent;border:none;border-bottom:1px solid var(--rule);color:var(--white);font-size:13px;padding:4px 0;outline:none;font-family:inherit;appearance:none;-webkit-appearance:none;cursor:pointer;">
+        <option value="" style="background:#111">Select type…</option>
+        <option value="bjj_academy" style="background:#111">BJJ Academy</option>
+        <option value="mma_gym" style="background:#111">MMA Gym</option>
+        <option value="fitness_studio" style="background:#111">Fitness / CrossFit Studio</option>
+        <option value="online" style="background:#111">Online / E-commerce</option>
+        <option value="other" style="background:#111">Other</option>
+      </select>
+    </div>
+    <div class="field"><label>Active Members / Students *</label><input type="number" id="f-memberCount" min="1" placeholder="e.g. 80"></div>
+  </div>
+  <div class="field-row full" id="other-type-row" style="display:none">
+    <div class="field"><label>Business Type (describe)</label><input type="text" id="f-businessTypeOther"></div>
   </div>
   <div class="field-row full">
-    <div class="field"><label>Shipping Address</label><input type="text"></div>
+    <div class="field"><label>Shipping Address</label><input type="text" id="f-address"></div>
   </div>
   <div class="field-row three">
-    <div class="field"><label>City</label><input type="text"></div>
-    <div class="field"><label>State</label><input type="text"></div>
-    <div class="field"><label>ZIP</label><input type="text"></div>
+    <div class="field"><label>City *</label><input type="text" id="f-city"></div>
+    <div class="field"><label>State *</label><input type="text" id="f-state" maxlength="2" placeholder="TX"></div>
+    <div class="field"><label>ZIP</label><input type="text" id="f-zip"></div>
+  </div>
+  <div style="margin-top:14px;">
+    <div style="font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;">Interested In</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);cursor:pointer;"><input type="checkbox" id="f-onShelf" style="accent-color:var(--gold)"> On-shelf retail</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);cursor:pointer;"><input type="checkbox" id="f-coachAffiliate" style="accent-color:var(--gold)"> Coach affiliate</label>
+      <label style="display:flex;align-items:center;gap=6px;font-size:12px;color:var(--dim);cursor:pointer;"><input type="checkbox" id="f-eventSponsorship" style="accent-color:var(--gold)"> Event sponsorship</label>
+    </div>
   </div>
 </div>
 
@@ -272,7 +306,7 @@
     <div class="totals-row discount"><span class="t-label">Wholesale Discount</span><span class="t-val" id="t-discount">—</span></div>
     <div class="totals-row"><span class="t-label">After Discount</span><span class="t-val" id="t-after">$0.00</span></div>
     <div class="totals-row">
-      <span class="t-label">Tax <span style="font-size:10px">(rate %)</span></span>
+      <span class="t-label">Tax <span style="font-size:10px">(auto-fills from state)</span></span>
       <span class="t-val" style="display:flex;justify-content:flex-end;align-items:center;gap:4px;">
         <input type="number" class="tax-input" id="tax-rate" value="0" min="0" max="20" step="0.1" oninput="recalc()">
         <span style="color:var(--dim)">%</span>
@@ -308,7 +342,7 @@
 <!-- NOTES -->
 <div class="section">
   <div class="section-label">Notes / Follow-Up</div>
-  <textarea class="notes-box" placeholder="Delivery notes, reorder schedule, follow-up date..."></textarea>
+  <textarea class="notes-box" id="f-notes" placeholder="Delivery notes, reorder schedule, follow-up date..."></textarea>
 </div>
 
 <!-- SIGNATURE -->
@@ -320,12 +354,21 @@
   </div>
 </div>
 
-<!-- SQUARE TIP -->
+<!-- SUBMIT -->
+<div class="submit-section no-print">
+  <button class="btn-submit" id="btn-submit" onclick="submitOrder()">Submit Order Application</button>
+  <div id="submit-msg"></div>
+</div>
+
+<hr class="no-print">
+
+<!-- HOW IT WORKS TIP -->
 <div class="section no-print">
-  <div class="section-label">💡 Square — Wholesale Invoice Flow</div>
+  <div class="section-label">💡 How This Works</div>
   <div class="tip-box">
-    <p><strong>After agreeing on the order:</strong> Open Square → Invoices → New Invoice. Enter the gym owner's email, add line items at the wholesale price, set payment terms. Send it on the spot — they pay online when ready.</p>
-    <p><strong>Invoice # tip:</strong> Use the format KIM-INV-001 and note it here. Keeps your books clean from day one.</p>
+    <p><strong>Submit Order Application</strong> does two things at once: logs the application to your database (with confirmation email to the gym), then creates and emails a <strong>Stripe invoice</strong> directly to the gym owner — with a payment link they can use online.</p>
+    <p><strong>Tax note:</strong> The state rate auto-fills when you tab out of the State field. Most wholesale-for-resale purchases are tax-exempt — if the gym has a resale certificate, set the rate to 0%.</p>
+    <p><strong>Invoice # tip:</strong> Use the format KIM-INV-001 and log it here. That number carries into the Stripe invoice footer so your records stay clean.</p>
   </div>
 </div>
 
@@ -426,6 +469,201 @@ function checkPin() {
 function clearErr() { document.getElementById('pin-error').classList.remove('show'); }
 function unlock() { const g = document.getElementById('pin-gate'); if(g){g.style.opacity='0';g.style.transition='opacity 0.3s';setTimeout(()=>g.remove(),300);} document.body.classList.remove('locked'); }
 document.addEventListener('keydown', e => { if(!document.getElementById('pin-gate')) return; if(e.key>='0'&&e.key<='9') pinPress(e.key); if(e.key==='Backspace') pinDel(); if(e.key==='Escape') pinClear(); });
+
+// ── State tax lookup ─────────────────────────────────────────────────────────
+const STATE_TAX = {
+  AL:4.00, AK:0.00, AZ:5.60, AR:6.50, CA:7.25, CO:2.90, CT:6.35, DE:0.00,
+  FL:6.00, GA:4.00, HI:4.00, ID:6.00, IL:6.25, IN:7.00, IA:6.00, KS:6.50,
+  KY:6.00, LA:4.45, ME:5.50, MD:6.00, MA:6.25, MI:6.00, MN:6.875, MS:7.00,
+  MO:4.225, MT:0.00, NE:5.50, NV:6.85, NH:0.00, NJ:6.625, NM:5.125, NY:4.00,
+  NC:4.75, ND:5.00, OH:5.75, OK:4.50, OR:0.00, PA:6.00, RI:7.00, SC:6.00,
+  SD:4.50, TN:7.00, TX:6.25, UT:4.85, VT:6.00, VA:5.30, WA:6.50, WV:6.00,
+  WI:5.00, WY:4.00, DC:6.00
+};
+document.getElementById('f-state').addEventListener('blur', function() {
+  const st = this.value.trim().toUpperCase();
+  if (Object.prototype.hasOwnProperty.call(STATE_TAX, st)) {
+    document.getElementById('tax-rate').value = STATE_TAX[st];
+    recalc();
+  }
+});
+
+// Show "other" business type field
+document.getElementById('f-businessType').addEventListener('change', function() {
+  document.getElementById('other-type-row').style.display = this.value === 'other' ? '' : 'none';
+});
+
+// ── Build structured line items ───────────────────────────────────────────────
+function buildLineItems() {
+  const items = [];
+  PRODUCTS.forEach((p, i) => {
+    const qty = parseFloat(document.getElementById(`qty-${i}`)?.value) || 0;
+    if (qty <= 0) return;
+    const row = document.querySelector(`#order-body tr:nth-child(${i + 1})`);
+    const name = p.name || row?.querySelector('td:first-child input')?.value?.trim() || 'Custom Product';
+    const flavor = row?.querySelector('td:nth-child(2) input')?.value?.trim() || '';
+    items.push({ name, flavor, qty, unitPrice: activePrice, total: qty * activePrice });
+  });
+  return items;
+}
+
+// ── Build plain-text order summary for notes field ───────────────────────────
+function buildOrderSummary() {
+  const tierEl = document.querySelector('.tier-row.active');
+  if (!tierEl) return '';
+  const tierName = tierEl.querySelector('.tier-name').childNodes[0].textContent.trim();
+  let lines = [`Tier: ${tierName} @ $${(activePrice||0).toFixed(2)}/unit`];
+  buildLineItems().forEach(l => {
+    lines.push(`  ${l.name}${l.flavor ? ' (' + l.flavor + ')' : ''} × ${l.qty} = $${(l.total).toFixed(2)}`);
+  });
+  lines.push(`Total Due: ${document.getElementById('t-total').textContent}`);
+  const payEl = document.querySelector('.pay-opt.sel');
+  const termEl = document.querySelector('.term.sel');
+  if (payEl) lines.push(`Payment: ${payEl.textContent.trim()}`);
+  if (termEl) lines.push(`Terms: ${termEl.textContent.trim()}`);
+  const inv = document.querySelector('input[placeholder="KIM-INV-001"]')?.value;
+  if (inv) lines.push(`Invoice #: ${inv}`);
+  const userNotes = document.getElementById('f-notes')?.value;
+  if (userNotes) lines.push(`Notes: ${userNotes}`);
+  return lines.join('\n');
+}
+
+// ── Submit order ──────────────────────────────────────────────────────────────
+async function submitOrder() {
+  const btn = document.getElementById('btn-submit');
+  const msg = document.getElementById('submit-msg');
+
+  // Gather values
+  const businessName      = document.getElementById('f-gymName').value.trim();
+  const contactName       = document.getElementById('f-contactName').value.trim();
+  const email             = document.getElementById('f-email').value.trim();
+  const phone             = document.getElementById('f-phone').value.trim();
+  const instagram         = document.getElementById('f-instagram').value.trim();
+  const businessType      = document.getElementById('f-businessType').value;
+  const businessTypeOther = document.getElementById('f-businessTypeOther')?.value.trim() || '';
+  const memberCount       = parseInt(document.getElementById('f-memberCount').value) || 0;
+  const city              = document.getElementById('f-city').value.trim();
+  const state             = document.getElementById('f-state').value.trim();
+  const retailSetup       = document.getElementById('f-address').value.trim();
+  const taxRate           = parseFloat(document.getElementById('tax-rate').value) || 0;
+
+  // Validate required fields
+  const missing = [];
+  if (!businessName)  missing.push('Gym Name');
+  if (!contactName)   missing.push('Owner / Buyer Name');
+  if (!email)         missing.push('Email');
+  if (!phone)         missing.push('Phone');
+  if (!businessType)  missing.push('Business Type');
+  if (!memberCount)   missing.push('Member Count');
+  if (!city)          missing.push('City');
+  if (!state)         missing.push('State');
+
+  if (missing.length) {
+    msg.className = 'error';
+    msg.textContent = `Please fill in: ${missing.join(', ')}`;
+    msg.style.display = 'block';
+    msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+
+  if (!document.querySelector('.tier-row.active')) {
+    msg.className = 'error';
+    msg.textContent = 'Please select a pricing tier before submitting.';
+    msg.style.display = 'block';
+    return;
+  }
+
+  const lineItems = buildLineItems();
+  if (!lineItems.length) {
+    msg.className = 'error';
+    msg.textContent = 'Please add at least one product with a quantity before submitting.';
+    msg.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  msg.style.display = 'none';
+
+  // ── Step 1: Log application ───────────────────────────────────────────────
+  let applicationOk = false;
+  try {
+    const applyRes = await fetch('/api/wholesale/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessName, contactName, email, phone,
+        websiteOrInstagram: instagram,
+        city, state, businessType, businessTypeOther,
+        memberCount, retailSetup,
+        interestedIn: {                                // ✅ correct nesting
+          onShelf:          document.getElementById('f-onShelf').checked,
+          coachAffiliate:   document.getElementById('f-coachAffiliate').checked,
+          eventSponsorship: document.getElementById('f-eventSponsorship').checked,
+        },
+        notes: buildOrderSummary(),
+      }),
+    });
+    const applyData = await applyRes.json().catch(() => ({}));
+    if (!applyRes.ok) throw new Error(applyData.message || `Server error (${applyRes.status})`);
+    applicationOk = true;
+  } catch (err) {
+    msg.className = 'error';
+    msg.textContent = `Submission failed: ${err.message}. Check your connection and try again.`;
+    msg.style.display = 'block';
+    msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    btn.disabled = false;
+    btn.textContent = 'Submit Order Application';
+    return;
+  }
+
+  // ── Step 2: Create & send Stripe invoice ─────────────────────────────────
+  btn.textContent = 'Creating invoice…';
+  const tierName    = document.querySelector('.tier-row.active .tier-name')?.childNodes[0]?.textContent?.trim() || '';
+  const subtotal    = lineItems.reduce((s, l) => s + l.total, 0);
+  const taxAmount   = subtotal * (taxRate / 100);
+  const grandTotal  = subtotal + taxAmount;
+  const termsSel    = document.querySelector('.term.sel')?.textContent?.trim() || 'Net 30';
+  const invNumber   = document.querySelector('input[placeholder="KIM-INV-001"]')?.value || '';
+
+  try {
+    const invRes = await fetch('/api/wholesale/invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email, contactName, businessName,
+        tier: tierName, lineItems, subtotal, taxRate, taxAmount, grandTotal,
+        paymentTerms: termsSel, invoiceNumber: invNumber, notes: buildOrderSummary(),
+      }),
+    });
+    const invData = await invRes.json().catch(() => ({}));
+
+    if (invRes.ok && invData.invoiceUrl) {
+      msg.className = 'success';
+      msg.innerHTML =
+        `✓ Order logged &amp; Stripe invoice sent to <strong>${email}</strong>.<br>` +
+        `Invoice total: <strong>$${grandTotal.toFixed(2)}</strong> · Terms: ${termsSel}<br>` +
+        `<a href="${invData.invoiceUrl}" target="_blank" style="color:var(--gold-lt);font-weight:700;">View invoice →</a>`;
+      btn.textContent = 'Submitted + Invoice Sent ✓';
+    } else {
+      // Application logged but invoice failed — don't block the user
+      msg.className = 'success';
+      msg.innerHTML =
+        `✓ Application logged for <strong>${businessName}</strong>.<br>` +
+        `<span style="color:#e07070">⚠ Stripe invoice could not be created: ${invData.message || 'unknown error'}. Create it manually in Stripe.</span>`;
+      btn.textContent = 'Application Submitted ✓';
+    }
+  } catch (err) {
+    msg.className = 'success';
+    msg.innerHTML =
+      `✓ Application logged for <strong>${businessName}</strong>.<br>` +
+      `<span style="color:#e07070">⚠ Invoice creation failed (network error). Create it manually in Stripe.</span>`;
+    btn.textContent = 'Application Submitted ✓';
+  }
+
+  msg.style.display = 'block';
+  msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 </script>
 </body>
 </html>

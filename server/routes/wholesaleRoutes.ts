@@ -5,6 +5,12 @@ import { Resend } from "resend";
 
 import { db } from "../db";
 import { wholesaleApplications } from "../../shared/schema";
+import { stripe } from "../stripe";
+import {
+  generateReorderToken,
+  validateReorderToken,
+  inferUnitPrice,
+} from "../services/wholesaleTokenService";
 
 function safeString(v: any, maxLen = 20000) {
   const s = String(v ?? "").trim();
@@ -369,6 +375,235 @@ export function registerWholesaleRoutes(app: Express) {
       return res
         .status(500)
         .json({ ok: false, message: "Failed to submit wholesale application." });
+    }
+  });
+
+  // ── Stripe Invoice ────────────────────────────────────────────────────────
+  app.post("/api/wholesale/invoice", async (req, res) => {
+    try {
+      const body: any = req.body ?? {};
+
+      const email = normalizeEmail(String(body.email ?? ""));
+      const contactName = safeString(body.contactName, 300);
+      const businessName = safeString(body.businessName, 300);
+      const tier = safeString(body.tier, 100) || "Wholesale";
+      const paymentTerms = safeString(body.paymentTerms, 64) || "Net 30";
+      const invoiceNumber = safeString(body.invoiceNumber, 100);
+      const notes = safeString(body.notes, 2000);
+
+      type LineItem = { name: string; flavor?: string; qty: number; unitPrice: number; total: number };
+      const lineItems: LineItem[] = Array.isArray(body.lineItems)
+        ? (body.lineItems as LineItem[]).filter((l) => Number(l.qty) > 0)
+        : [];
+
+      const taxRate = Math.max(0, parseFloat(String(body.taxRate ?? 0)) || 0);
+      const subtotal = lineItems.reduce((s, l) => s + Number(l.unitPrice) * Number(l.qty), 0);
+      const taxAmount = subtotal * (taxRate / 100);
+
+      if (!email || !isValidEmail(email)) {
+        return res.status(400).json({ ok: false, message: "Valid email is required." });
+      }
+      if (!lineItems.length) {
+        return res.status(400).json({ ok: false, message: "Order must have at least one line item with quantity > 0." });
+      }
+
+      // Map payment terms → Stripe days_until_due
+      const daysMap: Record<string, number> = {
+        "Due on Receipt": 0,
+        "Net 15": 15,
+        "Net 30": 30,
+        "50% Deposit": 7,
+      };
+      const daysUntilDue = daysMap[paymentTerms] ?? 30;
+
+      // Find or create Stripe customer by email
+      const existing = await stripe.customers.list({ email, limit: 1 });
+      let customer = existing.data[0];
+      if (!customer) {
+        customer = await stripe.customers.create({
+          email,
+          name: contactName || businessName,
+          metadata: { businessName, source: "kimora-wholesale" },
+        });
+      } else if (!customer.name) {
+        await stripe.customers.update(customer.id, { name: contactName || businessName });
+      }
+
+      // Build footer memo
+      const footerParts: string[] = [];
+      if (invoiceNumber) footerParts.push(`Ref: ${invoiceNumber}`);
+      if (paymentTerms === "50% Deposit") footerParts.push("50% deposit due within 7 days. Remainder due before shipment.");
+      if (notes) footerParts.push(notes.slice(0, 300));
+      footerParts.push("Pricing is confidential — not for resale display. Questions? support@kimoraco.com");
+
+      // Create draft invoice
+      const invoice = await stripe.invoices.create({
+        customer: customer.id,
+        collection_method: "send_invoice",
+        days_until_due: daysUntilDue,
+        description: `Kimora Co. Wholesale — ${tier} — ${businessName}`,
+        footer: footerParts.join(" | "),
+        metadata: {
+          businessName,
+          tier,
+          paymentTerms,
+          invoiceRef: invoiceNumber || "",
+          source: "kimora-wholesale-sheet",
+          unitPrice: String(lineItems[0]?.unitPrice ?? inferUnitPrice(tier)),
+        },
+      } as any);
+
+      // Attach line items
+      for (const item of lineItems) {
+        const qty = Math.max(1, Math.round(Number(item.qty)));
+        const unitCents = Math.round(Number(item.unitPrice) * 100);
+        const description = [
+          item.name || "Kimora Co. Product",
+          item.flavor ? `— ${item.flavor}` : "",
+          `(${tier})`,
+        ].filter(Boolean).join(" ");
+
+        await stripe.invoiceItems.create({
+          customer: customer.id,
+          invoice: invoice.id,
+          description,
+          quantity: qty,
+          unit_amount: unitCents,
+          currency: "usd",
+        });
+      }
+
+      // Add tax line item if applicable
+      if (taxAmount > 0.005) {
+        await stripe.invoiceItems.create({
+          customer: customer.id,
+          invoice: invoice.id,
+          description: `Sales Tax (${taxRate}%)`,
+          amount: Math.round(taxAmount * 100),
+          currency: "usd",
+        });
+      }
+
+      // Finalize then send
+      const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
+      const sent = await stripe.invoices.sendInvoice(finalized.id);
+
+      return res.json({
+        ok: true,
+        invoiceId: sent.id,
+        invoiceNumber: sent.number,
+        invoiceUrl: sent.hosted_invoice_url,
+        total: (sent.amount_due / 100).toFixed(2),
+      });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/wholesale/invoice error:", s);
+      return res.status(500).json({ ok: false, message: `Stripe invoice failed: ${s.message}` });
+    }
+  });
+
+  // ── Reorder: validate magic link token ───────────────────────────────────
+  app.get("/api/wholesale/reorder/validate", (req, res) => {
+    const token = String(req.query.token ?? "").trim();
+    if (!token) return res.status(400).json({ ok: false, message: "Missing token." });
+
+    const result = validateReorderToken(token);
+    if (!result.valid) {
+      return res.status(401).json({ ok: false, message: result.reason });
+    }
+    return res.json({ ok: true, ...result.payload });
+  });
+
+  // ── Reorder: submit re-order and fire Stripe invoice ─────────────────────
+  app.post("/api/wholesale/reorder", async (req, res) => {
+    try {
+      const body: any = req.body ?? {};
+      const token = String(body.token ?? "").trim();
+
+      if (!token) return res.status(400).json({ ok: false, message: "Missing token." });
+
+      const result = validateReorderToken(token);
+      if (!result.valid) {
+        return res.status(401).json({ ok: false, message: result.reason });
+      }
+
+      const { email, businessName, tier, unitPrice, stripeCustomerId } = result.payload;
+
+      type LineItem = { name: string; flavor?: string; qty: number };
+      const lineItems: LineItem[] = Array.isArray(body.lineItems)
+        ? (body.lineItems as LineItem[]).filter((l) => Number(l.qty) > 0)
+        : [];
+
+      if (!lineItems.length) {
+        return res.status(400).json({ ok: false, message: "Add at least one product with quantity > 0." });
+      }
+
+      const taxRate = Math.max(0, parseFloat(String(body.taxRate ?? 0)) || 0);
+      const subtotal = lineItems.reduce((s, l) => s + Number(l.qty) * unitPrice, 0);
+      const taxAmount = subtotal * (taxRate / 100);
+      const notes = safeString(body.notes, 2000);
+
+      const daysMap: Record<string, number> = {
+        "Due on Receipt": 0, "Net 15": 15, "Net 30": 30, "50% Deposit": 7,
+      };
+      const paymentTerms = safeString(body.paymentTerms, 64) || "Net 30";
+      const daysUntilDue = daysMap[paymentTerms] ?? 30;
+
+      // Use existing customer or re-look up by email
+      let customerId = stripeCustomerId;
+      if (!customerId) {
+        const existing = await stripe.customers.list({ email, limit: 1 });
+        customerId = existing.data[0]?.id ?? (await stripe.customers.create({ email, name: businessName, metadata: { businessName, source: "kimora-wholesale" } })).id;
+      }
+
+      const invoice = await stripe.invoices.create({
+        customer: customerId,
+        collection_method: "send_invoice",
+        days_until_due: daysUntilDue,
+        description: `Kimora Co. Wholesale Reorder — ${tier} — ${businessName}`,
+        footer: `Reorder | Pricing confidential. Questions? support@kimoraco.com`,
+        metadata: {
+          businessName, tier, paymentTerms,
+          source: "kimora-wholesale-sheet",
+          unitPrice: String(unitPrice),
+          reorder: "true",
+        },
+      } as any);
+
+      for (const item of lineItems) {
+        const qty = Math.max(1, Math.round(Number(item.qty)));
+        const desc = [item.name || "Kimora Co. Product", item.flavor ? `— ${item.flavor}` : "", `(${tier})`].filter(Boolean).join(" ");
+        await stripe.invoiceItems.create({
+          customer: customerId, invoice: invoice.id,
+          description: desc, quantity: qty,
+          unit_amount: Math.round(unitPrice * 100), currency: "usd",
+        });
+      }
+
+      if (taxAmount > 0.005) {
+        await stripe.invoiceItems.create({
+          customer: customerId, invoice: invoice.id,
+          description: `Sales Tax (${taxRate}%)`,
+          amount: Math.round(taxAmount * 100), currency: "usd",
+        });
+      }
+
+      if (notes) await stripe.invoices.update(invoice.id, { footer: notes.slice(0, 500) });
+
+      const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
+      const sent = await stripe.invoices.sendInvoice(finalized.id);
+
+      return res.json({
+        ok: true,
+        invoiceId: sent.id,
+        invoiceNumber: sent.number,
+        invoiceUrl: sent.hosted_invoice_url,
+        total: ((sent.amount_due ?? 0) / 100).toFixed(2),
+      });
+    } catch (err: any) {
+      const s = safeErrSummary(err);
+      console.error("POST /api/wholesale/reorder error:", s);
+      return res.status(500).json({ ok: false, message: `Reorder failed: ${s.message}` });
     }
   });
 }

@@ -25,6 +25,26 @@ type WholesaleRow = {
   status: "new" | "reviewing" | "approved" | "rejected" | "closed";
 };
 
+type WholesaleOrderRow = {
+  id: string;
+  createdAt?: string;
+  stripeInvoiceId?: string | null;
+  stripeInvoiceNumber?: string | null;
+  invoiceUrl?: string | null;
+  businessName: string;
+  email: string;
+  tier?: string | null;
+  amountPaid?: number | null;
+  currency?: string | null;
+  paymentTerms?: string | null;
+  invoiceRef?: string | null;
+  notes?: string | null;
+  status: string;
+  fulfilledAt?: string | null;
+  isReorder?: boolean;
+  source?: string | null;
+};
+
 type WaitlistRow = {
   id: string;
   email: string;
@@ -298,7 +318,7 @@ async function downloadPdf(
   return res.headers;
 }
 
-type TabKey = "overview" | "orders" | "inventory" | "wholesale" | "waitlist";
+type TabKey = "overview" | "orders" | "inventory" | "wholesale" | "wholesale-orders" | "waitlist";
 type InventoryFilterKey = "all" | "low" | "active" | "inactive";
 type InventorySortKey =
   | "product-asc"
@@ -408,6 +428,13 @@ export default function AdminDashboard() {
     "" | WholesaleRow["status"]
   >("");
 
+  const [wholesaleOrders, setWholesaleOrders] = useState<WholesaleOrderRow[]>([]);
+  const [wholesaleOrdersLoading, setWholesaleOrdersLoading] = useState(false);
+  const [wholesaleOrdersError, setWholesaleOrdersError] = useState<string | null>(null);
+  const [wholesaleOrdersQ, setWholesaleOrdersQ] = useState("");
+  const [wholesaleOrdersStatusFilter, setWholesaleOrdersStatusFilter] = useState("");
+  const [fulfillingOrderId, setFulfillingOrderId] = useState<string | null>(null);
+
   const [waitlist, setWaitlist] = useState<WaitlistRow[]>([]);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
   const [waitlistError, setWaitlistError] = useState<string | null>(null);
@@ -470,6 +497,8 @@ export default function AdminDashboard() {
     orderFulfillmentEditsRef.current = {};
     setWholesale([]);
     setWholesaleError(null);
+    setWholesaleOrders([]);
+    setWholesaleOrdersError(null);
     setWaitlist([]);
     setWaitlistError(null);
     closeInventory();
@@ -571,6 +600,45 @@ export default function AdminDashboard() {
       throw e;
     } finally {
       setWholesaleLoading(false);
+    }
+  }
+
+  async function loadWholesaleOrders(showToast = false) {
+    if (!savedToken) return;
+    setWholesaleOrdersLoading(true);
+    try {
+      setWholesaleOrdersError(null);
+      const data = await api<{ ok: true; rows: WholesaleOrderRow[] }>(
+        "/api/admin/wholesale-orders",
+        savedToken
+      );
+      setWholesaleOrders(data.rows || []);
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to load wholesale orders.");
+      setWholesaleOrders([]);
+      setWholesaleOrdersError(msg);
+      if (showToast) {
+        toast({ title: "Wholesale orders load failed", description: msg });
+      }
+      throw e;
+    } finally {
+      setWholesaleOrdersLoading(false);
+    }
+  }
+
+  async function fulfillWholesaleOrder(id: string) {
+    if (!savedToken) return;
+    setFulfillingOrderId(id);
+    try {
+      await api<{ ok: true }>(`/api/admin/wholesale-orders/${id}/fulfill`, savedToken, {
+        method: "PATCH",
+      });
+      toast({ title: "Order fulfilled", description: "Status updated to fulfilled." });
+      await loadWholesaleOrders();
+    } catch (e: any) {
+      toast({ title: "Fulfill failed", description: String(e?.message || "Unknown error") });
+    } finally {
+      setFulfillingOrderId(null);
     }
   }
 
@@ -1088,6 +1156,7 @@ export default function AdminDashboard() {
     loadOrders().catch(() => {});
     loadInventory().catch(() => {});
     loadWholesale().catch(() => {});
+    loadWholesaleOrders().catch(() => {});
     loadWaitlist().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedToken]);
@@ -1293,6 +1362,13 @@ export default function AdminDashboard() {
           </Button>
           <Button
             type="button"
+            variant={tab === "wholesale-orders" ? "default" : "outline"}
+            onClick={() => setTab("wholesale-orders")}
+          >
+            Wholesale Orders
+          </Button>
+          <Button
+            type="button"
             variant={tab === "waitlist" ? "default" : "outline"}
             onClick={() => setTab("waitlist")}
           >
@@ -1314,6 +1390,9 @@ export default function AdminDashboard() {
               </Button>
               <Button type="button" variant="outline" onClick={() => loadWholesale(true)}>
                 Refresh wholesale
+              </Button>
+              <Button type="button" variant="outline" onClick={() => loadWholesaleOrders(true)}>
+                Refresh wholesale orders
               </Button>
               <Button type="button" variant="outline" onClick={() => loadWaitlist(true)}>
                 Refresh waitlist
@@ -2762,12 +2841,196 @@ export default function AdminDashboard() {
                     ))}
 
                     {!filteredWholesale.length && !wholesaleLoading && !wholesaleError && (
-                      <tr>
                         <td className="p-4 text-muted-foreground" colSpan={5}>
                           No wholesale applications found.
                         </td>
                       </tr>
                     )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "wholesale-orders" && (
+          <div className="mt-6 grid gap-4">
+            <div className="rounded-lg border border-border p-4">
+              <div className="flex gap-3 flex-wrap items-end">
+                <div className="flex-1 min-w-[220px]">
+                  <input
+                    value={wholesaleOrdersQ}
+                    onChange={(e) => setWholesaleOrdersQ(e.target.value)}
+                    placeholder="Search by gym, email, invoice…"
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                  />
+                </div>
+
+                <select
+                  value={wholesaleOrdersStatusFilter}
+                  onChange={(e) => setWholesaleOrdersStatusFilter(e.target.value)}
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                >
+                  <option value="">All statuses</option>
+                  <option value="paid">paid</option>
+                  <option value="fulfilled">fulfilled</option>
+                </select>
+
+                <Button type="button" onClick={() => loadWholesaleOrders(true)} className="h-10">
+                  Refresh
+                </Button>
+              </div>
+
+              {wholesaleOrdersLoading && (
+                <div className="mt-3 text-sm text-muted-foreground">Loading…</div>
+              )}
+              {wholesaleOrdersError && (
+                <div className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                  Failed to load wholesale orders: {wholesaleOrdersError}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <div className="font-semibold">
+                  Wholesale Orders (
+                  {
+                    wholesaleOrders.filter((r) => {
+                      const q = wholesaleOrdersQ.toLowerCase();
+                      const matchesQ =
+                        \!q ||
+                        r.businessName.toLowerCase().includes(q) ||
+                        r.email.toLowerCase().includes(q) ||
+                        (r.stripeInvoiceNumber || "").toLowerCase().includes(q) ||
+                        (r.invoiceRef || "").toLowerCase().includes(q);
+                      const matchesStatus =
+                        \!wholesaleOrdersStatusFilter || r.status === wholesaleOrdersStatusFilter;
+                      return matchesQ && matchesStatus;
+                    }).length
+                  }
+                  )
+                </div>
+              </div>
+
+              <div className="overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40">
+                    <tr>
+                      <th className="p-3 text-left">Gym</th>
+                      <th className="p-3 text-left">Email</th>
+                      <th className="p-3 text-left">Tier</th>
+                      <th className="p-3 text-right">Amount</th>
+                      <th className="p-3 text-left">Invoice</th>
+                      <th className="p-3 text-left">Source</th>
+                      <th className="p-3 text-left">Status</th>
+                      <th className="p-3 text-left">Date</th>
+                      <th className="p-3 text-left">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {wholesaleOrders
+                      .filter((r) => {
+                        const q = wholesaleOrdersQ.toLowerCase();
+                        const matchesQ =
+                          \!q ||
+                          r.businessName.toLowerCase().includes(q) ||
+                          r.email.toLowerCase().includes(q) ||
+                          (r.stripeInvoiceNumber || "").toLowerCase().includes(q) ||
+                          (r.invoiceRef || "").toLowerCase().includes(q);
+                        const matchesStatus =
+                          \!wholesaleOrdersStatusFilter || r.status === wholesaleOrdersStatusFilter;
+                        return matchesQ && matchesStatus;
+                      })
+                      .map((r) => (
+                        <tr key={r.id} className="border-t border-border">
+                          <td className="p-3 font-medium">
+                            {r.businessName}
+                            {r.isReorder && (
+                              <span className="ml-1.5 rounded-full bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-300">
+                                reorder
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-muted-foreground">{r.email}</td>
+                          <td className="p-3">{r.tier || "—"}</td>
+                          <td className="p-3 text-right font-mono">
+                            {r.amountPaid \!= null
+                              ? `$${(r.amountPaid / 100).toFixed(2)}`
+                              : "—"}
+                          </td>
+                          <td className="p-3">
+                            {r.invoiceUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => openInNewTab(r.invoiceUrl\!)}
+                                className="text-blue-400 hover:underline text-xs"
+                              >
+                                {r.stripeInvoiceNumber || r.invoiceRef || "View"}
+                              </button>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">
+                                {r.stripeInvoiceNumber || r.invoiceRef || "—"}
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-xs text-muted-foreground">{r.source || "—"}</td>
+                          <td className="p-3">
+                            {r.status === "fulfilled" ? (
+                              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300">
+                                fulfilled
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-300">
+                                {r.status}
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
+                            {fmtDate(r.createdAt)}
+                          </td>
+                          <td className="p-3">
+                            {r.status \!== "fulfilled" && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={fulfillingOrderId === r.id}
+                                onClick={() => fulfillWholesaleOrder(r.id)}
+                                className="h-7 text-xs"
+                              >
+                                {fulfillingOrderId === r.id ? "Saving…" : "Mark fulfilled"}
+                              </Button>
+                            )}
+                            {r.status === "fulfilled" && r.fulfilledAt && (
+                              <span className="text-xs text-muted-foreground">
+                                {fmtDate(r.fulfilledAt)}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+
+                    {\!wholesaleOrders.filter((r) => {
+                      const q = wholesaleOrdersQ.toLowerCase();
+                      const matchesQ =
+                        \!q ||
+                        r.businessName.toLowerCase().includes(q) ||
+                        r.email.toLowerCase().includes(q) ||
+                        (r.stripeInvoiceNumber || "").toLowerCase().includes(q) ||
+                        (r.invoiceRef || "").toLowerCase().includes(q);
+                      const matchesStatus =
+                        \!wholesaleOrdersStatusFilter || r.status === wholesaleOrdersStatusFilter;
+                      return matchesQ && matchesStatus;
+                    }).length &&
+                      \!wholesaleOrdersLoading &&
+                      \!wholesaleOrdersError && (
+                        <tr>
+                          <td className="p-4 text-muted-foreground" colSpan={9}>
+                            No wholesale orders found.
+                          </td>
+                        </tr>
+                      )}
                   </tbody>
                 </table>
               </div>
@@ -2821,7 +3084,7 @@ export default function AdminDashboard() {
                       </tr>
                     ))}
 
-                    {!waitlist.length && !waitlistLoading && !waitlistError && (
+                    {\!waitlist.length && \!waitlistLoading && \!waitlistError && (
                       <tr>
                         <td className="p-4 text-muted-foreground" colSpan={3}>
                           No waitlist emails yet.

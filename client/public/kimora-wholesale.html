@@ -356,7 +356,14 @@
 
 <!-- SUBMIT -->
 <div class="submit-section no-print">
-  <button class="btn-submit" id="btn-submit" onclick="submitOrder()">Submit Order Application</button>
+  <label id="spot-label" style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(200,169,110,0.07);border:1px solid rgba(200,169,110,0.25);border-radius:4px;cursor:pointer;margin-bottom:12px;">
+  <input type="checkbox" id="f-spot" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
+  <span>
+    <strong style="color:var(--white);font-size:13px;">Fulfilling on the spot</strong>
+    <span style="display:block;font-size:11px;color:var(--dim);margin-top:1px;">Stock in hand — marking as fulfilled immediately.</span>
+  </span>
+</label>
+<button class="btn-submit" id="btn-submit" onclick="submitOrder()">Submit Order Application</button>
   <div id="submit-msg"></div>
 </div>
 
@@ -634,17 +641,20 @@ async function submitOrder() {
         email, contactName, businessName,
         tier: tierName, lineItems, subtotal, taxRate, taxAmount, grandTotal,
         paymentTerms: termsSel, invoiceNumber: invNumber, notes: buildOrderSummary(),
+        fulfilledOnSpot: document.getElementById('f-spot').checked,
       }),
     });
     const invData = await invRes.json().catch(() => ({}));
 
     if (invRes.ok && invData.invoiceUrl) {
       msg.className = 'success';
+      const onSpot = document.getElementById('f-spot').checked;
       msg.innerHTML =
         `✓ Order logged &amp; Stripe invoice sent to <strong>${email}</strong>.<br>` +
         `Invoice total: <strong>$${grandTotal.toFixed(2)}</strong> · Terms: ${termsSel}<br>` +
+        (onSpot ? `<span style="color:var(--green)">✓ Marked as fulfilled (on the spot)</span><br>` : '') +
         `<a href="${invData.invoiceUrl}" target="_blank" style="color:var(--gold-lt);font-weight:700;">View invoice →</a>`;
-      btn.textContent = 'Submitted + Invoice Sent ✓';
+      btn.textContent = onSpot ? 'Submitted + Fulfilled ✓' : 'Submitted + Invoice Sent ✓';
     } else {
       // Application logged but invoice failed — don't block the user
       msg.className = 'success';

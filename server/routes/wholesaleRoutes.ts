@@ -4,7 +4,7 @@ import { eq, desc } from "drizzle-orm";
 import { Resend } from "resend";
 
 import { db } from "../db";
-import { wholesaleApplications } from "../../shared/schema";
+import { wholesaleApplications, wholesaleOrders } from "../../shared/schema";
 import { stripe } from "../stripe";
 import {
   generateReorderToken,
@@ -149,6 +149,45 @@ export function registerWholesaleRoutes(app: Express) {
       const s = safeErrSummary(err);
       console.error("PATCH /api/admin/wholesale-applications/:id error:", s);
       return res.status(500).json({ ok: false, message: "Failed to update status." });
+    }
+  });
+
+  // ── Admin: list wholesale orders ─────────────────────────────────────────
+  app.get("/api/admin/wholesale-orders", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+    try {
+      const rows = await db
+        .select()
+        .from(wholesaleOrders)
+        .orderBy(desc(wholesaleOrders.createdAt))
+        .limit(500);
+      return res.json({ ok: true, rows });
+    } catch (err: any) {
+      console.error("GET /api/admin/wholesale-orders error:", safeErrSummary(err));
+      return res.status(500).json({ ok: false, message: "Failed to load wholesale orders." });
+    }
+  });
+
+  // ── Admin: mark order fulfilled ───────────────────────────────────────────
+  app.patch("/api/admin/wholesale-orders/:id/fulfill", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+
+      const updated = await db
+        .update(wholesaleOrders)
+        .set({ status: "fulfilled", fulfilledAt: new Date(), updatedAt: new Date() })
+        .where(eq(wholesaleOrders.id, id))
+        .returning({ id: wholesaleOrders.id });
+
+      if (!updated?.length) return res.status(404).json({ ok: false, message: "Not found." });
+      return res.json({ ok: true });
+    } catch (err: any) {
+      console.error("PATCH /api/admin/wholesale-orders/:id/fulfill error:", safeErrSummary(err));
+      return res.status(500).json({ ok: false, message: "Failed to update order." });
     }
   });
 
@@ -488,6 +527,31 @@ export function registerWholesaleRoutes(app: Express) {
       const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
       const sent = await stripe.invoices.sendInvoice(finalized.id);
 
+      // Log order to DB — on-the-spot fulfillment marks it fulfilled immediately
+      const fulfilledOnSpot = Boolean(body.fulfilledOnSpot);
+      try {
+        await db.insert(wholesaleOrders).values({
+          stripeInvoiceId:     sent.id,
+          stripeInvoiceNumber: sent.number ?? null,
+          stripeCustomerId:    customer.id,
+          invoiceUrl:          sent.hosted_invoice_url ?? null,
+          businessName,
+          email,
+          tier,
+          amountPaid:   sent.amount_due ?? null,
+          currency:     sent.currency ?? "usd",
+          paymentTerms,
+          invoiceRef:   invoiceNumber || null,
+          notes:        notes || null,
+          status:       fulfilledOnSpot ? "fulfilled" : "pending",
+          fulfilledAt:  fulfilledOnSpot ? new Date() : null,
+          isReorder:    false,
+          source:       "wholesale-sheet",
+        }).onConflictDoNothing({ target: wholesaleOrders.stripeInvoiceId });
+      } catch (dbErr: any) {
+        console.error("[wholesale/invoice] DB log failed:", safeErrSummary(dbErr));
+      }
+
       return res.json({
         ok: true,
         invoiceId: sent.id,
@@ -592,6 +656,30 @@ export function registerWholesaleRoutes(app: Express) {
 
       const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
       const sent = await stripe.invoices.sendInvoice(finalized.id);
+
+      // Log reorder to DB
+      try {
+        await db.insert(wholesaleOrders).values({
+          stripeInvoiceId:     sent.id,
+          stripeInvoiceNumber: sent.number ?? null,
+          stripeCustomerId:    customerId,
+          invoiceUrl:          sent.hosted_invoice_url ?? null,
+          businessName,
+          email,
+          tier,
+          amountPaid:   sent.amount_due ?? null,
+          currency:     sent.currency ?? "usd",
+          paymentTerms,
+          invoiceRef:   String(body.invoiceNumber || "") || null,
+          notes:        notes || null,
+          status:       "pending",
+          fulfilledAt:  null,
+          isReorder:    true,
+          source:       "reorder",
+        }).onConflictDoNothing({ target: wholesaleOrders.stripeInvoiceId });
+      } catch (dbErr: any) {
+        console.error("[wholesale/reorder] DB log failed:", safeErrSummary(dbErr));
+      }
 
       return res.json({
         ok: true,

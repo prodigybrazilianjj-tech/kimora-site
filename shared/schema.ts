@@ -330,6 +330,49 @@ export const wholesaleApplications = pgTable(
 export type WholesaleApplication = typeof wholesaleApplications.$inferSelect;
 export type InsertWholesaleApplication = typeof wholesaleApplications.$inferInsert;
 
+/** WHOLESALE ORDERS — paid invoices (both remote and on-the-spot) */
+export const wholesaleOrders = pgTable(
+  "wholesale_orders",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    stripeInvoiceId:     text("stripe_invoice_id"),
+    stripeInvoiceNumber: text("stripe_invoice_number"),
+    stripeCustomerId:    text("stripe_customer_id"),
+    invoiceUrl:          text("invoice_url"),
+
+    businessName: text("business_name").notNull(),
+    email:        varchar("email", { length: 320 }).notNull(),
+
+    tier:         text("tier"),
+    amountPaid:   integer("amount_paid"),   // cents
+    currency:     varchar("currency", { length: 8 }).default("usd"),
+    paymentTerms: text("payment_terms"),
+    invoiceRef:   text("invoice_ref"),
+    notes:        text("notes"),
+
+    // 'paid' = awaiting fulfillment, 'fulfilled' = shipped / handed over
+    status:      varchar("status", { length: 32 }).notNull().default("paid"),
+    fulfilledAt: timestamp("fulfilled_at", { withTimezone: true }),
+
+    isReorder: boolean("is_reorder").notNull().default(false),
+    // 'webhook' | 'wholesale-sheet' | 'reorder'
+    source: varchar("source", { length: 64 }).default("webhook"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    woCreatedAtIdx:     index("wholesale_orders_created_at_idx").on(t.createdAt),
+    woEmailIdx:         index("wholesale_orders_email_idx").on(t.email),
+    woStatusIdx:        index("wholesale_orders_status_idx").on(t.status),
+    woStripeInvoiceIdx: uniqueIndex("wholesale_orders_stripe_invoice_idx").on(t.stripeInvoiceId),
+  }),
+);
+
+export type WholesaleOrder = typeof wholesaleOrders.$inferSelect;
+export type InsertWholesaleOrder = typeof wholesaleOrders.$inferInsert;
+
 /** WAITLIST EMAILS */
 export const waitlistEmails = pgTable(
   "waitlist_emails",

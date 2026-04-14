@@ -5,7 +5,7 @@ import { generateReorderToken, inferUnitPrice } from "./wholesaleTokenService";
 
 import { stripe } from "../stripe";
 import { db } from "../db";
-import { orders, orderItems } from "../../shared/schema";
+import { orders, orderItems, wholesaleOrders } from "../../shared/schema";
 import { applyInventoryForOrderItem } from "./inventoryService";
 import {
   sendOrderConfirmationEmail,
@@ -390,6 +390,30 @@ export async function processStripeWebhook(rawBody: Buffer, signature: string) {
         }
       } catch (e: any) {
         console.error("[webhook] invoice.paid email failed:", safeErrSummary(e));
+      }
+
+      // Log to wholesaleOrders table (on-conflict-do-nothing so on-the-spot orders aren't overwritten)
+      try {
+        await db.insert(wholesaleOrders).values({
+          stripeInvoiceId:     invoice.id,
+          stripeInvoiceNumber: invoice.number ?? null,
+          stripeCustomerId:    String(invoice.customer ?? "") || null,
+          invoiceUrl:          invoice.hosted_invoice_url ?? null,
+          businessName,
+          email:               customerEmail || "",
+          tier,
+          amountPaid:          invoice.amount_paid ?? null,
+          currency:            invoice.currency ?? "usd",
+          paymentTerms:        invoice.metadata?.paymentTerms ?? null,
+          invoiceRef:          invoice.metadata?.invoiceRef ?? null,
+          notes:               null,
+          status:              "paid",
+          fulfilledAt:         null,
+          isReorder:           invoice.metadata?.reorder === "true",
+          source:              "webhook",
+        }).onConflictDoNothing({ target: wholesaleOrders.stripeInvoiceId });
+      } catch (dbErr: any) {
+        console.error("[webhook] wholesaleOrders insert failed:", safeErrSummary(dbErr));
       }
 
       return { received: true as const, eventId: event.id, eventType: event.type, handled: "invoice.paid" as const };

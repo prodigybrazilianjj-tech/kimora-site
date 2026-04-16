@@ -146,7 +146,7 @@ export default function ComingSoon() {
                   Electrolytes Included
                 </span>
                 <span className="rounded-full border border-border bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80">
-                  Monk Fruit Sweetened
+                  Naturally Sweetened
                 </span>
                 <span className="rounded-full border border-border bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80">
                   Nothing Artificial

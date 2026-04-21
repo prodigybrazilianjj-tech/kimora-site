@@ -166,7 +166,7 @@ export default function ComingSoon() {
                     </div>
 
                     <p className="max-w-[240px] text-sm leading-6 text-muted-foreground sm:text-right">
-                      Sign up before we launch and get 50% off your first subscription order.
+                      Sign up before we launch and get 50% off your first order.
                     </p>
                   </div>
 
@@ -233,11 +233,11 @@ export default function ComingSoon() {
 
                   {submitted ? (
                     <p className="text-sm font-medium text-emerald-400">
-                      You're on the list. Your code is <span className="font-bold">MAT50</span> — 50% off your first subscription at launch.
+                      You're on the list. Your code is <span className="font-bold">MAT50</span> — 50% off your first order at launch.
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Subscription orders only · One use per customer · No spam
+                      First order only · One use per customer · No spam
                     </p>
                   )}
                 </div>

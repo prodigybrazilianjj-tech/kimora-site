@@ -2900,13 +2900,13 @@ export default function AdminDashboard() {
                     wholesaleOrders.filter((r) => {
                       const q = wholesaleOrdersQ.toLowerCase();
                       const matchesQ =
-                        \!q ||
+                        !q ||
                         r.businessName.toLowerCase().includes(q) ||
                         r.email.toLowerCase().includes(q) ||
                         (r.stripeInvoiceNumber || "").toLowerCase().includes(q) ||
                         (r.invoiceRef || "").toLowerCase().includes(q);
                       const matchesStatus =
-                        \!wholesaleOrdersStatusFilter || r.status === wholesaleOrdersStatusFilter;
+                        !wholesaleOrdersStatusFilter || r.status === wholesaleOrdersStatusFilter;
                       return matchesQ && matchesStatus;
                     }).length
                   }
@@ -2934,13 +2934,13 @@ export default function AdminDashboard() {
                       .filter((r) => {
                         const q = wholesaleOrdersQ.toLowerCase();
                         const matchesQ =
-                          \!q ||
+                          !q ||
                           r.businessName.toLowerCase().includes(q) ||
                           r.email.toLowerCase().includes(q) ||
                           (r.stripeInvoiceNumber || "").toLowerCase().includes(q) ||
                           (r.invoiceRef || "").toLowerCase().includes(q);
                         const matchesStatus =
-                          \!wholesaleOrdersStatusFilter || r.status === wholesaleOrdersStatusFilter;
+                          !wholesaleOrdersStatusFilter || r.status === wholesaleOrdersStatusFilter;
                         return matchesQ && matchesStatus;
                       })
                       .map((r) => (
@@ -2956,7 +2956,7 @@ export default function AdminDashboard() {
                           <td className="p-3 text-muted-foreground">{r.email}</td>
                           <td className="p-3">{r.tier || "—"}</td>
                           <td className="p-3 text-right font-mono">
-                            {r.amountPaid \!= null
+                            {r.amountPaid != null
                               ? `$${(r.amountPaid / 100).toFixed(2)}`
                               : "—"}
                           </td>
@@ -2964,7 +2964,7 @@ export default function AdminDashboard() {
                             {r.invoiceUrl ? (
                               <button
                                 type="button"
-                                onClick={() => openInNewTab(r.invoiceUrl\!)}
+                                onClick={() => openInNewTab(r.invoiceUrl!)}
                                 className="text-blue-400 hover:underline text-xs"
                               >
                                 {r.stripeInvoiceNumber || r.invoiceRef || "View"}
@@ -2991,7 +2991,7 @@ export default function AdminDashboard() {
                             {fmtDate(r.createdAt)}
                           </td>
                           <td className="p-3">
-                            {r.status \!== "fulfilled" && (
+                            {r.status !== "fulfilled" && (
                               <Button
                                 type="button"
                                 size="sm"
@@ -3012,20 +3012,20 @@ export default function AdminDashboard() {
                         </tr>
                       ))}
 
-                    {\!wholesaleOrders.filter((r) => {
+                    {!wholesaleOrders.filter((r) => {
                       const q = wholesaleOrdersQ.toLowerCase();
                       const matchesQ =
-                        \!q ||
+                        !q ||
                         r.businessName.toLowerCase().includes(q) ||
                         r.email.toLowerCase().includes(q) ||
                         (r.stripeInvoiceNumber || "").toLowerCase().includes(q) ||
                         (r.invoiceRef || "").toLowerCase().includes(q);
                       const matchesStatus =
-                        \!wholesaleOrdersStatusFilter || r.status === wholesaleOrdersStatusFilter;
+                        !wholesaleOrdersStatusFilter || r.status === wholesaleOrdersStatusFilter;
                       return matchesQ && matchesStatus;
                     }).length &&
-                      \!wholesaleOrdersLoading &&
-                      \!wholesaleOrdersError && (
+                      !wholesaleOrdersLoading &&
+                      !wholesaleOrdersError && (
                         <tr>
                           <td className="p-4 text-muted-foreground" colSpan={9}>
                             No wholesale orders found.
@@ -3085,7 +3085,7 @@ export default function AdminDashboard() {
                       </tr>
                     ))}
 
-                    {\!waitlist.length && \!waitlistLoading && \!waitlistError && (
+                    {!waitlist.length && !waitlistLoading && !waitlistError && (
                       <tr>
                         <td className="p-4 text-muted-foreground" colSpan={3}>
                           No waitlist emails yet.

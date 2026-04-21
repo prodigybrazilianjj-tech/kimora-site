@@ -1,6 +1,6 @@
 // client/src/App.tsx
 import { useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -52,13 +52,13 @@ function Router() {
         <Route path="/coming-soon" component={ComingSoon} />
         <Route path="/faq" component={FAQ} />
 
-        {/* Testing mode: temporarily unlock consumer purchase routes */}
-        <Route path="/shop" component={Shop} />
-        <Route path="/product" component={Product} />
-        <Route path="/cart" component={Cart} />
-        <Route path="/checkout" component={Checkout} />
-        <Route path="/order-success" component={OrderSuccess} />
-        <Route path="/manage-subscription" component={ManageSubscription} />
+        {/* Pre-launch: consumer purchase routes redirect to coming soon */}
+        <Route path="/shop">{() => <Redirect to="/" />}</Route>
+        <Route path="/product">{() => <Redirect to="/" />}</Route>
+        <Route path="/cart">{() => <Redirect to="/" />}</Route>
+        <Route path="/checkout">{() => <Redirect to="/" />}</Route>
+        <Route path="/order-success">{() => <Redirect to="/" />}</Route>
+        <Route path="/manage-subscription">{() => <Redirect to="/" />}</Route>
 
         {/* Admin */}
         <Route path="/admin" component={AdminDashboard} />

@@ -2841,6 +2841,7 @@ export default function AdminDashboard() {
                     ))}
 
                     {!filteredWholesale.length && !wholesaleLoading && !wholesaleError && (
+                      <tr>
                         <td className="p-4 text-muted-foreground" colSpan={5}>
                           No wholesale applications found.
                         </td>

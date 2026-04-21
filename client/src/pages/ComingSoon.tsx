@@ -166,7 +166,7 @@ export default function ComingSoon() {
                     </div>
 
                     <p className="max-w-[240px] text-sm leading-6 text-muted-foreground sm:text-right">
-                      Join the waitlist. Use code <span className="text-white font-semibold">MAT50</span> at checkout for 50% off your first subscription order.
+                      Sign up before we launch and get 50% off your first subscription order.
                     </p>
                   </div>
 

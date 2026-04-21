@@ -158,16 +158,15 @@ export default function ComingSoon() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                        First drop
+                        Pre-Launch Exclusive
                       </p>
                       <h2 className="mt-2 text-3xl font-display font-bold tracking-tight text-white">
-                        Get early access
+                        Get 50% off at launch.
                       </h2>
                     </div>
 
                     <p className="max-w-[240px] text-sm leading-6 text-muted-foreground sm:text-right">
-                      Join the list before launch and hear about the first batch
-                      first.
+                      Join the waitlist. Use code <span className="text-white font-semibold">MAT50</span> at checkout for 50% off your first subscription order.
                     </p>
                   </div>
 
@@ -228,17 +227,17 @@ export default function ComingSoon() {
                       disabled={submitting}
                       className="h-14 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(0,191,165,0.25)] transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
                     >
-                      {submitting ? "Submitting..." : "Get First Access"}
+                      {submitting ? "Submitting..." : "Claim 50% Off"}
                     </button>
                   </form>
 
                   {submitted ? (
                     <p className="text-sm font-medium text-emerald-400">
-                      You're on the list. We'll let you know first.
+                      You're on the list. Your code is <span className="font-bold">MAT50</span> — 50% off your first subscription at launch.
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Limited first batch. No spam. Unsubscribe anytime.
+                      Subscription orders only · One use per customer · No spam
                     </p>
                   )}
                 </div>

@@ -336,8 +336,8 @@ export default function ComingSoon() {
               </div>
 
               {/* Right: floating product image */}
-              <div className="relative bg-black lg:-mr-20 xl:-mr-40">
-                <div className="relative flex min-h-[520px] items-center justify-center lg:min-h-[860px]">
+              <div className="relative bg-black lg:-mr-10 xl:-mr-16">
+                <div className="relative flex min-h-[520px] items-center justify-center lg:min-h-[780px]">
                   {/* Pulsing ambient orbs */}
                   <motion.div
                     animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.14, 1] }}
@@ -356,7 +356,7 @@ export default function ComingSoon() {
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 1.0, ease: EASE, delay: 0.3 }}
-                    className="relative z-10 w-full"
+                    className="relative z-10 w-full max-w-[1120px] xl:max-w-[1240px]"
                   >
                     <motion.div
                       animate={{ y: [0, -14, 0] }}
@@ -367,6 +367,12 @@ export default function ComingSoon() {
                         alt="Kimora creatine and electrolytes product lineup"
                         className="h-auto w-full object-contain brightness-[1.03] contrast-[1.04] saturate-[1.02] drop-shadow-[0_42px_90px_rgba(0,0,0,0.55)]"
                       />
+
+                      {/* Edge fades */}
+                      <div className="pointer-events-none absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-black to-transparent z-20" />
+                      <div className="pointer-events-none absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-black to-transparent z-20" />
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-black to-transparent z-20" />
+                      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black to-transparent z-20" />
                     </motion.div>
                   </motion.div>
                 </div>
@@ -477,4 +483,3 @@ export default function ComingSoon() {
     </>
   );
 }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 

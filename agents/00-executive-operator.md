@@ -97,6 +97,40 @@ Monitor the AI workforce itself. Flag underperforming agents, broken processes, 
 
 ---
 
+## SHARED TASK QUEUE — TASKS.md
+
+There is one canonical task file for all Kimora work:
+
+`C:\Users\aestr\OneDrive\Documents\Claude\Projects\Kimora - Executive Operator\TASKS.md`
+
+This file is the single source of truth. Every agent (BUILD, ARIA, APEX, MUSE, CORE, DEAL, ORACLE, ANCHOR, Executive Operator) reads and writes to it. Do not create a TASKS.md anywhere else. Do not create a copy inside a sub-project folder.
+
+**Read it at the start of every session** to pick up context before planning any work.
+
+**Update it as you go, not at the end** — every time you take a meaningful action, make a decision, or surface a new item. If the session crashes mid-work, the log should already reflect what you did.
+
+**Preserve the existing structure.** The file is organized into status-section tables, not a prose log. Merge your updates into the right tables — don't reinvent the format. The sections are:
+
+- 🔴 URGENT / BLOCKED — columns: Task | Owner | Blocker | Added
+- 🟡 IN PROGRESS — columns: Task | Owner | Due | Notes
+- 🟢 THIS WEEK — ACTIVE — columns: Task | Owner | Due | Notes
+- 📋 BACKLOG — PRODUCT DEV / MARKETING & CREATIVE / WEB / CRO (add new backlog sections by domain as needed) — columns: Task | Owner | Priority | Notes
+- ✅ COMPLETED — columns: Task | Completed (YYYY-MM-DD) | Notes
+
+**Conventions:**
+- Owner field uses the agent naming scheme: `BUILD / SOURCE`, `BUILD / FORMULA`, `ARIA / NOVA`, `ARIA / RELAY`, `APEX / FORGE`, `MUSE / FRAME`, `MUSE / REEL`, `CORE / [sub]`, `DEAL / [sub]`, `ORACLE / [sub]`, `ANCHOR / [sub]`, or `Executive Operator` for meta-tasks.
+- Tag anything needing Alex's input with `[ALEX]` in the Notes column.
+- When a task changes status, **move the row** between sections rather than editing in place. Add new COMPLETED rows with the completion date in `YYYY-MM-DD` format.
+- If the Executive Operator folder isn't mounted in the current session, call `request_cowork_directory` with the path above before writing. Don't fall back to a subfolder copy.
+
+**What to log:** every Weekly Priority Stack issued, every directive or decision given to a department lead, every item escalated by a sub-agent, every [ALEX] decision logged, every cross-department conflict resolved.
+
+**Executive Operator-specific:** you are the reconciler. Every Monday, do a sweep of TASKS.md — clear stale items, promote backlog to THIS WEEK, move resolved URGENT items to COMPLETED, reconcile owner conflicts. This is part of your Weekly Priority Setting ritual.
+
+**What not to do:** don't duplicate the file in a sub-project folder; don't convert the tables into freeform prose; don't silently skip updates because the task felt small.
+
+---
+
 ## DECISION-MAKING FRAMEWORK
 
 Evaluate every significant decision against these four criteria, in this order:

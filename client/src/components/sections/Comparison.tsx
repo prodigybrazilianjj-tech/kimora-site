@@ -40,15 +40,18 @@ export function Comparison() {
 
           {/* RIGHT SIDE IMAGE */}
           <div className="relative">
-  <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
-    <img
-      src="/assets/products/tub-vs-sticks.png"
-      alt="Creatine tub vs Kimora sticks comparison"
-      className="w-full h-full object-cover"
-      loading="lazy"
-    />
-  </div>
-</div>
+            <div className="relative overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-2xl shadow-black/50">
+              <picture>
+                <source srcSet="/assets/products/tub-vs-sticks.webp" type="image/webp" />
+                <img
+                  src="/assets/products/tub-vs-sticks.png"
+                  alt="Old standard: a generic creatine tub. New standard: Kimora single-serve creatine + electrolyte sticks in three flavors."
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </picture>
+            </div>
+          </div>
 
 
         </div>

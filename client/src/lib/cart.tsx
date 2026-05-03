@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { track } from "@/lib/analytics";
 
 export type CartItem = {
   id: string; // `${flavor}-${type}`
@@ -96,6 +97,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       return [...prev, normalized];
     });
+
+    // Fire add_to_cart / AddToCart for the just-added item only (not the
+    // full cart). value = price * qty of this addition.
+    try {
+      track("add_to_cart", {
+        items: [
+          {
+            sku: normalized.id,
+            flavor: normalized.flavor,
+            price: normalized.price,
+            quantity: normalized.quantity,
+          },
+        ],
+        currency: "USD",
+        purchaseType: normalized.type,
+      });
+    } catch {
+      // Analytics failures must never block the cart UX.
+    }
 
     toast({
       title: "Added to cart",

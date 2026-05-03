@@ -104,6 +104,23 @@ function getRequestMetadata(req: Request) {
   };
 }
 
+/**
+ * Sanitize the analytics courier bundle that travels through Stripe metadata
+ * so the webhook can dedup client/server events and clear TikTok EMQ.
+ *
+ * Stripe metadata caps at 500 chars per value; we cap conservatively.
+ */
+function sanitizeAnalyticsCourier(raw: any) {
+  const obj = raw && typeof raw === "object" ? raw : {};
+  return {
+    event_id: safeString(obj.event_id, 100),
+    ga4_client_id: safeString(obj.ga4_client_id, 100),
+    ttclid: safeString(obj.ttclid, 200),
+    ttp: safeString(obj.ttp, 200),
+    user_agent: safeString(obj.user_agent, 480),
+  };
+}
+
 async function findStripeCustomerIdByEmail(email: string): Promise<string | null> {
   const normalized = normalizeEmail(email);
   if (!normalized || !isValidEmail(normalized)) return null;
@@ -431,6 +448,27 @@ export function registerCheckoutRoutes(app: Express) {
 
       const existingCustomerId = await findStripeCustomerIdByEmail(email);
 
+      // Analytics courier — travels through Stripe metadata so the webhook
+      // can fire server-side Purchase deduped against the client-side
+      // begin_checkout/InitiateCheckout. See server/services/analyticsService.ts.
+      const analyticsCourier = sanitizeAnalyticsCourier(req.body?.analytics);
+      // Capture server-observed IP/UA as a safety net — TikTok Events API
+      // matching uses these even if the client didn't supply UA.
+      const serverObserved = getRequestMetadata(req);
+      const courierMetadata: Record<string, string> = {
+        kimora_event_id: analyticsCourier.event_id,
+        kimora_ga4_client_id: analyticsCourier.ga4_client_id,
+        kimora_ttclid: analyticsCourier.ttclid,
+        kimora_ttp: analyticsCourier.ttp,
+        kimora_user_agent:
+          analyticsCourier.user_agent || (serverObserved.userAgent ?? ""),
+        kimora_client_ip: serverObserved.ip ?? "",
+      };
+      // Strip empty values so we don't waste Stripe's 50-key budget.
+      for (const k of Object.keys(courierMetadata)) {
+        if (!courierMetadata[k]) delete courierMetadata[k];
+      }
+
       const sessionParams: any = {
         mode,
         line_items,
@@ -440,10 +478,22 @@ export function registerCheckoutRoutes(app: Express) {
         shipping_address_collection: { allowed_countries: ["US"] },
         phone_number_collection: { enabled: true },
         automatic_tax: { enabled: true },
+        metadata: courierMetadata,
       };
+
+      if (analyticsCourier.event_id) {
+        // Surface in Stripe dashboard + an extra place for the webhook to read.
+        sessionParams.client_reference_id = analyticsCourier.event_id;
+      }
 
       if (mode === "payment") {
         sessionParams.shipping_options = shipping_options;
+      } else {
+        // Mirror to the resulting subscription so the FIRST invoice.paid
+        // (which fires for the initial subscription charge) can read it.
+        sessionParams.subscription_data = {
+          metadata: courierMetadata,
+        };
       }
 
       if (existingCustomerId) {

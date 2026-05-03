@@ -42,6 +42,17 @@ function ScrollToTop() {
   return null;
 }
 
+/**
+ * Pre-launch redirect block. Default ON. Set VITE_PRELAUNCH_REDIRECTS=false
+ * on the staging deploy to expose the consumer purchase routes for pixel QA.
+ *
+ * Treat anything other than the literal string "false" as "redirects on" so
+ * a missing env var keeps prod safe.
+ */
+const PRELAUNCH_REDIRECTS_ENABLED =
+  String((import.meta as any).env?.VITE_PRELAUNCH_REDIRECTS ?? "true").toLowerCase() !==
+  "false";
+
 function Router() {
   return (
     <>
@@ -52,13 +63,27 @@ function Router() {
         <Route path="/coming-soon" component={ComingSoon} />
         <Route path="/faq" component={FAQ} />
 
-        {/* Pre-launch: consumer purchase routes redirect to coming soon */}
-        <Route path="/shop">{() => <Redirect to="/" />}</Route>
-        <Route path="/product">{() => <Redirect to="/" />}</Route>
-        <Route path="/cart">{() => <Redirect to="/" />}</Route>
-        <Route path="/checkout">{() => <Redirect to="/" />}</Route>
-        <Route path="/order-success">{() => <Redirect to="/" />}</Route>
-        <Route path="/manage-subscription">{() => <Redirect to="/" />}</Route>
+        {/* Pre-launch: consumer purchase routes redirect to coming soon
+            unless VITE_PRELAUNCH_REDIRECTS=false (staging branch for QA). */}
+        {PRELAUNCH_REDIRECTS_ENABLED ? (
+          <>
+            <Route path="/shop">{() => <Redirect to="/" />}</Route>
+            <Route path="/product">{() => <Redirect to="/" />}</Route>
+            <Route path="/cart">{() => <Redirect to="/" />}</Route>
+            <Route path="/checkout">{() => <Redirect to="/" />}</Route>
+            <Route path="/order-success">{() => <Redirect to="/" />}</Route>
+            <Route path="/manage-subscription">{() => <Redirect to="/" />}</Route>
+          </>
+        ) : (
+          <>
+            <Route path="/shop" component={Shop} />
+            <Route path="/product" component={Product} />
+            <Route path="/cart" component={Cart} />
+            <Route path="/checkout" component={Checkout} />
+            <Route path="/order-success" component={OrderSuccess} />
+            <Route path="/manage-subscription" component={ManageSubscription} />
+          </>
+        )}
 
         {/* Admin */}
         <Route path="/admin" component={AdminDashboard} />

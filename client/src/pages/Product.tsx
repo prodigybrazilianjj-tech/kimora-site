@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { track } from "@/lib/analytics";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,23 @@ export default function Product() {
   // Pricing
   const priceOneTime = 49.99;
   const pricePerShipmentSub = 44.99;
+
+  // Fire view_item / ViewContent on mount and when the flavor changes.
+  // Uses the one-time price as the canonical "list price" since the user
+  // hasn't picked subscribe vs one-time yet at the moment of view.
+  useEffect(() => {
+    track("view_item", {
+      items: [
+        {
+          sku: flavor,
+          flavor: product.name,
+          price: priceOneTime,
+          quantity: 1,
+        },
+      ],
+      currency: "USD",
+    });
+  }, [flavor, product.name]);
 
   // What the customer pays per order/renewal (NOT "monthly")
   const currentUnitPrice =
@@ -174,8 +192,8 @@ export default function Product() {
                 {[
                   "5g Creatine Monohydrate",
                   "Balanced Electrolytes",
-                  "Zero Sugar / Zero Stevia",
-                  "Natural Monk Fruit Sweetener",
+                  "Zero Sugar",
+                  "Naturally Sweetened",
                   "Micronized for Solubility",
                   "Manufactured to GMP Standards",
                 ].map((item) => (

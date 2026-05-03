@@ -29,6 +29,68 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!--
+      Pixel base tags. Two-platform install (GA4 + TikTok). Meta drops in
+      via the same hook layer in client/src/lib/analytics.ts when the Meta
+      Business Portfolio unblocks.
+
+      Both blocks no-op silently if the corresponding VITE_* env var is
+      missing at build time, so dev builds stay quiet.
+    -->
+
+    <!-- GA4 (gtag.js) -->
+    <script>
+      (function () {
+        var id = "%VITE_GA4_MEASUREMENT_ID%";
+        // If Vite didn't substitute the env var at build time, the literal
+        // placeholder remains. Bail in that case so the page stays clean.
+        if (!id || id.charAt(0) === "%") return;
+        var s = document.createElement("script");
+        s.async = true;
+        s.src = "https://www.googletagmanager.com/gtag/js?id=" + id;
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { window.dataLayer.push(arguments); };
+        window.gtag("js", new Date());
+        window.gtag("config", id, { send_page_view: true });
+      })();
+    </script>
+
+    <!-- TikTok Pixel -->
+    <script>
+      (function () {
+        var id = "%VITE_TIKTOK_PIXEL_ID%";
+        if (!id || id.charAt(0) === "%") return;
+        !function (w, d, t) {
+          w.TiktokAnalyticsObject = t;
+          var ttq = w[t] = w[t] || [];
+          ttq.methods = ["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"];
+          ttq.setAndDefer = function (t, e) { t[e] = function () { t.push([e].concat(Array.prototype.slice.call(arguments, 0))); }; };
+          for (var i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]);
+          ttq.instance = function (t) { for (var e = ttq._i[t] || [], n = 0; n < ttq.methods.length; n++) ttq.setAndDefer(e, ttq.methods[n]); return e; };
+          ttq.load = function (e, n) {
+            var r = "https://analytics.tiktok.com/i18n/pixel/events.js";
+            var o = n && n.partner;
+            ttq._i = ttq._i || {};
+            ttq._i[e] = [];
+            ttq._i[e]._u = r;
+            ttq._t = ttq._t || {};
+            ttq._t[e] = +new Date();
+            ttq._o = ttq._o || {};
+            ttq._o[e] = n || {};
+            var script = document.createElement("script");
+            script.type = "text/javascript";
+            script.async = true;
+            script.src = r + "?sdkid=" + e + "&lib=" + t;
+            var firstScript = document.getElementsByTagName("script")[0];
+            firstScript.parentNode.insertBefore(script, firstScript);
+          };
+          ttq.load(id);
+          ttq.page();
+        }(window, document, "ttq");
+      })();
+    </script>
   </head>
 
   <body>

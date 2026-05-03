@@ -11,6 +11,43 @@ import {
   sendOrderConfirmationEmail,
   getStripeCustomerIdFromCheckoutSession,
 } from "./emailService";
+import { trackPurchase, type PurchaseItem } from "./analyticsService";
+
+/**
+ * Pull our analytics courier fields out of a Stripe metadata bag.
+ * Returns null-ish strings when missing so the analytics service can decide
+ * whether to fall back to synthetic identifiers.
+ */
+function readAnalyticsCourier(meta: Record<string, string> | null | undefined) {
+  const m = meta || {};
+  return {
+    eventId: String(m.kimora_event_id || "").trim() || "",
+    ga4ClientId: String(m.kimora_ga4_client_id || "").trim() || null,
+    ttclid: String(m.kimora_ttclid || "").trim() || null,
+    ttp: String(m.kimora_ttp || "").trim() || null,
+    userAgent: String(m.kimora_user_agent || "").trim() || null,
+    clientIp: String(m.kimora_client_ip || "").trim() || null,
+  };
+}
+
+function lineItemsToPurchaseItems(lineItems: any[]): PurchaseItem[] {
+  return (lineItems || []).map((li: any) => {
+    const flavor =
+      li?.description ||
+      li?.price?.product?.name ||
+      li?.price?.nickname ||
+      li?.price?.id ||
+      "item";
+    const unitAmount = Number(li?.price?.unit_amount ?? 0);
+    const qty = Math.max(1, Math.floor(Number(li?.quantity ?? 1)));
+    return {
+      sku: String(li?.price?.id || flavor),
+      flavor: String(flavor),
+      price: Number((unitAmount / 100).toFixed(2)),
+      quantity: qty,
+    };
+  });
+}
 
 function slugToEnvKey(slug: string) {
   return slug.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
@@ -236,6 +273,41 @@ async function handleCheckoutSessionCompleted(session: any) {
     });
   }
 
+  // Server-side Purchase fan-out (GA4 MP + TikTok Events API). Only fire on
+  // a NEW order so retries / duplicate webhook deliveries don't double-count.
+  if (wasNewInsert) {
+    try {
+      const courier = readAnalyticsCourier(session.metadata);
+      const customerEmail =
+        session.customer_details?.email ?? session.customer_email ?? null;
+      const amountTotal = Number(session.amount_total ?? 0);
+      const currency = String(session.currency || "usd").toUpperCase();
+
+      await trackPurchase({
+        eventId: courier.eventId || `cs_${session.id}`,
+        ga4ClientId: courier.ga4ClientId,
+        ttclid: courier.ttclid,
+        ttp: courier.ttp,
+        userAgent: courier.userAgent,
+        clientIp: courier.clientIp,
+        email: customerEmail,
+        phone: session.customer_details?.phone ?? null,
+        amount: amountTotal / 100,
+        currency,
+        orderId: orderId ?? null,
+        source: "checkout.session.completed",
+        items: lineItemsToPurchaseItems(lineItems.data),
+      });
+    } catch (analyticsErr: any) {
+      // Already logged inside the service; never let analytics break the
+      // webhook response (Stripe will retry the whole event otherwise).
+      console.error(
+        "[webhook] Purchase fan-out unexpected error:",
+        safeErrSummary(analyticsErr),
+      );
+    }
+  }
+
   return {
     ok: true as const,
     orderId: orderId ?? null,
@@ -271,10 +343,99 @@ export async function processStripeWebhook(rawBody: Buffer, signature: string) {
     case "invoice.paid": {
       const invoice = event.data.object as any;
 
-      // Only handle wholesale invoices created by the order sheet
-      if (invoice.metadata?.source !== "kimora-wholesale-sheet") {
-        return { received: true as const, eventId: event.id, eventType: event.type, ignored: true as const };
+      // ── Server-side Purchase fan-out for wholesale + sub renewals ──────
+      //
+      // Skip subscription_create — that path also fires checkout.session.completed
+      // for the same revenue, and we already track Purchase there with the
+      // proper analytics courier metadata. Tracking here too would double-count.
+      const billingReason = String(invoice.billing_reason || "");
+      const isSubscriptionCreate = billingReason === "subscription_create";
+      const isWholesale = invoice.metadata?.source === "kimora-wholesale-sheet";
+
+      if (!isSubscriptionCreate) {
+        try {
+          // For renewals, try to pull the analytics courier off the subscription
+          // (we attached it as subscription_data.metadata at checkout). It may
+          // be empty for old subs created before this code shipped — that's fine.
+          let courierMetadata: Record<string, string> | null = null;
+          if (invoice.subscription && typeof invoice.subscription === "string") {
+            try {
+              const sub: any = await stripe.subscriptions.retrieve(invoice.subscription);
+              courierMetadata = (sub?.metadata as Record<string, string>) || null;
+            } catch (subErr) {
+              console.warn(
+                "[webhook] subscription metadata fetch failed:",
+                safeErrSummary(subErr),
+              );
+            }
+          }
+
+          const courier = readAnalyticsCourier(courierMetadata);
+          const customerEmail = invoice.customer_email || null;
+          const amountPaidCents = Number(invoice.amount_paid ?? 0);
+          const currency = String(invoice.currency || "usd").toUpperCase();
+
+          // Build items from the invoice line items (description + amount).
+          const invoiceItems: PurchaseItem[] = Array.isArray(invoice.lines?.data)
+            ? invoice.lines.data.map((ln: any) => {
+                const qty = Math.max(1, Math.floor(Number(ln?.quantity ?? 1)));
+                const unit =
+                  Number(ln?.price?.unit_amount ?? ln?.amount ?? 0) / 100;
+                return {
+                  sku: String(ln?.price?.id || ln?.id || "invoice-item"),
+                  flavor: String(
+                    ln?.description ||
+                      ln?.price?.product?.name ||
+                      ln?.price?.nickname ||
+                      "Invoice item",
+                  ),
+                  price: Number(unit.toFixed(2)),
+                  quantity: qty,
+                };
+              })
+            : [];
+
+          await trackPurchase({
+            // Stable id derived from invoice id so Stripe retries dedup.
+            eventId: courier.eventId || `inv_${invoice.id}`,
+            ga4ClientId: courier.ga4ClientId,
+            ttclid: courier.ttclid,
+            ttp: courier.ttp,
+            userAgent: courier.userAgent,
+            clientIp: courier.clientIp,
+            email: customerEmail,
+            amount: amountPaidCents / 100,
+            currency,
+            orderId: invoice.id,
+            source: "invoice.paid",
+            items: invoiceItems,
+          });
+        } catch (analyticsErr: any) {
+          console.error(
+            "[webhook] invoice.paid Purchase fan-out unexpected error:",
+            safeErrSummary(analyticsErr),
+          );
+        }
       }
+
+      // Only handle wholesale invoices created by the order sheet for the
+      // existing email + DB persistence flow below.
+      if (!isWholesale) {
+        return {
+          received: true as const,
+          eventId: event.id,
+          eventType: event.type,
+          ignored: true as const,
+          analyticsTracked: !isSubscriptionCreate,
+        };
+      }
+
+      // Hoisted so the wholesaleOrders insert below can reference these even
+      // when resendKey/fromEmail are unset (and the email block is skipped).
+      const businessName  = invoice.metadata?.businessName || "Unknown Gym";
+      const tier          = invoice.metadata?.tier || "";
+      const invoiceRef    = invoice.metadata?.invoiceRef || "";
+      const customerEmail = invoice.customer_email || "";
 
       try {
         const resendKey = process.env.RESEND_API_KEY;
@@ -285,10 +446,6 @@ export async function processStripeWebhook(rawBody: Buffer, signature: string) {
           const resend   = new Resend(resendKey);
           const from     = fromEmail.includes("<") ? fromEmail : `Kimora Co <${fromEmail}>`;
 
-          const businessName  = invoice.metadata?.businessName || "Unknown Gym";
-          const tier          = invoice.metadata?.tier || "";
-          const invoiceRef    = invoice.metadata?.invoiceRef || "";
-          const customerEmail = invoice.customer_email || "";
           const invoiceNumber = invoice.number || "";
           const amountPaid    = ((invoice.amount_paid ?? 0) / 100).toFixed(2);
           const invoiceUrl    = invoice.hosted_invoice_url || "";

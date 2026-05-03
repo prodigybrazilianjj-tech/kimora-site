@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/lib/cart";
+import { generateEventId, getCheckoutContext, track } from "@/lib/analytics";
 
 type CheckoutItem = {
   flavor: string; // e.g. "lemon-yuzu"
@@ -274,12 +275,56 @@ export default function Checkout() {
         }),
       );
 
+      // Build the analytics items list from the live cart (which has the
+      // real per-item prices) filtered to whichever mode is being checked
+      // out. Mixed carts are blocked above, so the type filter is exact.
+      const wantedType: "subscribe" | "onetime" =
+        mode === "subscription" ? "subscribe" : "onetime";
+      const liveItems = (Array.isArray(items) ? items : []) as Array<any>;
+      const analyticsItems = liveItems
+        .filter((ci) => (ci?.type === "subscribe" ? "subscribe" : "onetime") === wantedType)
+        .map((ci) => ({
+          sku: String(ci.id || ""),
+          flavor: String(ci.flavor || ""),
+          price: Number(ci.price) || 0,
+          quantity: Math.max(1, Math.floor(Number(ci.quantity) || 1)),
+        }));
+
+      // Generate event_id ONCE and use it for both client-side begin_checkout
+      // and server-side Purchase (via Stripe metadata) so the two dedup.
+      const eventId = generateEventId();
+
+      try {
+        track(
+          "begin_checkout",
+          {
+            items: analyticsItems.length
+              ? analyticsItems
+              : itemsToCheckout.map((it) => ({
+                  sku: `${it.flavor}-${it.type}${it.frequency ? `-${it.frequency}` : ""}`,
+                  flavor: prettyFlavor(it.flavor),
+                  price: 0,
+                  quantity: it.quantity,
+                })),
+            currency: "USD",
+            purchaseType: wantedType,
+          },
+          eventId,
+        );
+      } catch {
+        // Analytics failures must never block checkout.
+      }
+
+      // Snapshot the cross-redirect context bundle for the server.
+      const analyticsContext = await getCheckoutContext(eventId);
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: normalizedEmail,
           items: itemsToCheckout,
+          analytics: analyticsContext,
         }),
       });
 

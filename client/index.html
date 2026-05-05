@@ -31,12 +31,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!--
-      Pixel base tags. Two-platform install (GA4 + TikTok). Meta drops in
-      via the same hook layer in client/src/lib/analytics.ts when the Meta
-      Business Portfolio unblocks.
-
-      Both blocks no-op silently if the corresponding VITE_* env var is
-      missing at build time, so dev builds stay quiet.
+      Pixel base tags. Three-platform install (GA4 + TikTok + Meta).
+      Each block no-ops silently if its VITE_* env var is missing at build
+      time, so dev builds stay quiet.
     -->
 
     <!-- GA4 (gtag.js) -->
@@ -89,6 +86,24 @@
           ttq.load(id);
           ttq.page();
         }(window, document, "ttq");
+      })();
+    </script>
+
+    <!-- Meta Pixel -->
+    <script>
+      (function () {
+        var id = "%VITE_META_PIXEL_ID%";
+        if (!id || id.charAt(0) === "%") return;
+        !function (f, b, e, v, n, t, s) {
+          if (f.fbq) return;
+          n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments); };
+          if (!f._fbq) f._fbq = n;
+          n.push = n; n.loaded = !0; n.version = "2.0"; n.queue = [];
+          t = b.createElement(e); t.async = !0; t.src = v;
+          s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
+        }(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+        window.fbq("init", id);
+        window.fbq("track", "PageView");
       })();
     </script>
   </head>

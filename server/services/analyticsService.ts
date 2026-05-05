@@ -1,14 +1,13 @@
 // server/services/analyticsService.ts
 //
-// Server-side Purchase tracking. Fans out to GA4 (Measurement Protocol)
-// and TikTok (Events API). Stripe Checkout redirects mean there is no
-// client-side purchase signal, so this is the ONLY way Purchase fires.
+// Server-side Purchase tracking. Fans out to GA4 (Measurement Protocol),
+// TikTok (Events API), and Meta (Conversions API). Stripe Checkout
+// redirects mean there is no client-side purchase signal, so this is the
+// ONLY way Purchase fires.
 //
 // Companion: client/src/lib/analytics.ts handles client-side ViewContent /
 // AddToCart / InitiateCheckout. The two sides share an `event_id` (carried
 // through Stripe session.metadata) so any echo-mode dedup works.
-//
-// Adding Meta later: add a third sender that POSTs to the Conversions API.
 
 import crypto from "crypto";
 
@@ -30,6 +29,10 @@ export type PurchasePayload = {
   ttclid: string | null;
   /** TikTok pixel cookie. */
   ttp: string | null;
+  /** Meta click identifier (cookie or canonical-encoded fbclid). */
+  fbc?: string | null;
+  /** Meta browser identifier cookie. */
+  fbp?: string | null;
   /** Browser user-agent at begin_checkout. */
   userAgent: string | null;
   /** Server-observed client IP at begin_checkout. */
@@ -226,21 +229,111 @@ async function sendTiktokPurchase(payload: PurchasePayload): Promise<void> {
   }
 }
 
+// ----- Meta sender (Conversions API) -----
+
+async function sendMetaPurchase(payload: PurchasePayload): Promise<void> {
+  const pixelId = process.env.META_PIXEL_ID;
+  const accessToken = process.env.META_CONVERSIONS_API_TOKEN;
+  // Optional: pass a test event code from Meta Events Manager during QA
+  // to make events show up in the Test Events tab without polluting prod.
+  const testEventCode = process.env.META_TEST_EVENT_CODE || undefined;
+
+  if (!pixelId || !accessToken) {
+    console.warn(
+      "[analytics:meta] skipped — missing META_PIXEL_ID or META_CONVERSIONS_API_TOKEN",
+    );
+    return;
+  }
+
+  const contentIds = (payload.items || []).map((it) => it.sku);
+  const contents = (payload.items || []).map((it) => ({
+    id: it.sku,
+    quantity: Math.max(1, Math.floor(safeNum(it.quantity, 1))),
+    item_price: Number(safeNum(it.price).toFixed(2)),
+  }));
+
+  // Per Meta CAPI spec: hashed PII goes in user_data, raw cookies/IDs do not.
+  const userData: Record<string, any> = {};
+  if (payload.email) userData.em = [sha256LowerTrim(payload.email)];
+  if (payload.phone) userData.ph = [sha256LowerTrim(payload.phone)];
+  if (payload.fbc) userData.fbc = payload.fbc;
+  if (payload.fbp) userData.fbp = payload.fbp;
+  if (payload.clientIp) userData.client_ip_address = payload.clientIp;
+  if (payload.userAgent) userData.client_user_agent = payload.userAgent;
+
+  const body: Record<string, any> = {
+    data: [
+      {
+        event_name: "Purchase",
+        event_time: nowUnixSeconds(),
+        event_id: payload.eventId,
+        action_source: "website",
+        event_source_url: `${siteUrl()}/order-success`,
+        user_data: userData,
+        custom_data: {
+          currency: payload.currency?.toUpperCase() || "USD",
+          value: Number(safeNum(payload.amount).toFixed(2)),
+          content_ids: contentIds,
+          content_type: "product",
+          contents,
+          order_id: String(payload.orderId ?? payload.eventId),
+        },
+      },
+    ],
+    access_token: accessToken,
+  };
+
+  if (testEventCode) body.test_event_code = testEventCode;
+
+  // Meta CAPI versioned endpoint. v19.0 is current as of 2024–2026.
+  const res = await fetch(
+    `https://graph.facebook.com/v19.0/${encodeURIComponent(pixelId)}/events`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Meta CAPI non-2xx: ${res.status} ${text.slice(0, 200)}`);
+  }
+
+  // Meta returns 200 with a body containing { events_received, fbtrace_id, ... }
+  // on success. An error body would have an `error` field — check for it.
+  try {
+    const json: any = await res.json();
+    if (json && json.error) {
+      throw new Error(
+        `Meta CAPI logical error: ${String(json.error.message || "").slice(0, 200)} (code=${json.error.code})`,
+      );
+    }
+  } catch (parseErr: any) {
+    if (parseErr instanceof SyntaxError) {
+      // ignore — body wasn't JSON, but res was OK
+    } else {
+      throw parseErr;
+    }
+  }
+}
+
 // ----- Public API -----
 
 /**
  * Fan out a Purchase event to every enabled platform. Each platform is
- * isolated — one failure does NOT prevent the other from firing, and
- * neither failure propagates back to the caller (which is the Stripe
+ * isolated — one failure does NOT prevent the others from firing, and
+ * none of them propagates back to the caller (which is the Stripe
  * webhook and must not return non-2xx for these reasons).
  */
 export async function trackPurchase(payload: PurchasePayload): Promise<void> {
   const results = await Promise.allSettled([
     sendGa4Purchase(payload),
     sendTiktokPurchase(payload),
+    sendMetaPurchase(payload),
   ]);
 
-  const platforms = ["ga4", "tiktok"];
+  const platforms = ["ga4", "tiktok", "meta"];
   results.forEach((r, i) => {
     const name = platforms[i];
     if (r.status === "fulfilled") {

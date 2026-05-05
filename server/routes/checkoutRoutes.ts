@@ -117,6 +117,8 @@ function sanitizeAnalyticsCourier(raw: any) {
     ga4_client_id: safeString(obj.ga4_client_id, 100),
     ttclid: safeString(obj.ttclid, 200),
     ttp: safeString(obj.ttp, 200),
+    fbc: safeString(obj.fbc, 200),
+    fbp: safeString(obj.fbp, 200),
     user_agent: safeString(obj.user_agent, 480),
   };
 }
@@ -460,6 +462,8 @@ export function registerCheckoutRoutes(app: Express) {
         kimora_ga4_client_id: analyticsCourier.ga4_client_id,
         kimora_ttclid: analyticsCourier.ttclid,
         kimora_ttp: analyticsCourier.ttp,
+        kimora_fbc: analyticsCourier.fbc,
+        kimora_fbp: analyticsCourier.fbp,
         kimora_user_agent:
           analyticsCourier.user_agent || (serverObserved.userAgent ?? ""),
         kimora_client_ip: serverObserved.ip ?? "",

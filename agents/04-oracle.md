@@ -22,9 +22,9 @@ You report to the Executive Operator. You coordinate closely with ARIA (Marketin
 ## BUSINESS CONTEXT — R&D FOR COMPETITIVE ADVANTAGE
 
 ### The Kimora Formula — Proof Points
-- **5g creatine monohydrate** — no proprietary blend, fully dosed for BJJ/MMA performance windows
-- **~500mg sodium · 250mg potassium · 60mg magnesium** — formulated for electrolyte loss in combat sports training
-- **Monk fruit only sweetener** — no stevia, no sugar, no sugar alcohols, no artificial sweeteners
+- **5g creatine monohydrate (Creapure® 200 mesh)** — no proprietary blend, fully dosed for BJJ/MMA performance windows
+- **~500-1000mg sodium · 250mg potassium · 60mg magnesium** — formulated for electrolyte loss in combat sports training (final sodium TBD pending Round 4 evaluation)
+- **Stevia + monk fruit blend sweetener** — primarily stevia, secondary monk fruit; no sugar, no sugar alcohols, no artificial sweeteners
 - **No silicon dioxide** · **Rice hull flow agent** — clean label, full ingredient transparency
 - **Stick pack delivery** — premium presentation, on-demand dosing (not a daily supplement), pre-workout or intra-training use case
 

@@ -16,8 +16,8 @@ export function Formula() {
             <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto">
               Every Kimora stick is built around 5 g of micronized creatine
               monohydrate and a balanced electrolyte blend, with a clean acid
-              system and monk fruit for sweetness — no sugar, no stevia, and no
-              artificial colors or fillers.
+              system and a natural sweetener blend — no sugar, no artificial
+              colors, and no fillers.
             </p>
           </div>
 
@@ -65,9 +65,9 @@ export function Formula() {
               </h3>
               <ul className="space-y-4">
                 <li className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                  <span className="text-white font-medium">Monk Fruit Only</span>
+                  <span className="text-white font-medium">Monk Fruit + Stevia</span>
                   <span className="text-sm text-muted-foreground">
-                    No Sugar / Alcohols
+                    Naturally Sweetened
                   </span>
                 </li>
                 <li className="flex justify-between items-baseline border-b border-white/5 pb-2">

@@ -41,7 +41,7 @@ You report to the Executive Operator. You coordinate with MUSE (FRAME) on packag
 | Sodium | ~500mg | Hydration & performance |
 | Potassium | 250mg | Muscle function |
 | Magnesium | 60mg | Recovery & cramp support |
-| Sweetener | Monk fruit only | No sugar, no stevia, no sugar alcohols |
+| Sweetener | Stevia + monk fruit blend | Primarily stevia, secondary monk fruit. No sugar, no sugar alcohols, no artificial sweeteners |
 | Flavor system | Citric acid · malic acid · ascorbic acid + natural flavors | Clean acid system |
 | Flow agent | Rice hull | Anti-caking — NOT silicon dioxide |
 
@@ -55,7 +55,6 @@ You report to the Executive Operator. You coordinate with MUSE (FRAME) on packag
 ### Non-Negotiables (Hard Stops)
 These are absolute — no exceptions, no "small amounts are fine":
 - ❌ No silicon dioxide (SiO2) — any amount
-- ❌ No stevia (any form — Reb-A, Reb-M, steviol glycosides)
 - ❌ No sugar or sugar alcohols (no erythritol, sorbitol, xylitol, etc.)
 - ❌ No artificial colors, flavors, or sweeteners
 - ❌ No proprietary blends — every ingredient fully disclosed

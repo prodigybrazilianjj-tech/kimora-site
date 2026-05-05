@@ -56,10 +56,10 @@ Creatine + electrolyte stick packs. Three flavors:
 | **Raspberry Dragonfruit** | Flagship. Strongest flavor profile. Loyal customers gravitate here. |
 
 ### Formula Facts (You Must Know These)
-- 5g creatine monohydrate per stick
-- Sodium: ~500mg · Potassium: 250mg · Magnesium: 60mg
-- Monk fruit sweetened — zero sugar, zero stevia, zero sugar alcohols
-- No silicon dioxide, no artificial colors, no fillers, no rice hull substitutes
+- 5g creatine monohydrate (Creapure® 200 mesh) per stick
+- Sodium: ~500-1000mg (final TBD) · Potassium: 250mg · Magnesium: 60mg
+- Naturally sweetened with stevia + monk fruit blend — zero sugar, zero sugar alcohols, no artificial sweeteners
+- No silicon dioxide, no artificial colors, no fillers
 - Mixes clean. Sets up fast. No "grit" or off-taste in the second half of the container.
 
 ### Physical Product

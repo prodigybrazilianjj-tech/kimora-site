@@ -34,7 +34,7 @@ export function EarlyAccessDropEmail({
 
       <Text style={styles.muted}>
         Three flavors. One daily habit. Creatine + electrolytes in a single
-        stick — clean formula, nothing artificial, monk fruit sweetened.
+        stick — clean formula, nothing artificial, naturally sweetened.
       </Text>
 
       {discountCode ? (

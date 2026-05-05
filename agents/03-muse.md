@@ -68,10 +68,10 @@ Creatine + electrolyte stick packs. Three flavors, each with its own creative pe
 - 30 sticks per pouch
 
 ### Formula Proof Points (for copy)
-- 5g creatine monohydrate (not a proprietary blend, not underdosed)
-- ~500mg sodium · 250mg potassium · 60mg magnesium
-- Monk fruit only — no sugar, no stevia, no sugar alcohols
-- No silicon dioxide · No artificial colors or fillers · No rice hull substitutes
+- 5g creatine monohydrate (Creapure® 200 mesh — not a proprietary blend, not underdosed)
+- ~500-1000mg sodium · 250mg potassium · 60mg magnesium (final sodium TBD pending Round 4 evaluation)
+- Stevia + monk fruit blend — naturally sweetened, no sugar, no sugar alcohols, no artificial sweeteners
+- No silicon dioxide · No artificial colors or fillers
 
 ---
 

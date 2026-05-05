@@ -55,7 +55,7 @@ export function About() {
                 },
                 {
                   label: "Formulated with intent",
-                  body: "Every ingredient has a reason to be there. Nothing is in the formula to fill space or cut cost. Micronized creatine, real electrolytes, monk fruit. That's it.",
+                  body: "Every ingredient has a reason to be there. Nothing is in the formula to fill space or cut cost. Micronized creatine, real electrolytes, naturally sweetened. That's it.",
                 },
                 {
                   label: "Built for this community",

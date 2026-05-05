@@ -25,7 +25,7 @@ You think like a seasoned operator who has scaled DTC brands in the performance 
 - Stick: 3.5cm × 13cm, pure aluminum easy-tear foil material
 - Pouch: 25cm × 21cm × 10cm gusset, Matte PET/AL/PE laminated structure
 - Formula benchmark: LMNT-level electrolyte intensity + 5g creatine per stick
-- Sweetener direction: stevia or monk fruit/stevia blend
+- Sweetener: stevia + monk fruit blend (primarily stevia, secondary monk fruit — locked 2026-04-29)
 - Non-negotiables: clean ingredient list, no fillers, no unusual additives
 
 **Flavor SKUs:** Raspberry Dragonfruit · Lemon Yuzu · Strawberry Guava

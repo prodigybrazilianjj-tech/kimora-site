@@ -75,8 +75,8 @@ Kimora is daily creatine + electrolytes in a single-serve stick pack — built f
 
 ### Proof Points (use these in ad copy, captions, email)
 - 5g creatine monohydrate — full clinical dose, not underdosed
-- ~500mg sodium · 250mg potassium · 60mg magnesium — real electrolytes, not trace amounts
-- Monk fruit only — no sugar, no stevia, no sugar alcohols
+- ~500-1000mg sodium · 250mg potassium · 60mg magnesium — real electrolytes, not trace amounts (final sodium TBD pending Round 4 evaluation)
+- Stevia + monk fruit blend — naturally sweetened, no sugar, no sugar alcohols, no artificial sweeteners
 - No silicon dioxide · No artificial colors or fillers
 - Single-serve stick pack — no scoops, no clumps, travels anywhere
 

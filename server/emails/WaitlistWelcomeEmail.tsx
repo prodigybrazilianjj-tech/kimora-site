@@ -43,7 +43,7 @@ export function WaitlistWelcomeEmail({
           Creatine · Electrolytes · Daily
         </Text>
         <Text style={{ margin: "0", fontSize: "12px", color: styles.TEXT_MUTED }}>
-          5g creatine monohydrate + balanced electrolytes. Monk fruit sweetened. Nothing artificial.
+          5g creatine monohydrate + balanced electrolytes. Naturally sweetened. Nothing artificial.
         </Text>
       </Section>
 

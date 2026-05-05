@@ -137,7 +137,9 @@ export default function ManageSubscription() {
                     </p>
                   ) : (
                     <p className="text-sm text-muted-foreground mt-3">
-                      Enter the email used at checkout and we’ll send a secure link.
+                      Cancel, skip, or change your subscription anytime. Enter
+                      the email used at checkout and we’ll send a secure link
+                      to your subscription portal.
                     </p>
                   )}
 
@@ -175,6 +177,35 @@ export default function ManageSubscription() {
                         </p>
                       </>
                     )}
+                  </div>
+
+                  <div className="mt-6 pt-6 border-t border-white/10 space-y-3 text-left">
+                    <p className="text-xs text-white/50 leading-relaxed">
+                      <strong className="text-white/70">What cancellation does:</strong>{" "}
+                      Stops future renewals. Cancel at least 48 hours before
+                      your next renewal date to skip the next shipment. Orders
+                      already shipped or charged are not refunded based on
+                      cancellation alone.
+                    </p>
+
+                    <p className="text-xs text-white/50 leading-relaxed">
+                      <strong className="text-white/70">Faster path:</strong>{" "}
+                      Every subscription email we send includes a direct
+                      manage-your-subscription link. If you have a recent
+                      order email, that link skips this step.
+                    </p>
+
+                    <p className="text-xs text-white/50 leading-relaxed">
+                      <strong className="text-white/70">Need help?</strong>{" "}
+                      Email{" "}
+                      <a
+                        href="mailto:support@kimoraco.com"
+                        className="text-white/70 underline"
+                      >
+                        support@kimoraco.com
+                      </a>{" "}
+                      and we’ll handle it directly.
+                    </p>
                   </div>
                 </>
               )}

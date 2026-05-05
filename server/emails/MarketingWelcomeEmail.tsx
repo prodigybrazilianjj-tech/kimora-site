@@ -31,7 +31,7 @@ export function MarketingWelcomeEmail({
 
       <Text style={styles.muted}>
         5g creatine monohydrate + balanced electrolytes in every stick.
-        Monk fruit sweetened. Nothing artificial. No scoops, no mess —
+        Naturally sweetened. Nothing artificial. No scoops, no mess —
         just tear, pour, and go.
       </Text>
 
@@ -56,7 +56,7 @@ export function MarketingWelcomeEmail({
         {[
           { label: "5g Creatine Monohydrate", desc: "Strength, power, and recovery" },
           { label: "Balanced Electrolytes", desc: "Sodium, potassium, magnesium" },
-          { label: "Monk Fruit Only", desc: "No sugar, no stevia, no junk" },
+          { label: "Naturally Sweetened", desc: "No sugar, no artificial sweeteners, no junk" },
         ].map((item) => (
           <Section key={item.label} style={{ marginBottom: "10px", padding: "10px 14px", backgroundColor: "#141414", borderRadius: "8px", border: "1px solid #1f1f1f" }}>
             <Text style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: "700", color: "#ffffff" }}>

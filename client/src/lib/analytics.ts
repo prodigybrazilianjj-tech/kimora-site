@@ -1,19 +1,22 @@
 // client/src/lib/analytics.ts
 //
 // Thin analytics facade. One call site (`track(eventName, payload)`) fans
-// out to per-platform handlers (GA4 + TikTok today, Meta later).
+// out to per-platform handlers (GA4 + TikTok + Meta).
 //
-// Adding Meta is a single registerHandler() call below — no call sites
-// need to change.
+// Adding another platform is a single registerHandler() call below —
+// no call sites need to change.
 //
 // Companion: server/services/analyticsService.ts handles server-side
-// Purchase via Measurement Protocol (GA4) + Events API (TikTok).
+// Purchase via Measurement Protocol (GA4) + Events API (TikTok) +
+// Conversions API (Meta).
 
 declare global {
   interface Window {
     dataLayer?: any[];
     gtag?: (...args: any[]) => void;
     ttq?: any;
+    fbq?: (...args: any[]) => void;
+    _fbq?: any;
   }
 }
 
@@ -154,6 +157,29 @@ export function getTtp(): string | null {
   return readCookie("_ttp");
 }
 
+/**
+ * Meta click identifier. Per Meta CAPI spec, when present in the URL the
+ * value must be encoded as `fb.<subdomain_index>.<creation_time>.<fbclid>`
+ * before being sent server-side. Browser-side, fbq's auto-cookie does this
+ * for us and stashes it in `_fbc`. We return the cookie if present, or
+ * synthesize the canonical string from a raw `?fbclid=` param if not.
+ */
+export function getFbc(): string | null {
+  const cookie = readCookie("_fbc");
+  if (cookie) return cookie;
+
+  const fbclid = readUrlParam("fbclid");
+  if (!fbclid) return null;
+
+  // subdomain_index = 1 for kimoraco.com (root domain only, no www split)
+  return `fb.1.${Date.now()}.${fbclid}`;
+}
+
+/** Meta browser identifier cookie set by fbq when the base pixel loads. */
+export function getFbp(): string | null {
+  return readCookie("_fbp");
+}
+
 /** Snapshot the cross-redirect context bundle that has to land in Stripe metadata. */
 export async function getCheckoutContext(eventId: string) {
   const [ga4ClientId] = await Promise.all([getGa4ClientId()]);
@@ -162,6 +188,8 @@ export async function getCheckoutContext(eventId: string) {
     ga4_client_id: ga4ClientId || "",
     ttclid: getTtclid() || "",
     ttp: getTtp() || "",
+    fbc: getFbc() || "",
+    fbp: getFbp() || "",
     user_agent: typeof navigator !== "undefined" ? navigator.userAgent : "",
   };
 }
@@ -251,8 +279,54 @@ const tiktokHandler: AnalyticsHandler = {
   },
 };
 
+// ---------- Meta handler ----------
+
+const metaEventMap: Record<CanonicalEventName, string> = {
+  view_item: "ViewContent",
+  add_to_cart: "AddToCart",
+  begin_checkout: "InitiateCheckout",
+};
+
+const metaHandler: AnalyticsHandler = {
+  name: "meta",
+  isEnabled: () => Boolean((import.meta as any).env?.VITE_META_PIXEL_ID),
+  track(eventName, payload, eventId) {
+    if (typeof window === "undefined" || !window.fbq) return;
+
+    const currency = payload.currency || "USD";
+    const value = deriveValue(payload);
+
+    const contentIds = payload.items.map((it) => it.sku);
+    const contents = payload.items.map((it) => ({
+      id: it.sku,
+      quantity: it.quantity ?? 1,
+      item_price: Number(it.price.toFixed(2)),
+    }));
+
+    try {
+      window.fbq(
+        "track",
+        metaEventMap[eventName],
+        {
+          content_ids: contentIds,
+          content_type: "product",
+          contents,
+          currency,
+          value,
+        },
+        // eventID — exactly as Meta spec defines, NOT event_id. Used for
+        // dedup against the server-side Conversions API Purchase.
+        { eventID: eventId }
+      );
+    } catch (err) {
+      safeWarn("meta", err);
+    }
+  },
+};
+
 registerHandler(ga4Handler);
 registerHandler(tiktokHandler);
+registerHandler(metaHandler);
 
 // ---------- Public API ----------
 

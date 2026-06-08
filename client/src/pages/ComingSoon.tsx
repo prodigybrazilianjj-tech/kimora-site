@@ -234,12 +234,12 @@ export default function ComingSoon() {
                           Pre-Launch Exclusive
                         </p>
                         <h2 className="mt-2 text-3xl font-display font-bold tracking-tight text-white">
-                          Get 50% off at launch.
+                          Get 15% off — and first access.
                         </h2>
                       </div>
 
                       <p className="max-w-[240px] text-sm leading-6 text-muted-foreground sm:text-right">
-                        Sign up before we launch and get 50% off your first order.
+                        Join the waitlist before we launch. You get 15% off your first order and a 24-hour head start before the public.
                       </p>
                     </div>
 
@@ -302,7 +302,7 @@ export default function ComingSoon() {
                         transition={{ duration: 0.15 }}
                         className="h-14 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(0,191,165,0.25)] transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
                       >
-                        {submitting ? "Submitting..." : "Claim 50% Off"}
+                        {submitting ? "Submitting..." : "Join the Waitlist"}
                       </motion.button>
                     </form>
 
@@ -317,8 +317,8 @@ export default function ComingSoon() {
                           className="text-sm font-medium text-emerald-400"
                         >
                           You're on the list. Your code is{" "}
-                          <span className="font-bold">MAT50</span> — 50% off your
-                          first order at launch.
+                          <span className="font-bold">MAT15</span> — 15% off your
+                          first order, plus early access at launch.
                         </motion.p>
                       ) : (
                         <motion.p
@@ -327,7 +327,7 @@ export default function ComingSoon() {
                           exit={{ opacity: 0 }}
                           className="text-xs text-muted-foreground"
                         >
-                          First order only · One use per customer · No spam
+                          15% off first order · One use per customer · No spam
                         </motion.p>
                       )}
                     </AnimatePresence>

@@ -478,7 +478,7 @@ export function registerCheckoutRoutes(app: Express) {
         line_items,
         success_url: successUrl,
         cancel_url: cancelUrl,
-        allow_promotion_codes: false,
+        allow_promotion_codes: true,
         shipping_address_collection: { allowed_countries: ["US"] },
         phone_number_collection: { enabled: true },
         automatic_tax: { enabled: true },

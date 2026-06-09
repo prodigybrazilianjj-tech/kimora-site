@@ -374,6 +374,68 @@ export default function ComingSoon() {
             </div>
           </section>
 
+          {/* ── What's in it / what's not ── */}
+          <section className="border-t border-border bg-background">
+            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.6, ease: EASE }}
+                className="mb-10 max-w-3xl"
+              >
+                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
+                  The formula
+                </p>
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                  What's in it. What's not.
+                </h2>
+              </motion.div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <motion.div
+                  initial={{ opacity: 0, y: 32 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.6, ease: EASE }}
+                  className="rounded-[24px] border border-border bg-card p-8"
+                >
+                  <h3 className="text-xl font-display font-bold text-white">
+                    In every stick
+                  </h3>
+                  <ul className="mt-5 space-y-3 leading-7 text-muted-foreground">
+                    <li>5g creatine monohydrate (200 mesh — no underdose)</li>
+                    <li>A real electrolyte panel — sodium, potassium, magnesium</li>
+                    <li>Naturally sweetened with stevia and monk fruit</li>
+                  </ul>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 32 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
+                  className="rounded-[24px] border border-border bg-card p-8"
+                >
+                  <h3 className="text-xl font-display font-bold text-white">
+                    What we left out
+                  </h3>
+                  <ul className="mt-5 space-y-3 leading-7 text-muted-foreground">
+                    <li>No silicon dioxide</li>
+                    <li>No artificial colors</li>
+                    <li>No sugar, no sucralose, no sugar alcohols</li>
+                    <li>No proprietary blends, no hidden doses</li>
+                  </ul>
+                </motion.div>
+              </div>
+
+              <p className="mt-8 max-w-3xl leading-8 text-white/80">
+                One formula behind all three flavors. Same dose, different
+                profiles. Tear, mix, drink.
+              </p>
+            </div>
+          </section>
+
           {/* ── Why Kimora ── */}
           <section className="border-t border-border bg-card">
             <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
@@ -403,6 +465,104 @@ export default function ComingSoon() {
                   default.
                 </p>
               </motion.div>
+            </div>
+          </section>
+
+          {/* ── Who it's for ── */}
+          <section className="border-t border-border bg-card">
+            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
+              <motion.div
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.7, ease: EASE }}
+                className="max-w-3xl"
+              >
+                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
+                  Built for combat sports
+                </p>
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                  Made for the mat, not the supplement aisle.
+                </h2>
+                <p className="mt-6 leading-8 text-muted-foreground">
+                  Combat sports athletes train differently — the rounds are long,
+                  the cuts are real, and the recovery window between sessions is
+                  short. Kimora is built for that reality: a stick that survives a
+                  gym bag and works mid-session, not a tub that sits on a counter.
+                  For the people who roll, spar, drill, cut, and compete.
+                </p>
+                <p className="mt-6 text-sm font-medium uppercase tracking-[0.22em] text-white/70">
+                  BJJ · MMA · Muay Thai · Boxing · Grappling · Serious Lifters
+                </p>
+              </motion.div>
+            </div>
+          </section>
+
+          {/* ── The stick ── */}
+          <section className="border-t border-border bg-background">
+            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.6, ease: EASE }}
+                className="mb-10 max-w-3xl"
+              >
+                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
+                  The format
+                </p>
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                  Why a stick, not a tub.
+                </h2>
+              </motion.div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.6, ease: EASE }}
+                  className="rounded-[24px] border border-border bg-card p-8"
+                >
+                  <h3 className="text-xl font-display font-bold text-white">
+                    Fits the bag
+                  </h3>
+                  <p className="mt-3 leading-7 text-muted-foreground">
+                    A single-serve stick fits a gi pocket. No tub, no scoop, no
+                    shaker on the mat.
+                  </p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
+                  className="rounded-[24px] border border-border bg-card p-8"
+                >
+                  <h3 className="text-xl font-display font-bold text-white">
+                    One stick, one day
+                  </h3>
+                  <p className="mt-3 leading-7 text-muted-foreground">
+                    No measuring, no guessing the dose. Tear, mix, drink.
+                  </p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.6, ease: EASE, delay: 0.2 }}
+                  className="rounded-[24px] border border-border bg-card p-8"
+                >
+                  <h3 className="text-xl font-display font-bold text-white">
+                    Survives the gym
+                  </h3>
+                  <p className="mt-3 leading-7 text-muted-foreground">
+                    A matte laminate pack built to take a beating in your bag.
+                  </p>
+                </motion.div>
+              </div>
             </div>
           </section>
 
@@ -466,6 +626,97 @@ export default function ComingSoon() {
                       </p>
                     </div>
                   </motion.article>
+                ))}
+              </div>
+            </div>
+          </section>
+          {/* ── Tested before it ships ── */}
+          <section className="border-t border-border bg-card">
+            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
+              <motion.div
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.7, ease: EASE }}
+                className="max-w-3xl"
+              >
+                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
+                  Quality
+                </p>
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                  Tested before it touches your bag.
+                </h2>
+                <p className="mt-6 leading-8 text-muted-foreground">
+                  Before any stick ships, every batch is tested by an independent
+                  third-party lab — identity and potency (what's on the label is in
+                  the stick), heavy metals at parts-per-billion sensitivity, full
+                  microbiology, and allergens. Results available on request once
+                  batches ship.
+                </p>
+              </motion.div>
+            </div>
+          </section>
+
+          {/* ── FAQ ── */}
+          <section className="border-t border-border bg-background">
+            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.6, ease: EASE }}
+                className="mb-10 max-w-3xl"
+              >
+                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
+                  FAQ
+                </p>
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                  Questions, answered.
+                </h2>
+              </motion.div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                {[
+                  {
+                    q: "When does Kimora launch?",
+                    a: "Soon — we're finishing final production. Join the waitlist and you'll get the buy link 24 hours before the public, plus 15% off your first order.",
+                  },
+                  {
+                    q: "What do I get for joining the waitlist?",
+                    a: "15% off your first order, a 24-hour early-access head start, and the formula details before anyone else. No spam.",
+                  },
+                  {
+                    q: "What's in a stick?",
+                    a: "5g creatine monohydrate, a real electrolyte panel (sodium, potassium, magnesium), naturally sweetened with stevia and monk fruit. No silicon dioxide, no artificial colors, no sugar alcohols.",
+                  },
+                  {
+                    q: "Is it third-party tested?",
+                    a: "Yes — every batch, by an independent lab, before it ships. Identity, potency, heavy metals, microbiology, allergens. COA available on request once batches ship.",
+                  },
+                  {
+                    q: "How do I take it?",
+                    a: "One stick a day. Tear it open, mix into water, drink — after class or whenever fits your day.",
+                  },
+                  {
+                    q: "Who is it for?",
+                    a: "Combat sports athletes and serious lifters — BJJ, MMA, Muay Thai, boxing, grappling. Built for people who train daily.",
+                  },
+                ].map((item, i) => (
+                  <motion.div
+                    key={item.q}
+                    initial={{ opacity: 0, y: 28 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-60px" }}
+                    transition={{ duration: 0.55, ease: EASE, delay: (i % 2) * 0.08 }}
+                    className="rounded-[24px] border border-border bg-card p-7"
+                  >
+                    <h3 className="text-lg font-display font-bold text-white">
+                      {item.q}
+                    </h3>
+                    <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                      {item.a}
+                    </p>
+                  </motion.div>
                 ))}
               </div>
             </div>

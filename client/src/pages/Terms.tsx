@@ -179,7 +179,7 @@ export default function Terms() {
             </h2>
             <p>
               Promotional codes (including gym partnership codes such as
-              MAT50) are limited to one use per customer unless otherwise
+              MAT15) are limited to one use per customer unless otherwise
               stated, may not be combined with other offers unless explicitly
               permitted, have no cash value, and may be modified or revoked at
               any time. Promotional pricing applies only to the initial

@@ -1,4 +1,5 @@
 // server/routes/subscriptionRoutes.ts
+// (re-synced to disk 2026-06-11)
 //
 // In-site subscription flavor switcher.
 //

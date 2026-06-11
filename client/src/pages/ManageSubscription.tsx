@@ -42,7 +42,8 @@ function formatDate(unixSeconds: number | null): string | null {
 }
 
 function frequencyLabel(weeks: number): string {
-  if (!weeks) return "subscription";
+  if (!weeks) return "on your subscription";
+  if (weeks === 4) return "monthly";
   if (weeks === 1) return "every week";
   return `every ${weeks} weeks`;
 }
@@ -410,7 +411,18 @@ export default function ManageSubscription() {
                   Manage Subscription
                 </h2>
 
-                {message ? (
+                {view === "sent" ? (
+                  <div
+                    className="mt-4 flex items-start gap-2 text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-3 text-left"
+                    role="status"
+                  >
+                    <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>
+                      {message ||
+                        "If that email is in our system, you’ll receive a secure link shortly."}
+                    </span>
+                  </div>
+                ) : message ? (
                   <p
                     className={`text-sm mt-3 ${
                       view === "error" ? "text-red-400" : "text-muted-foreground"

@@ -151,7 +151,7 @@ export function registerPortalRoutes(app: Express) {
       const supportEmail = String(process.env.SUPPORT_EMAIL || "support@kimoraco.com").trim();
 
       const subject = "Manage your Kimora subscription";
-      const text = `Manage your Kimora subscription\n\nSecure link (expires in 15 minutes):\n${portalLink}\n\nIf your link expired, request a fresh one here:\n${fallbackLink}\n\nNeed help? Reply to this email or contact ${supportEmail}\n`;
+      const text = `Manage your Kimora subscription\n\nSwitch your flavor, pause, cancel, or change your delivery frequency. Flavor changes apply to your next shipment.\n\nSecure link (expires in 15 minutes):\n${portalLink}\n\nIf your link expired, request a fresh one here:\n${fallbackLink}\n\nNeed help? Reply to this email or contact ${supportEmail}\n`;
 
       const { render } = await import("@react-email/render");
       const React = await import("react");

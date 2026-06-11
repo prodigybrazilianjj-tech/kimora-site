@@ -53,7 +53,7 @@ export function OrderConfirmationEmail({
 
       <Text style={styles.p}>
         Your Kimora order has been confirmed and will ship soon.
-        {isSubscription && " Your subscription will renew automatically based on the frequency you selected."}
+        {isSubscription && " Your subscription renews automatically each month, and you can switch your flavor anytime before your next shipment."}
       </Text>
 
       {orderNumber ? (
@@ -88,8 +88,8 @@ export function OrderConfirmationEmail({
               {l.flavor} <span style={{ color: styles.TEXT_MUTED, fontWeight: "400" }}>× {l.qty}</span>
             </Text>
             <Text style={{ margin: "0", fontSize: "12px", color: styles.TEXT_MUTED }}>
-              {l.purchaseType === "subscribe" && l.frequencyWeeks
-                ? `Subscription — renews every ${l.frequencyWeeks} weeks`
+              {l.purchaseType === "subscribe"
+                ? "Monthly subscription"
                 : "One-time purchase"}
               {l.lineTotal ? `  ·  ${l.lineTotal}` : ""}
             </Text>
@@ -128,7 +128,9 @@ export function OrderConfirmationEmail({
       {isSubscription ? (
         <Section style={{ marginBottom: "24px", padding: "16px", backgroundColor: "#0a1a16", borderRadius: "10px", border: `1px solid #0f3028` }}>
           <Text style={{ margin: "0 0 10px", fontSize: "13px", color: styles.TEXT_MUTED }}>
-            Pause, cancel, or change your delivery frequency anytime.
+            Want to try a different flavor next time? Switch your flavor anytime —
+            changes apply to your next shipment. You can also pause, cancel, or
+            change your delivery frequency.
           </Text>
           <Link href={manageLink} style={styles.button}>
             Manage subscription

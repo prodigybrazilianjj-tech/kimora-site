@@ -60,7 +60,7 @@ export default function Cart() {
 
                       <p className="text-sm text-muted-foreground">
                         {item.type === "subscribe"
-                          ? `Subscription (Every ${item.frequency} Weeks)`
+                          ? "Monthly Subscription"
                           : "One-time Purchase"}
                       </p>
 

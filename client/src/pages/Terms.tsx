@@ -108,9 +108,8 @@ export default function Terms() {
               Subscriptions &amp; Auto-Renewal
             </h2>
             <p>
-              Kimora offers subscription products that automatically renew at
-              the cadence you select (for example, every 30, 60, or 90 days)
-              until you cancel.
+              Kimora offers subscription products that automatically renew every
+              four (4) weeks until you cancel.
             </p>
 
             <p>
@@ -133,10 +132,10 @@ export default function Terms() {
             </p>
 
             <p>
-              <strong>Skipping or modifying a shipment.</strong> You may skip
-              or change the cadence of your subscription through your account
-              dashboard, subject to the same 48-hour cutoff before the next
-              renewal.
+              <strong>Skipping, changing flavor, or modifying a shipment.</strong>{" "}
+              You may skip a shipment or change your subscription flavor through
+              your account dashboard, subject to the same 48-hour cutoff before
+              the next renewal. Flavor changes apply to your next shipment.
             </p>
 
             <p>

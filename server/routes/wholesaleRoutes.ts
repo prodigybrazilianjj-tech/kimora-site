@@ -507,7 +507,9 @@ export function registerWholesaleRoutes(app: Express) {
           invoice: invoice.id,
           description,
           quantity: qty,
-          unit_amount: unitCents,
+          // clover API dropped top-level `unit_amount`; `unit_amount_decimal`
+          // is multiplied by `quantity` for the same per-unit line semantics.
+          unit_amount_decimal: String(unitCents),
           currency: "usd",
         });
       }
@@ -640,7 +642,9 @@ export function registerWholesaleRoutes(app: Express) {
         await stripe.invoiceItems.create({
           customer: customerId, invoice: invoice.id,
           description: desc, quantity: qty,
-          unit_amount: Math.round(unitPrice * 100), currency: "usd",
+          // clover API dropped top-level `unit_amount`; `unit_amount_decimal`
+          // is multiplied by `quantity` for the same per-unit line semantics.
+          unit_amount_decimal: String(Math.round(unitPrice * 100)), currency: "usd",
         });
       }
 

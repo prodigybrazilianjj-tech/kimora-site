@@ -575,7 +575,7 @@ export default function Checkout() {
                                     {prettyFlavor(it.flavor)}
                                   </div>
                                   <div className="text-xs text-white/60">
-                                    {`Subscription • every ${it.frequency} weeks • qty ${it.quantity}`}
+                                    {`Monthly subscription • qty ${it.quantity}`}
                                   </div>
                                 </div>
                               </div>
@@ -619,7 +619,7 @@ export default function Checkout() {
                               </div>
                               <div className="text-xs text-white/60">
                                 {it.type === "subscribe"
-                                  ? `Subscription • every ${it.frequency} weeks`
+                                  ? "Monthly subscription"
                                   : "One-time purchase"}
                                 {` • qty ${it.quantity}`}
                               </div>

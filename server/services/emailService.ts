@@ -268,8 +268,8 @@ export async function sendOrderConfirmationEmail(args: {
     .map((l: any) => {
       const flavor = titleizeSlug(l.flavor);
       const cadence =
-        l.purchaseType === "subscribe" && l.frequencyWeeks
-          ? ` (Subscription — every ${l.frequencyWeeks} weeks)`
+        l.purchaseType === "subscribe"
+          ? ` (Monthly subscription)`
           : "";
       const money = l.unitAmount != null ? ` @ ${formatMoney(l.unitAmount, currency)}` : "";
       const total = l.lineTotal != null ? ` = ${formatMoney(l.lineTotal, currency)}` : "";
@@ -327,6 +327,7 @@ export async function sendShippingNotificationEmail(args: {
   orderId?: string | null;
   carrier?: string | null;
   trackingNumber?: string | null;
+  isSubscription?: boolean;
 }) {
   const client = getResendClient();
   if (!client) return;
@@ -341,6 +342,8 @@ export async function sendShippingNotificationEmail(args: {
   const tracking = safeString(args.trackingNumber || "", 120);
   const name = safeString(args.shippingName || "", 200);
   const trackingUrl = trackingUrlFor(carrier, tracking);
+  const isSubscription = Boolean(args.isSubscription);
+  const manageLink = `${getSiteUrl()}/manage-subscription`;
 
   const subject = "Kimora Co — Your order is on the way";
 
@@ -354,6 +357,9 @@ export async function sendShippingNotificationEmail(args: {
     orderLine +
     trackingLine +
     (trackingUrl ? `Track package: ${trackingUrl}\n` : "") +
+    (isSubscription
+      ? `\nWant a different flavor next time? Change it before your next shipment:\n${manageLink}\n`
+      : "") +
     `\nNeed help? Reply to this email or contact ${supportEmail}.\nOUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
 
   const html = await render(
@@ -365,6 +371,8 @@ export async function sendShippingNotificationEmail(args: {
       carrier,
       trackingNumber: tracking,
       trackingUrl,
+      isSubscription,
+      manageLink,
     })
   );
 
@@ -565,6 +573,7 @@ export async function maybeSendShippingEmailForOrder(orderId: string) {
         shippingName: orders.shippingName,
         shippingCarrier: orders.shippingCarrier,
         shippingTrackingNumber: orders.shippingTrackingNumber,
+        isSubscription: orders.isSubscription,
       })
       .from(orders)
       .where(eq(orders.id, orderId))
@@ -580,6 +589,7 @@ export async function maybeSendShippingEmailForOrder(orderId: string) {
         orderId: order.id,
         carrier: order.shippingCarrier ?? null,
         trackingNumber: order.shippingTrackingNumber ?? null,
+        isSubscription: Boolean(order.isSubscription),
       });
       return;
     }
@@ -601,6 +611,7 @@ export async function maybeSendShippingEmailForOrder(orderId: string) {
         orderId: order.id,
         carrier: item.carrier ?? null,
         trackingNumber: item.trackingNumber ?? null,
+        isSubscription: Boolean(order.isSubscription),
       });
     }
   } catch (e) {

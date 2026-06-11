@@ -15,7 +15,7 @@ export function PortalLinkEmail({
   portalUrl,
   expiresMinutes = 15,
 }: PortalLinkEmailProps) {
-  const preview = "Your secure Kimora subscription management link.";
+  const preview = "Your secure Kimora link — switch your flavor, pause, or cancel.";
 
   return (
     <KimoraEmailLayout preview={preview} siteUrl={siteUrl} supportEmail={supportEmail}>
@@ -26,7 +26,8 @@ export function PortalLinkEmail({
 
       <Text style={styles.p}>
         Here's your secure link to manage your Kimora subscription. From there
-        you can pause, cancel, or change your delivery frequency.
+        you can switch your flavor, pause, cancel, or change your delivery
+        frequency. Flavor changes apply to your next shipment.
       </Text>
 
       <Hr style={styles.divider} />

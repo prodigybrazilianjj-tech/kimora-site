@@ -367,7 +367,8 @@ export default function OrderSuccess() {
                 You’re in control
               </h3>
               <p className="text-xs text-white/55 text-center mb-5">
-                Adjust, pause, or cancel anytime. No games.
+                Switch your flavor, pause, or cancel anytime — flavor changes
+                apply to your next shipment. No games.
               </p>
 
               {sendError && (

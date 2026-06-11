@@ -10,6 +10,8 @@ export interface ShippingNotificationEmailProps {
   carrier: string;
   trackingNumber: string;
   trackingUrl: string | null;
+  isSubscription?: boolean;
+  manageLink?: string | null;
 }
 
 export function ShippingNotificationEmail({
@@ -20,6 +22,8 @@ export function ShippingNotificationEmail({
   carrier,
   trackingNumber,
   trackingUrl,
+  isSubscription = false,
+  manageLink = null,
 }: ShippingNotificationEmailProps) {
   const preview = `Your Kimora order is on the way${name ? `, ${name}` : ""}.`;
 
@@ -60,6 +64,18 @@ export function ShippingNotificationEmail({
               Track package
             </Link>
           ) : null}
+        </Section>
+      ) : null}
+
+      {isSubscription && manageLink ? (
+        <Section style={{ marginBottom: "24px", padding: "16px", backgroundColor: "#0a1a16", borderRadius: "10px", border: "1px solid #0f3028" }}>
+          <Text style={{ margin: "0 0 10px", fontSize: "13px", color: styles.TEXT_MUTED }}>
+            Want a different flavor next time? Switch it before your next
+            shipment — takes about ten seconds.
+          </Text>
+          <Link href={manageLink} style={styles.button}>
+            Change my next flavor
+          </Link>
         </Section>
       ) : null}
 

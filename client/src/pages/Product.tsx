@@ -1,17 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { track } from "@/lib/analytics";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Check,
   ShieldCheck,
@@ -63,7 +55,8 @@ export default function Product() {
   const [purchaseType, setPurchaseType] = useState<"onetime" | "subscribe">(
     "subscribe"
   );
-  const [frequency, setFrequency] = useState<"2" | "4" | "6">("4");
+  // Single monthly cadence — reuses the existing 4-week price.
+  const [frequency] = useState<"2" | "4" | "6">("4");
   const [quantity, setQuantity] = useState(1);
   const [currentImage, setCurrentImage] = useState<"pouch" | "stick">("pouch");
 
@@ -93,17 +86,6 @@ export default function Product() {
   // What the customer pays per order/renewal (NOT "monthly")
   const currentUnitPrice =
     purchaseType === "subscribe" ? pricePerShipmentSub : priceOneTime;
-
-  // Display-only helper (makes it obvious that 2-week is billed twice as often)
-  const estimatedMonthly = useMemo(() => {
-    if (purchaseType !== "subscribe") return null;
-
-    if (frequency === "2") return pricePerShipmentSub * 2;
-    if (frequency === "4") return pricePerShipmentSub;
-
-    // 6-week: roughly 4 weeks / 6 weeks of the price (estimate only)
-    return (pricePerShipmentSub * 4) / 6;
-  }, [purchaseType, frequency]);
 
   const handleAddToCart = () => {
     const id =
@@ -253,34 +235,14 @@ export default function Product() {
 
                 {purchaseType === "subscribe" && (
                   <div className="mt-4 pl-8 animate-in slide-in-from-top-2">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-2 block">
-                      Delivery Frequency
-                    </Label>
-
-                    <Select
-                      value={frequency}
-                      onValueChange={(v) => setFrequency(v as "2" | "4" | "6")}
-                    >
-                      <SelectTrigger className="w-full bg-background border-white/10">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="2">Every 2 Weeks</SelectItem>
-                        <SelectItem value="4">
-                          Every 4 Weeks (Most Popular)
-                        </SelectItem>
-                        <SelectItem value="6">Every 6 Weeks</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      Billed every {frequency} weeks
-                      {estimatedMonthly !== null && (
-                        <>
-                          {" "}
-                          • Est. monthly: ${estimatedMonthly.toFixed(2)}
-                        </>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider">
+                        Monthly
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        One pouch a month — a 30-day supply. Need more? Just raise
+                        the quantity.
+                      </span>
                     </div>
                   </div>
                 )}

@@ -5,6 +5,7 @@ import type { Server } from "http";
 import { registerAdminRoutes } from "./routes/adminRoutes";
 import { registerCheckoutRoutes } from "./routes/checkoutRoutes";
 import { registerPortalRoutes } from "./routes/portalRoutes";
+import { registerSubscriptionRoutes } from "./routes/subscriptionRoutes";
 import { registerWebhookRoutes } from "./routes/webhookRoutes";
 import { registerWholesaleRoutes } from "./routes/wholesaleRoutes";
 import { registerWaitlistRoutes } from "./routes/waitlistRoutes";
@@ -17,6 +18,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerCheckoutRoutes(app);
   registerWebhookRoutes(app);
   registerPortalRoutes(app);
+  registerSubscriptionRoutes(app);
   registerWholesaleRoutes(app);
   registerWaitlistRoutes(app);
   registerEmailCaptureRoutes(app);

@@ -64,7 +64,7 @@ export default function Product() {
 
   // Pricing
   const priceOneTime = 49.99;
-  const pricePerShipmentSub = 44.99;
+  const pricePerShipmentSub = 42.49;
 
   // Fire view_item / ViewContent on mount and when the flavor changes.
   // Uses the one-time price as the canonical "list price" since the user
@@ -219,7 +219,7 @@ export default function Product() {
                         Subscribe & Save
                       </span>
                       <span className="text-xs text-primary font-medium">
-                        Save 10% + Free Shipping
+                        Save 15% + Free Shipping
                       </span>
                     </div>
                   </div>

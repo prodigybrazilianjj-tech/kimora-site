@@ -91,19 +91,19 @@ export default function ComingSoon() {
   const flavors = [
     {
       name: "Strawberry Guava",
-      img: "/assets/products/strawberry-guava/pouch.webp",
+      img: "/assets/products/strawberry-guava/pouch_v2.webp",
       glow: "rgba(255,149,86,0.18)",
       desc: "Tropical, richer, and fruit-forward with a fuller flavor profile.",
     },
     {
       name: "Lemon Yuzu",
-      img: "/assets/products/lemon-yuzu/pouch.webp",
+      img: "/assets/products/lemon-yuzu/pouch_v2.webp",
       glow: "rgba(255,213,88,0.18)",
       desc: "Bright citrus with a cleaner, sharper finish.",
     },
     {
       name: "Raspberry Dragonfruit",
-      img: "/assets/products/raspberry-dragonfruit/pouch.webp",
+      img: "/assets/products/raspberry-dragonfruit/pouch_v2.webp",
       glow: "rgba(255,86,149,0.18)",
       desc: "Smooth, balanced, and built to be the daily driver.",
     },
@@ -112,9 +112,9 @@ export default function ComingSoon() {
   return (
     <>
       <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#020202_0%,#060606_42%,#030303_100%)]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#0f0b06_0%,#161009_42%,#0c0905_100%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-gradient-to-b from-primary/10 via-transparent to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0c0905] to-transparent" />
 
         <main className="relative z-10">
           {/* ── Header ── */}
@@ -127,9 +127,9 @@ export default function ComingSoon() {
             <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-5 md:px-8 lg:px-10">
               <Link
                 href="/"
-                className="text-3xl font-display font-bold tracking-wider text-white hover:text-primary transition-colors"
+                className="font-wordmark text-3xl font-bold tracking-[0.14em] text-white transition-colors hover:text-foreground"
               >
-                KIMORA
+                KIM<span className="text-accent">O</span>RA
               </Link>
 
               <div className="hidden items-center gap-3 sm:flex">
@@ -160,8 +160,8 @@ export default function ComingSoon() {
                   Coming soon
                 </motion.p>
 
-                <h1 className="mt-5 text-5xl font-display font-bold leading-[0.92] tracking-tight text-white sm:text-6xl lg:text-7xl">
-                  {["OUT-TRAIN.", "OUT-SMART.", "OUT-LAST."].map((line, i) => (
+                <h1 className="mt-5 text-5xl font-display font-bold leading-[0.95] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+                  {["TRAIN WITH", "PURPOSE."].map((line, i) => (
                     <motion.span
                       key={line}
                       className="block"
@@ -264,7 +264,7 @@ export default function ComingSoon() {
                       ))}
 
                       {/* Seconds — subtle pulse on each tick */}
-                      <div className="rounded-2xl border border-primary/30 bg-primary/10 px-3 py-4 text-center shadow-[0_0_28px_rgba(0,191,165,0.08)]">
+                      <div className="rounded-2xl border border-primary/30 bg-primary/10 px-3 py-4 text-center shadow-[0_0_28px_rgba(168,72,31,0.14)]">
                         <motion.div
                           key={countdown.seconds}
                           initial={{ opacity: 0.4, scale: 0.78 }}
@@ -300,7 +300,7 @@ export default function ComingSoon() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.97 }}
                         transition={{ duration: 0.15 }}
-                        className="h-14 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(0,191,165,0.25)] transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
+                        className="h-14 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(168,72,31,0.30)] transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
                       >
                         {submitting ? "Submitting..." : "Join the Waitlist"}
                       </motion.button>
@@ -335,39 +335,28 @@ export default function ComingSoon() {
                 </motion.div>
               </div>
 
-              {/* Right: floating product image */}
-              <div className="relative bg-black lg:-mr-20 xl:-mr-40">
-                <div className="relative flex min-h-[520px] items-center justify-center lg:min-h-[860px]">
-                  {/* Pulsing ambient orbs */}
+              {/* Right: hero product (floating cut-out lineup) */}
+              <div className="relative">
+                <div className="relative flex min-h-[400px] items-center justify-center lg:min-h-[600px]">
+                  {/* warm ambient glow */}
                   <motion.div
-                    animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.14, 1] }}
-                    transition={{ duration: 4.5, ease: "easeInOut", repeat: Infinity }}
-                    className="pointer-events-none absolute left-1/2 top-[8%] h-[180px] w-[180px] -translate-x-1/2 rounded-full bg-primary/10 blur-[110px]"
+                    animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.08, 1] }}
+                    transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}
+                    className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[680px] -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-primary/12 blur-[160px]"
                   />
                   <motion.div
-                    animate={{ opacity: [0.4, 0.8, 0.4], scale: [1, 1.1, 1] }}
-                    transition={{ duration: 6.5, ease: "easeInOut", repeat: Infinity, delay: 1.2 }}
-                    className="pointer-events-none absolute left-1/2 top-[18%] h-[260px] w-[260px] -translate-x-1/2 rounded-full bg-primary/5 blur-[140px]"
-                  />
-                  <div className="pointer-events-none absolute bottom-[16%] left-1/2 h-[70px] w-[44%] -translate-x-1/2 rounded-full bg-black/80 blur-[28px]" />
-
-                  {/* Entrance + continuous float */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 1.0, ease: EASE, delay: 0.3 }}
-                    className="relative z-10 w-full"
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.9, ease: EASE, delay: 0.3 }}
+                    className="relative z-10 w-full max-w-[640px] lg:max-w-[760px] xl:max-w-[820px] lg:-mr-10 xl:-mr-16"
                   >
-                    <motion.div
-                      animate={{ y: [0, -14, 0] }}
-                      transition={{ duration: 6, ease: "easeInOut", repeat: Infinity }}
-                    >
-                      <img
-                        src="/assets/products/full_lineup.png"
-                        alt="Kimora creatine and electrolytes product lineup"
-                        className="h-auto w-full object-contain brightness-[1.03] contrast-[1.04] saturate-[1.02] drop-shadow-[0_42px_90px_rgba(0,0,0,0.55)]"
-                      />
-                    </motion.div>
+                    <motion.img
+                      src="/assets/products/lineup_hero_v8.webp"
+                      alt="Kimora creatine + electrolytes — Raspberry Dragonfruit, Strawberry Guava, and Lemon Yuzu"
+                      animate={{ y: [0, -6, 0] }}
+                      transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}
+                      className="block h-auto w-full drop-shadow-[0_26px_40px_rgba(0,0,0,0.5)]"
+                    />
                   </motion.div>
                 </div>
               </div>
@@ -602,18 +591,13 @@ export default function ComingSoon() {
                     className="overflow-hidden rounded-[24px] border border-border bg-card transition-colors duration-300 hover:border-white/15"
                     style={{ willChange: "transform" }}
                   >
-                    <div
-                      className="relative aspect-[3/4] p-6 overflow-hidden"
-                      style={{
-                        background: `radial-gradient(circle at 50% 16%, ${flavor.glow}, transparent 30%), linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))`,
-                      }}
-                    >
+                    <div className="relative aspect-[3/4] overflow-hidden bg-[#161312]">
                       <motion.img
                         src={flavor.img}
                         alt={flavor.name}
-                        whileHover={{ scale: 1.07 }}
+                        whileHover={{ scale: 1.05 }}
                         transition={{ duration: 0.4, ease: EASE }}
-                        className="h-full w-full object-contain drop-shadow-2xl"
+                        className="absolute inset-0 h-full w-full object-cover"
                         style={{ willChange: "transform" }}
                       />
                     </div>
@@ -644,14 +628,14 @@ export default function ComingSoon() {
                   Quality
                 </p>
                 <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
-                  Tested before it touches your bag.
+                  Clean formula. Nothing hidden.
                 </h2>
                 <p className="mt-6 leading-8 text-muted-foreground">
-                  Before any stick ships, every batch is tested by an independent
-                  third-party lab — identity and potency (what's on the label is in
-                  the stick), heavy metals at parts-per-billion sensitivity, full
-                  microbiology, and allergens. Results available on request once
-                  batches ship.
+                  No proprietary blends, no fairy dusting, no fillers you can't
+                  pronounce. Every stick is fully disclosed: 5g creatine
+                  monohydrate at label dose, a real electrolyte panel, and natural
+                  sweeteners — that's it. What's on the label is what's in the
+                  stick.
                 </p>
               </motion.div>
             </div>
@@ -690,8 +674,8 @@ export default function ComingSoon() {
                     a: "5g creatine monohydrate, a real electrolyte panel (sodium, potassium, magnesium), naturally sweetened with stevia and monk fruit. No silicon dioxide, no artificial colors, no sugar alcohols.",
                   },
                   {
-                    q: "Is it third-party tested?",
-                    a: "Yes — every batch, by an independent lab, before it ships. Identity, potency, heavy metals, microbiology, allergens. COA available on request once batches ship.",
+                    q: "How do I know it's dosed right?",
+                    a: "Full transparency — 5g creatine monohydrate at label dose, a real electrolyte panel (sodium, potassium, magnesium), naturally sweetened. No proprietary blends, no hidden fillers. What's on the label is in the stick.",
                   },
                   {
                     q: "How do I take it?",
@@ -719,6 +703,113 @@ export default function ComingSoon() {
                   </motion.div>
                 ))}
               </div>
+            </div>
+          </section>
+
+          {/* ── Manifesto ── */}
+          <section className="border-t border-border bg-card">
+            <div className="mx-auto max-w-5xl px-6 py-20 text-center md:px-8 lg:px-10 lg:py-28">
+              <motion.p
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.7, ease: EASE }}
+                className="font-display text-2xl font-semibold uppercase leading-tight tracking-wide text-foreground sm:text-3xl lg:text-4xl"
+              >
+                We don't sell supplements. We build athletes who are{" "}
+                <span className="text-accent">stronger in the body</span> and{" "}
+                <span className="text-accent">sharper in the mind.</span>
+              </motion.p>
+            </div>
+          </section>
+
+          {/* ── What we're building (apparel teaser) ── */}
+          <section className="border-t border-border bg-background">
+            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-24">
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.6, ease: EASE }}
+                className="mb-10 max-w-3xl"
+              >
+                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
+                  What we're building
+                </p>
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
+                  More than a supplement.
+                </h2>
+                <p className="mt-5 max-w-2xl leading-7 text-muted-foreground">
+                  Kimora starts with the stick — but it's becoming a full system
+                  for the people who live on the mats. Gear engineered the same way
+                  the fuel is: honest, tested, built for live rounds. Here's what's
+                  next.
+                </p>
+              </motion.div>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  {
+                    cat: "Apparel",
+                    name: "Rash Guards",
+                    img: "/assets/apparel/rashguard-teaser.webp",
+                    glow: "radial-gradient(110% 85% at 50% 22%, rgba(168,72,31,0.30), transparent 60%)",
+                  },
+                  {
+                    cat: "Apparel",
+                    name: "Grappling Shorts",
+                    img: "/assets/apparel/shorts-teaser.webp",
+                    glow: "radial-gradient(110% 85% at 50% 22%, rgba(201,168,106,0.22), transparent 60%)",
+                  },
+                  {
+                    cat: "Train",
+                    name: "Training Gear",
+                    img: "/assets/apparel/training-teaser.webp",
+                    glow: "radial-gradient(110% 85% at 50% 22%, rgba(168,72,31,0.22), transparent 60%)",
+                  },
+                ].map((tile, i) => (
+                  <motion.div
+                    key={tile.name}
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-60px" }}
+                    transition={{ duration: 0.6, ease: EASE, delay: i * 0.1 }}
+                    className="group relative aspect-[4/5] overflow-hidden rounded-[24px] border border-border bg-card"
+                  >
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: tile.glow }}
+                    />
+                    <img
+                      src={tile.img}
+                      alt={tile.name}
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display =
+                          "none";
+                      }}
+                      className="absolute inset-0 h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-[1.04]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                    <div className="absolute right-4 top-4 rounded-full border border-accent/40 bg-background/70 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-accent backdrop-blur-sm">
+                      Coming Soon
+                    </div>
+                    <div className="absolute inset-x-0 bottom-0 p-6">
+                      <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                        {tile.cat}
+                      </span>
+                      <h3 className="mt-1 font-display text-2xl font-bold uppercase tracking-wide text-foreground">
+                        {tile.name}
+                      </h3>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <p className="mt-8 text-sm text-muted-foreground">
+                Rash guards, shorts, and training gear are in development. Join the
+                waitlist above and you'll hear first.
+              </p>
             </div>
           </section>
         </main>

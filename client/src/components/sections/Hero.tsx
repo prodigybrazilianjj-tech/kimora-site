@@ -26,8 +26,8 @@ export function Hero() {
             </span>
           </div>
 
-          <h1 className="text-7xl md:text-9xl font-display font-bold tracking-tighter text-white leading-[0.9]">
-            KIMORA
+          <h1 className="font-wordmark text-7xl md:text-9xl font-bold tracking-[0.04em] text-white leading-[0.9]">
+            KIM<span className="text-accent">O</span>RA
           </h1>
 
           <p className="text-xl md:text-3xl font-light tracking-widest text-white/80 uppercase">
@@ -42,7 +42,7 @@ export function Hero() {
             <Button 
               size="lg" 
               onClick={scrollToShop}
-              className="h-14 px-8 bg-primary hover:bg-primary/90 text-white text-lg font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(0,191,165,0.3)] hover:shadow-[0_0_30px_rgba(0,191,165,0.5)] transition-all duration-300"
+              className="h-14 px-8 bg-primary hover:bg-primary/90 text-white text-lg font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(168,72,31,0.35)] hover:shadow-[0_0_30px_rgba(168,72,31,0.55)] transition-all duration-300"
             >
               Shop Now <ChevronRight className="ml-2 h-5 w-5" />
             </Button>

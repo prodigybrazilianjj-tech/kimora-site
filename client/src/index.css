@@ -26,8 +26,9 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
   
-  --font-sans: "Inter", sans-serif;
-  --font-display: "Bebas Neue", sans-serif;
+  --font-sans: "Archivo", sans-serif;
+  --font-display: "Gabarito", sans-serif;
+  --font-wordmark: "Poppins", sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -35,34 +36,34 @@
 }
 
 :root {
-  /* Dark Theme by default as per brand */
-  --background: 240 6% 5%; /* #0d0d0f */
-  --foreground: 0 0% 95%; /* Off-white */
+  /* Concept B — Red Rock + Brass. Warm, deep, moody by default. */
+  --background: 28 40% 6%; /* warm near-black #14100a */
+  --foreground: 40 30% 90%; /* bone */
 
-  --card: 240 6% 8%;
-  --card-foreground: 0 0% 95%;
+  --card: 28 33% 9%; /* warm raised surface */
+  --card-foreground: 40 30% 90%;
 
-  --popover: 240 6% 5%;
-  --popover-foreground: 0 0% 95%;
+  --popover: 28 40% 6%;
+  --popover-foreground: 40 30% 90%;
 
-  --primary: 170 100% 25%; /* Deep Teal */
-  --primary-foreground: 0 0% 100%;
+  --primary: 18 69% 39%; /* Red Rock #A8481F */
+  --primary-foreground: 40 45% 96%;
 
-  --secondary: 240 4% 16%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 28 26% 15%;
+  --secondary-foreground: 40 30% 92%;
 
-  --muted: 240 4% 16%;
-  --muted-foreground: 240 5% 65%;
+  --muted: 28 24% 14%;
+  --muted-foreground: 36 14% 62%;
 
-  --accent: 170 100% 25%;
-  --accent-foreground: 0 0% 100%;
+  --accent: 39 47% 60%; /* Brass #C9A86A */
+  --accent-foreground: 28 40% 8%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 240 6% 15%;
-  --input: 240 6% 15%;
-  --ring: 170 100% 25%;
+  --border: 34 22% 16%;
+  --input: 34 22% 16%;
+  --ring: 18 69% 39%;
 
   --radius: 0.5rem;
 }

@@ -13,7 +13,7 @@ const products = [
     desc: "Tart, tropical, and refreshingly smooth.",
     image: "/assets/products/strawberry-guava/pouch.webp",
     priceOneTime: 49.99,
-    priceSub: 44.99,
+    priceSub: 42.49,
     accent: "from-orange-600/20 to-transparent",
     bgAccent: "from-orange-500/20",
   },
@@ -23,7 +23,7 @@ const products = [
     desc: "Bright citrus with a crisp, clean finish.",
     image: "/assets/products/lemon-yuzu/pouch.webp",
     priceOneTime: 49.99,
-    priceSub: 44.99,
+    priceSub: 42.49,
     accent: "from-yellow-500/20 to-transparent",
     bgAccent: "from-yellow-500/20",
   },
@@ -33,7 +33,7 @@ const products = [
     desc: "Bold, juicy, and perfectly balanced.",
     image: "/assets/products/raspberry-dragonfruit/pouch.webp",
     priceOneTime: 49.99,
-    priceSub: 44.99,
+    priceSub: 42.49,
     accent: "from-rose-600/25 to-transparent",
     bgAccent: "from-rose-500/20",
   },
@@ -75,7 +75,7 @@ export default function Shop() {
                     : "text-muted-foreground hover:text-white"
                 }`}
               >
-                Subscribe & Save 10%
+                Subscribe & Save 15%
               </button>
             </div>
           </div>

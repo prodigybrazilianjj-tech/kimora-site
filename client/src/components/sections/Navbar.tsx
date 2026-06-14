@@ -188,9 +188,9 @@ export function Navbar() {
             e.preventDefault();
             goHomeTop();
           }}
-          className="text-3xl font-display font-bold tracking-wider text-white hover:text-primary transition-colors"
+          className="font-wordmark text-3xl font-bold tracking-[0.14em] text-white hover:text-foreground transition-colors"
         >
-          KIMORA
+          KIM<span className="text-accent">O</span>RA
         </Link>
 
         {/* Desktop Nav */}

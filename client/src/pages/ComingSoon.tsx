@@ -758,13 +758,13 @@ export default function ComingSoon() {
                   {
                     cat: "Apparel",
                     name: "Grappling Shorts",
-                    img: "/assets/apparel/shorts-teaser.webp",
+                    img: "/assets/apparel/shorts-teaser-v2.webp",
                     glow: "radial-gradient(110% 85% at 50% 22%, rgba(201,168,106,0.22), transparent 60%)",
                   },
                   {
                     cat: "Train",
                     name: "Training Gear",
-                    img: "/assets/apparel/training-teaser.webp",
+                    img: "/assets/apparel/training-bag-teaser-v2.webp",
                     glow: "radial-gradient(110% 85% at 50% 22%, rgba(168,72,31,0.22), transparent 60%)",
                   },
                 ].map((tile, i) => (

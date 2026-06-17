@@ -91,19 +91,19 @@ export default function ComingSoon() {
   const flavors = [
     {
       name: "Strawberry Guava",
-      img: "/assets/products/strawberry-guava/pouch_v2.webp",
+      img: "/assets/products/strawberry-guava/pouch_sticks_v1.webp",
       glow: "rgba(255,149,86,0.18)",
       desc: "Tropical, richer, and fruit-forward with a fuller flavor profile.",
     },
     {
       name: "Lemon Lychee",
-      img: "/assets/products/lemon-yuzu/pouch_v2.webp",
+      img: "/assets/products/lemon-yuzu/pouch_sticks_v1.webp",
       glow: "rgba(255,213,88,0.18)",
       desc: "Bright lemon with a sweet, floral lychee finish.",
     },
     {
       name: "Raspberry Dragonfruit",
-      img: "/assets/products/raspberry-dragonfruit/pouch_v2.webp",
+      img: "/assets/products/raspberry-dragonfruit/pouch_sticks_v1.webp",
       glow: "rgba(255,86,149,0.18)",
       desc: "Smooth, balanced, and built to be the daily driver.",
     },

@@ -473,6 +473,12 @@ export function registerCheckoutRoutes(app: Express) {
         if (!courierMetadata[k]) delete courierMetadata[k];
       }
 
+      // Accounting channel tag for QuickBooks. A Stripe→QBO connector reads
+      // kimora_channel off the charge/subscription to post revenue to the
+      // right income account (Retail Sales vs. Subscription Revenue). Wholesale
+      // is tagged separately in wholesaleRoutes.ts.
+      const channel = hasSub ? "subscription" : "retail";
+
       const sessionParams: any = {
         mode,
         line_items,
@@ -482,7 +488,7 @@ export function registerCheckoutRoutes(app: Express) {
         shipping_address_collection: { allowed_countries: ["US"] },
         phone_number_collection: { enabled: true },
         automatic_tax: { enabled: true },
-        metadata: courierMetadata,
+        metadata: { ...courierMetadata, kimora_channel: channel },
       };
 
       if (analyticsCourier.event_id) {
@@ -492,11 +498,15 @@ export function registerCheckoutRoutes(app: Express) {
 
       if (mode === "payment") {
         sessionParams.shipping_options = shipping_options;
+        // Land the channel tag on the PaymentIntent/Charge the connector imports.
+        sessionParams.payment_intent_data = {
+          metadata: { kimora_channel: channel },
+        };
       } else {
         // Mirror to the resulting subscription so the FIRST invoice.paid
         // (which fires for the initial subscription charge) can read it.
         sessionParams.subscription_data = {
-          metadata: courierMetadata,
+          metadata: { ...courierMetadata, kimora_channel: channel },
         };
       }
 

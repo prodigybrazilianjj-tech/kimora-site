@@ -489,6 +489,8 @@ export function registerWholesaleRoutes(app: Express) {
           invoiceRef: invoiceNumber || "",
           source: "kimora-wholesale-sheet",
           unitPrice: String(lineItems[0]?.unitPrice ?? inferUnitPrice(tier)),
+          // Accounting channel tag for the QuickBooks connector → Wholesale Revenue.
+          kimora_channel: "wholesale",
         },
       } as any);
 
@@ -633,6 +635,8 @@ export function registerWholesaleRoutes(app: Express) {
           source: "kimora-wholesale-sheet",
           unitPrice: String(unitPrice),
           reorder: "true",
+          // Accounting channel tag for the QuickBooks connector → Wholesale Revenue.
+          kimora_channel: "wholesale",
         },
       } as any);
 

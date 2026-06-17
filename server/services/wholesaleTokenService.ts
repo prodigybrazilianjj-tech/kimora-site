@@ -17,11 +17,15 @@ function getSecret(): string {
   );
 }
 
-export function inferUnitPrice(tier: string): number {
-  const t = (tier || "").toLowerCase();
-  if (t.includes("volume")) return 27.49;
-  if (t.includes("standard")) return 32.49;
-  return 37.49; // intro / default
+// Single flat gym wholesale price (6/10/2026 pricing decision): every gym
+// account pays $28.99/bag — $21 COGS, 42% gym margin vs. $49.99 MSRP. The old
+// tiered model ($37.49 intro / $32.49 standard / $27.49 volume) is retired.
+// Existing reorder tokens carry their own locked-in unitPrice, so this only
+// affects new applications and the metadata fallback.
+export const WHOLESALE_UNIT_PRICE = 28.99;
+
+export function inferUnitPrice(_tier?: string): number {
+  return WHOLESALE_UNIT_PRICE;
 }
 
 export function generateReorderToken(payload: ReorderTokenPayload): string {

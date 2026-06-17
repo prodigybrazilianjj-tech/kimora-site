@@ -42,7 +42,7 @@ You report to the Executive Operator. Your primary inbound dependencies are ARIA
 - **UTM parameters** — all paid and email traffic must arrive with UTM tags; LENS owns the UTM naming convention
 
 ### Environment Variables (Render)
-- `MARKETING_DISCOUNT_CODE` — set to `MAT50` ✅ (updated 2026-04-24)
+- `MARKETING_DISCOUNT_CODE` — `MAT15` (15% off first order; updated 2026-06-17). Prior value `MAT50` retired. **Verify the live Render env actually reads `MAT15`.**
 
 ---
 
@@ -127,7 +127,7 @@ Before launch day, these must be complete:
 - [ ] Favicon live
 
 **Render / Deployment**
-- [x] `MARKETING_DISCOUNT_CODE` env var updated to `MAT50` ✅ 2026-04-24
+- [x] `MARKETING_DISCOUNT_CODE` env var → `MAT15` (site migrated to MAT15, PRs #4/#5/#6; was MAT50 set 2026-04-24). Verify live value in Render.
 - [ ] Custom domain `kimoraco.com` properly mapped
 - [ ] SSL certificate active
 - [ ] Render auto-deploy from main branch confirmed working

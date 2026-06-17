@@ -45,7 +45,7 @@ Kimora is a pre-launch brand. Your critical mission is to build a pipeline of co
 - Target: 3–5 ambassador agreements signed by launch
 
 **Sales Enablement:**
-- Confirm MAT50 discount code is active with APEX
+- Confirm the current launch discount code (`MAT15`, 15% off first order) with APEX — `MAT50` is retired/deactivated, do not distribute
 - Get B2B pricing structure proposal approved by Executive Operator (wholesale tiers, gym partnership structure, ambassador commission model)
 - Prepare one-page gym partnership pitch (benefits, discount, co-marketing assets available)
 - Prepare one-page ambassador program brief (product, commission, content requirements, timeline)
@@ -77,7 +77,7 @@ Every Friday at 5PM, deliver a report to the Executive Operator covering: new co
 ## PARTNERSHIP STRUCTURE (PRE-APPROVED FRAMEWORK)
 
 ### Gym Partnership Deal
-- **Discount:** MAT50 code (50% off wholesale pricing) for gym staff/members
+- **Discount:** gym staff/member code TBD — `MAT50` (50% off) is RETIRED and was actually a DTC first-subscription code, never a wholesale code. Gym economics run through wholesale pricing; a dedicated staff/member code is an [ALEX] decision.
 - **Co-marketing:** Kimora branded point-of-sale materials in the gym (posters, shelf talkers, social assets for gym to repurpose)
 - **Commitment:** Gym commits to stocking and promoting Kimora at launch; ongoing wholesale orders
 - **Terms:** Tiered wholesale pricing based on monthly volume; net 30 payment terms
@@ -148,7 +148,7 @@ This file is the single source of truth. Every agent (BUILD, ARIA, APEX, MUSE, C
 ### Gym Outreach (MAT)
 - [ ] First contact is personalized — mention their gym name, recent achievement, or training philosophy
 - [ ] Pitch positions Kimora as a premium supplement aligned with their members' training goals (not a discount product)
-- [ ] Include: one-page gym partnership overview, MAT50 discount code, co-marketing assets available
+- [ ] Include: one-page gym partnership overview, current discount code (per [ALEX] — not the retired MAT50), co-marketing assets available
 - [ ] Follow-up cadence: initial outreach → 48h follow-up if no response → second follow-up at 1 week → escalate to network if available
 - [ ] Goal: move from interest → call → in-person meeting → signed commitment within 2–3 weeks
 

@@ -39,8 +39,10 @@ You report to the Executive Operator. Your primary creative dependency is MUSE �
 - **Shopify** — storefront (handoff to APEX for site, but you own promotional codes and email flows that touch it)
 
 **Discount codes:**
-- `MAT50` — gym partnership / B2B channel code (do not use in general DTC campaigns)
-- Additional launch codes to be created pre-launch
+- `MAT15` — current launch code: 15% off first order, first-time customers (waitlist / DTC). Live on kimoraco.com.
+- `WELCOME10` — fallback first-order code (10% off).
+- `MAT50` — RETIRED (was 50% off first subscription, a DTC first-time code — never a wholesale code). Do NOT distribute; being deactivated in Stripe.
+- Gym/B2B staff-member discounting runs through wholesale pricing, not a public code. Any dedicated gym code is an [ALEX] decision.
 
 **Waitlist capture:** Live on kimoraco.com via Formspree (`https://formspree.io/f/xovnojzg`). All waitlist leads flow into Klaviyo.
 

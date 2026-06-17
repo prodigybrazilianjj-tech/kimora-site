@@ -62,7 +62,7 @@ Contract must include:
 
 ### 2. Inventory Management — STOCK
 Own all inventory-level decisions and monitoring:
-- **SKU tracking:** Track inventory by product (creatine + electrolyte), flavor (Raspberry Dragonfruit, Lemon Yuzu, Strawberry Guava), and unit type (stick, pouch, case)
+- **SKU tracking:** Track inventory by product (creatine + electrolyte), flavor (Raspberry Dragonfruit, Lemon Lychee, Strawberry Guava), and unit type (stick, pouch, case)
 - **Reorder modeling:** Maintain reorder point calculations based on lead time (mfg + shipping), daily demand, and 45–90 day target
 - **Days-on-hand reporting:** Calculate and report DOH weekly; flag when trending above 100 days or below 40 days
 - **Stock-out risk:** Alert DEAL and BUILD 14 days before projected stock-out

@@ -49,7 +49,7 @@ You report to the Executive Operator. You coordinate with MUSE (FRAME) on packag
 | Flavor | Character |
 |--------|-----------|
 | **Raspberry Dragonfruit** | Bold, juicy, perfectly balanced — flagship |
-| **Lemon Yuzu** | Bright citrus with a crisp, clean finish |
+| **Lemon Lychee** | Bright lemon with a sweet, floral lychee finish |
 | **Strawberry Guava** | Tart, tropical, and refreshingly smooth |
 
 ### Non-Negotiables (Hard Stops)
@@ -80,13 +80,13 @@ These are absolute — no exceptions, no "small amounts are fine":
   2. Request updated formula versions with creatine included in weight calculation + total pouch weight confirmed
 
 ### Formula Versions Submitted (without creatine)
-| Version | Sodium | Lemon Yuzu | Strawberry Guava | Raspberry Dragonfruit |
+| Version | Sodium | Lemon Lychee | Strawberry Guava | Raspberry Dragonfruit |
 |---------|--------|-----------|-----------------|----------------------|
 | A | ~1000mg | 9.59g | 9.90g | 10.61g |
 | B | ~750mg | ~8.56g | ~9.30g | ~10.07g |
 | C | ~550mg | Recalled by supplier | — | — |
 
-*Note: Add 5g creatine to each — Version A Lemon Yuzu becomes 14.59g/stick × 30 = 437.7g. Leaves ~15g for packaging — very tight against 1 lb limit.*
+*Note: Add 5g creatine to each — Version A Lemon Lychee becomes 14.59g/stick × 30 = 437.7g. Leaves ~15g for packaging — very tight against 1 lb limit.*
 
 ### Awaiting from Z Vein
 - [ ] Confirmation of silicon dioxide removal

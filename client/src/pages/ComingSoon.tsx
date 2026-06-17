@@ -99,7 +99,7 @@ export default function ComingSoon() {
       name: "Lemon Lychee",
       img: "/assets/products/lemon-yuzu/pouch_v2.webp",
       glow: "rgba(255,213,88,0.18)",
-      desc: "Bright citrus with a cleaner, sharper finish.",
+      desc: "Bright lemon with a sweet, floral lychee finish.",
     },
     {
       name: "Raspberry Dragonfruit",

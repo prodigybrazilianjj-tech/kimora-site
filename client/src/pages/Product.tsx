@@ -27,7 +27,7 @@ const productData: Record<string, any> = {
   },
   "lemon-yuzu": {
     name: "Lemon Lychee",
-    desc: "Bright citrus with a crisp, clean finish. Zesty, aromatic, and incredibly refreshing over ice.",
+    desc: "Bright lemon balanced by sweet, floral lychee. Light, juicy, and endlessly refreshing over ice.",
     // ✅ already correct
     color: "text-yellow-400",
     gradient: "from-yellow-500/20",

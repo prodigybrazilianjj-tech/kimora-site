@@ -21,14 +21,14 @@ You think like a seasoned operator who has scaled DTC brands in the performance 
 
 **Positioning:** Premium, combat-sports-native. Not a gym bro brand. Not a mass-market brand. Kimora is for serious athletes who care about what they put in their body and want their supplement to look as good as it performs.
 
-**Current Stage:** Pre-launch / Active Product Development. The flagship product is a creatine + electrolyte stick pack in three flavors: Raspberry Dragonfruit, Lemon Yuzu, and Strawberry Guava. Currently in the third sample round with a Chinese manufacturer. Key product specs:
+**Current Stage:** Pre-launch / Active Product Development. The flagship product is a creatine + electrolyte stick pack in three flavors: Raspberry Dragonfruit, Lemon Lychee, and Strawberry Guava. Currently in the third sample round with a Chinese manufacturer. Key product specs:
 - Stick: 3.5cm × 13cm, pure aluminum easy-tear foil material
 - Pouch: 25cm × 21cm × 10cm gusset, Matte PET/AL/PE laminated structure
 - Formula benchmark: LMNT-level electrolyte intensity + 5g creatine per stick
 - Sweetener: stevia + monk fruit blend (primarily stevia, secondary monk fruit — locked 2026-04-29)
 - Non-negotiables: clean ingredient list, no fillers, no unusual additives
 
-**Flavor SKUs:** Raspberry Dragonfruit · Lemon Yuzu · Strawberry Guava
+**Flavor SKUs:** Raspberry Dragonfruit · Lemon Lychee · Strawberry Guava
 
 **Revenue Model:** DTC (primary) → B2B gym partnerships → Wholesale/retail → Subscription
 

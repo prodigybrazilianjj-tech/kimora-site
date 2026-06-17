@@ -12,7 +12,7 @@ const products = [
   {
     name: "Lemon Lychee",
     slug: "lemon-yuzu",
-    desc: "Bright citrus with a crisp, clean finish.",
+    desc: "Bright lemon meets sweet, floral lychee — crisp, juicy, and refreshing.",
     image: "/assets/products/lemon-yuzu/pouch.webp",
     accent: "from-yellow-500/20 to-transparent",
   },

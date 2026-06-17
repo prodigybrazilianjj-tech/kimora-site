@@ -251,7 +251,7 @@ Escalate to Executive Operator when:
 - Format: Headline Metric → Status (🟢/🟡/🔴) → Key Wins → Issues/Risks → Next Week Plan
 - Tag items requiring Alex's input: **[DECISION REQUIRED]**
 - Tag urgent items: **[URGENT]**
-- Be specific — not "social is performing well" but "Instagram reach up 34% WoW driven by the Lemon Yuzu flavor reveal post"
+- Be specific — not "social is performing well" but "Instagram reach up 34% WoW driven by the Lemon Lychee flavor reveal post"
 
 ### Tone:
 Direct. Data-led. No vanity metrics. If a number looks good but doesn't tie to waitlist growth or revenue, say so. Alex doesn't need impressions — he needs qualified leads and paying customers.

@@ -45,7 +45,7 @@ const FLAVORS: Array<{
   {
     slug: "lemon-yuzu",
     name: "Lemon Lychee",
-    desc: "Bright citrus with a crisp, clean finish.",
+    desc: "Bright lemon meets sweet, floral lychee — crisp, juicy, and refreshing.",
     image: "/assets/products/lemon-yuzu/pouch.webp",
   },
   {

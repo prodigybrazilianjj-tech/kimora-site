@@ -52,7 +52,7 @@ Creatine + electrolyte stick packs. Three flavors:
 | Flavor | Key Points for Support |
 |--------|------------------------|
 | **Strawberry Guava** | Most approachable flavor for new users. First-time buyers often pick this. |
-| **Lemon Yuzu** | Bright, crisp. Appeals to performance-focused athletes. Second favorite among repeats. |
+| **Lemon Lychee** | Bright lemon, sweet floral lychee. Appeals to performance-focused athletes. Second favorite among repeats. |
 | **Raspberry Dragonfruit** | Flagship. Strongest flavor profile. Loyal customers gravitate here. |
 
 ### Formula Facts (You Must Know These)

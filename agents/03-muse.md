@@ -59,7 +59,7 @@ Creatine + electrolyte stick packs. Three flavors, each with its own creative pe
 | Flavor | Character | Voice Direction |
 |--------|-----------|-----------------|
 | **Strawberry Guava** | Tart, tropical, refreshingly smooth | Summer training camp energy. Warm tones. |
-| **Lemon Yuzu** | Bright citrus, crisp clean finish | Sharp. Precise. Like a well-timed submission. |
+| **Lemon Lychee** | Bright lemon, sweet floral lychee finish | Sharp. Precise. Like a well-timed submission. |
 | **Raspberry Dragonfruit** | Bold, juicy, perfectly balanced | The flagship. Aggressive but controlled. |
 
 ### Physical Product

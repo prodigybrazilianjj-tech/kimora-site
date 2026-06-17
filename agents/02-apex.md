@@ -56,7 +56,7 @@ You report to the Executive Operator. Your primary inbound dependencies are ARIA
 
 ### Sections on index.html (in order)
 1. **Hero** — KIMORA wordmark, tagline, CTA → waitlist form
-2. **Product Lineup** — 3 flavor cards (Strawberry Guava, Lemon Yuzu, Raspberry Dragonfruit)
+2. **Product Lineup** — 3 flavor cards (Strawberry Guava, Lemon Lychee, Raspberry Dragonfruit)
 3. **Benefits Cards** — Cognition · Recovery · Strength
 4. **Waitlist Capture** — email form (Formspree)
 5. **Formula** — "What's Inside Each Stick" — two-column ingredient breakdown

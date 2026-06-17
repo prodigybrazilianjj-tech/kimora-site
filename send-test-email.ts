@@ -76,7 +76,7 @@ async function testOrderSubscription() {
     },
     lineItems: [
       {
-        description: "Lemon Yuzu — Subscribe every 4 weeks",
+        description: "Lemon Lychee — Subscribe every 4 weeks",
         quantity: 1,
         amount_total: 3240,
         price: { unit_amount: 3240, id: null },

@@ -10,7 +10,7 @@ const products = [
     accent: "from-orange-600/20 to-transparent",
   },
   {
-    name: "Lemon Yuzu",
+    name: "Lemon Lychee",
     slug: "lemon-yuzu",
     desc: "Bright citrus with a crisp, clean finish.",
     image: "/assets/products/lemon-yuzu/pouch.webp",

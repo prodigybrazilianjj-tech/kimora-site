@@ -96,7 +96,7 @@ export default function ComingSoon() {
       desc: "Tropical, richer, and fruit-forward with a fuller flavor profile.",
     },
     {
-      name: "Lemon Yuzu",
+      name: "Lemon Lychee",
       img: "/assets/products/lemon-yuzu/pouch_v2.webp",
       glow: "rgba(255,213,88,0.18)",
       desc: "Bright citrus with a cleaner, sharper finish.",
@@ -352,7 +352,7 @@ export default function ComingSoon() {
                   >
                     <motion.img
                       src="/assets/products/lineup_hero_v8.webp"
-                      alt="Kimora creatine + electrolytes — Raspberry Dragonfruit, Strawberry Guava, and Lemon Yuzu"
+                      alt="Kimora creatine + electrolytes — Raspberry Dragonfruit, Strawberry Guava, and Lemon Lychee"
                       animate={{ y: [0, -6, 0] }}
                       transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}
                       className="block h-auto w-full drop-shadow-[0_26px_40px_rgba(0,0,0,0.5)]"
@@ -504,6 +504,22 @@ export default function ComingSoon() {
                   Why a stick, not a tub.
                 </h2>
               </motion.div>
+
+              {/* Pouch + single-serve sticks — show the format */}
+              <motion.figure
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.7, ease: EASE }}
+                className="mb-10 overflow-hidden rounded-[24px] border border-border bg-card"
+              >
+                <img
+                  src="/assets/products/strawberry-guava/pouch_sticks_studio.webp"
+                  alt="Kimora Strawberry Guava pouch with its single-serve creatine + electrolyte sticks"
+                  loading="lazy"
+                  className="mx-auto block h-auto w-full max-w-[760px] object-contain"
+                />
+              </motion.figure>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <motion.div

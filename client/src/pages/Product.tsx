@@ -26,7 +26,7 @@ const productData: Record<string, any> = {
     stick: "/assets/products/strawberry-guava/stick.png",
   },
   "lemon-yuzu": {
-    name: "Lemon Yuzu",
+    name: "Lemon Lychee",
     desc: "Bright citrus with a crisp, clean finish. Zesty, aromatic, and incredibly refreshing over ice.",
     // ✅ already correct
     color: "text-yellow-400",

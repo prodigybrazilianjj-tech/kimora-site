@@ -135,7 +135,7 @@ function mapPriceIdToItem(priceId: string): {
 function flavorFromDescription(description: string | null | undefined): string | null {
   const desc = String(description || "").toLowerCase();
   if (desc.includes("strawberry")) return "strawberry-guava";
-  if (desc.includes("lemon") || desc.includes("yuzu")) return "lemon-yuzu";
+  if (desc.includes("lemon") || desc.includes("lychee") || desc.includes("yuzu")) return "lemon-yuzu";
   if (desc.includes("raspberry") || desc.includes("dragonfruit")) return "raspberry-dragonfruit";
   return null;
 }

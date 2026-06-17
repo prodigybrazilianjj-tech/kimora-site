@@ -30,7 +30,7 @@ export type CanonicalEventName =
 export type AnalyticsItem = {
   /** Stable SKU — e.g. "lemon-yuzu-sub-4" or "lemon-yuzu-onetime" */
   sku: string;
-  /** Display name — e.g. "Lemon Yuzu" */
+  /** Display name — e.g. "Lemon Lychee" */
   flavor: string;
   /** Unit price in USD */
   price: number;

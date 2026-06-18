@@ -103,7 +103,7 @@ export default function ComingSoon() {
     },
     {
       name: "Raspberry Dragonfruit",
-      img: "/assets/products/raspberry-dragonfruit/pouch_sticks_v3.webp",
+      img: "/assets/products/raspberry-dragonfruit/pouch_sticks_v5.webp",
       glow: "rgba(255,86,149,0.18)",
       desc: "Smooth, balanced, and built to be the daily driver.",
     },

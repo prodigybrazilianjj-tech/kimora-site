@@ -97,13 +97,13 @@ export default function ComingSoon() {
     },
     {
       name: "Lemon Lychee",
-      img: "/assets/products/lemon-yuzu/pouch_sticks_v3.webp",
+      img: "/assets/products/lemon-yuzu/pouch_sticks_v4.webp",
       glow: "rgba(255,213,88,0.18)",
       desc: "Bright lemon with a sweet, floral lychee finish.",
     },
     {
       name: "Raspberry Dragonfruit",
-      img: "/assets/products/raspberry-dragonfruit/pouch_sticks_v2.webp",
+      img: "/assets/products/raspberry-dragonfruit/pouch_sticks_v3.webp",
       glow: "rgba(255,86,149,0.18)",
       desc: "Smooth, balanced, and built to be the daily driver.",
     },

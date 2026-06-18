@@ -21,7 +21,7 @@ const products = [
     id: "lemon-yuzu",
     name: "Lemon Lychee",
     desc: "Bright lemon meets sweet, floral lychee — crisp, juicy, and refreshing.",
-    image: "/assets/products/lemon-yuzu/pouch.webp",
+    image: "/assets/products/lemon-yuzu/pouch_lychee.webp",
     priceOneTime: 49.99,
     priceSub: 42.49,
     accent: "from-yellow-500/20 to-transparent",

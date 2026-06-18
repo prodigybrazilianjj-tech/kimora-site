@@ -31,8 +31,8 @@ const productData: Record<string, any> = {
     // ✅ already correct
     color: "text-yellow-400",
     gradient: "from-yellow-500/20",
-    pouch: "/assets/products/lemon-yuzu/pouch.webp",
-    stick: "/assets/products/lemon-yuzu/stick.png",
+    pouch: "/assets/products/lemon-yuzu/pouch_lychee.webp",
+    stick: "/assets/products/lemon-yuzu/stick_lychee.png",
   },
   "raspberry-dragonfruit": {
     name: "Raspberry Dragonfruit",

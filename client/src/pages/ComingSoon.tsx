@@ -97,13 +97,13 @@ export default function ComingSoon() {
     },
     {
       name: "Lemon Lychee",
-      img: "/assets/products/lemon-yuzu/pouch_sticks_v1.webp",
+      img: "/assets/products/lemon-yuzu/pouch_sticks_v3.webp",
       glow: "rgba(255,213,88,0.18)",
       desc: "Bright lemon with a sweet, floral lychee finish.",
     },
     {
       name: "Raspberry Dragonfruit",
-      img: "/assets/products/raspberry-dragonfruit/pouch_sticks_v1.webp",
+      img: "/assets/products/raspberry-dragonfruit/pouch_sticks_v2.webp",
       glow: "rgba(255,86,149,0.18)",
       desc: "Smooth, balanced, and built to be the daily driver.",
     },
@@ -351,7 +351,7 @@ export default function ComingSoon() {
                     className="relative z-10 w-full max-w-[640px] lg:max-w-[760px] xl:max-w-[820px] lg:-mr-10 xl:-mr-16"
                   >
                     <motion.img
-                      src="/assets/products/lineup_hero_v8.webp"
+                      src="/assets/products/lineup_hero_v9.webp"
                       alt="Kimora creatine + electrolytes — Raspberry Dragonfruit, Strawberry Guava, and Lemon Lychee"
                       animate={{ y: [0, -6, 0] }}
                       transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}

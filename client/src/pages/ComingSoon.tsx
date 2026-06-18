@@ -291,7 +291,7 @@ export default function ComingSoon() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         disabled={submitting}
-                        className="h-14 flex-1 rounded-2xl border border-border bg-black/40 px-5 text-sm text-white placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none disabled:opacity-60 transition-colors duration-200"
+                        className="h-16 flex-1 rounded-2xl border border-border bg-black/40 px-5 text-base text-white placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none disabled:opacity-60 transition-colors duration-200"
                       />
 
                       <motion.button
@@ -300,7 +300,7 @@ export default function ComingSoon() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.97 }}
                         transition={{ duration: 0.15 }}
-                        className="h-14 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(168,72,31,0.30)] transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
+                        className="h-16 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(168,72,31,0.30)] transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
                       >
                         {submitting ? "Submitting..." : "Join the Waitlist"}
                       </motion.button>

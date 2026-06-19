@@ -127,7 +127,7 @@ export default function ComingSoon() {
             <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-5 md:px-8 lg:px-10">
               <Link
                 href="/"
-                className="font-wordmark text-3xl font-bold tracking-[0.14em] text-white transition-colors hover:text-foreground"
+                className="font-wordmark text-3xl font-bold tracking-[0.14em] text-foreground transition-colors hover:text-foreground"
               >
                 KIM<span className="text-accent">O</span>RA
               </Link>
@@ -137,7 +137,7 @@ export default function ComingSoon() {
                   initial={{ opacity: 0, x: 12 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.55, ease: EASE, delay: 0.25 }}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary backdrop-blur-sm"
+                  className="rounded-full border border-foreground/10 bg-foreground/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary backdrop-blur-sm"
                 >
                   Creatine · Electrolytes · Daily
                 </motion.span>
@@ -186,7 +186,7 @@ export default function ComingSoon() {
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, ease: EASE, delay: 0.68 }}
-                  className="mt-8 max-w-[520px] text-lg leading-8 text-white/80 sm:text-xl"
+                  className="mt-8 max-w-[520px] text-lg leading-8 text-foreground/80 sm:text-xl"
                 >
                   Creatine + electrolytes built for fighters.
                 </motion.p>
@@ -213,7 +213,7 @@ export default function ComingSoon() {
                       initial={{ opacity: 0, x: -14 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.5, ease: EASE, delay: 0.85 + i * 0.07 }}
-                      className="rounded-full border border-border bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80"
+                      className="rounded-full border border-border bg-foreground/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80"
                     >
                       {badge}
                     </motion.span>
@@ -225,7 +225,7 @@ export default function ComingSoon() {
                   initial={{ opacity: 0, y: 40 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.75, ease: EASE, delay: 1.08 }}
-                  className="mt-10 rounded-[30px] border border-border bg-white/[0.035] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.4)] backdrop-blur-sm sm:p-6"
+                  className="mt-10 rounded-[30px] border border-border bg-foreground/[0.035] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.4)] backdrop-blur-sm sm:p-6"
                 >
                   <div className="flex flex-col gap-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -233,7 +233,7 @@ export default function ComingSoon() {
                         <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                           Pre-Launch Exclusive
                         </p>
-                        <h2 className="mt-2 text-3xl font-display font-bold tracking-tight text-white">
+                        <h2 className="mt-2 text-3xl font-display font-bold tracking-tight text-foreground">
                           Get 15% off — and first access.
                         </h2>
                       </div>
@@ -252,9 +252,9 @@ export default function ComingSoon() {
                       ].map(({ value, label }) => (
                         <div
                           key={label}
-                          className="rounded-2xl border border-border bg-black/35 px-3 py-4 text-center"
+                          className="rounded-2xl border border-border bg-muted px-3 py-4 text-center"
                         >
-                          <div className="text-3xl font-bold tracking-tight text-white md:text-4xl">
+                          <div className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
                             {value}
                           </div>
                           <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
@@ -270,7 +270,7 @@ export default function ComingSoon() {
                           initial={{ opacity: 0.4, scale: 0.78 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ duration: 0.22, ease: "easeOut" }}
-                          className="text-3xl font-bold tracking-tight text-white md:text-4xl"
+                          className="text-3xl font-bold tracking-tight text-foreground md:text-4xl"
                         >
                           {countdown.seconds}
                         </motion.div>
@@ -291,7 +291,7 @@ export default function ComingSoon() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         disabled={submitting}
-                        className="h-16 flex-1 rounded-2xl border border-border bg-black/40 px-5 text-base text-white placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none disabled:opacity-60 transition-colors duration-200"
+                        className="h-16 flex-1 rounded-2xl border border-border bg-muted px-5 text-base text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none disabled:opacity-60 transition-colors duration-200"
                       />
 
                       <motion.button
@@ -300,7 +300,7 @@ export default function ComingSoon() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.97 }}
                         transition={{ duration: 0.15 }}
-                        className="h-16 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(168,72,31,0.30)] transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
+                        className="h-16 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_24px_rgba(168,72,31,0.30)] transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
                       >
                         {submitting ? "Submitting..." : "Join the Waitlist"}
                       </motion.button>
@@ -376,7 +376,7 @@ export default function ComingSoon() {
                 <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
                   The formula
                 </p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
                   What's in it. What's not.
                 </h2>
               </motion.div>
@@ -389,7 +389,7 @@ export default function ComingSoon() {
                   transition={{ duration: 0.6, ease: EASE }}
                   className="rounded-[24px] border border-border bg-card p-8"
                 >
-                  <h3 className="text-xl font-display font-bold text-white">
+                  <h3 className="text-xl font-display font-bold text-foreground">
                     In every stick
                   </h3>
                   <ul className="mt-5 space-y-3 leading-7 text-muted-foreground">
@@ -406,7 +406,7 @@ export default function ComingSoon() {
                   transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
                   className="rounded-[24px] border border-border bg-card p-8"
                 >
-                  <h3 className="text-xl font-display font-bold text-white">
+                  <h3 className="text-xl font-display font-bold text-foreground">
                     What we left out
                   </h3>
                   <ul className="mt-5 space-y-3 leading-7 text-muted-foreground">
@@ -418,7 +418,7 @@ export default function ComingSoon() {
                 </motion.div>
               </div>
 
-              <p className="mt-8 max-w-3xl leading-8 text-white/80">
+              <p className="mt-8 max-w-3xl leading-8 text-foreground/80">
                 One formula behind all three flavors. Same dose, different
                 profiles. Tear, mix, drink.
               </p>
@@ -439,7 +439,7 @@ export default function ComingSoon() {
                   Why Kimora exists
                 </p>
 
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
                   Consistency wins.
                 </h2>
 
@@ -449,7 +449,7 @@ export default function ComingSoon() {
                   only when you remember.
                 </p>
 
-                <p className="mt-4 leading-8 text-white/80">
+                <p className="mt-4 leading-8 text-foreground/80">
                   Kimora was built to remove the friction so daily use becomes the
                   default.
                 </p>
@@ -470,7 +470,7 @@ export default function ComingSoon() {
                 <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
                   Built for combat sports
                 </p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
                   Made for the mat, not the supplement aisle.
                 </h2>
                 <p className="mt-6 leading-8 text-muted-foreground">
@@ -480,7 +480,7 @@ export default function ComingSoon() {
                   gym bag and works mid-session, not a tub that sits on a counter.
                   For the people who roll, spar, drill, cut, and compete.
                 </p>
-                <p className="mt-6 text-sm font-medium uppercase tracking-[0.22em] text-white/70">
+                <p className="mt-6 text-sm font-medium uppercase tracking-[0.22em] text-foreground/70">
                   BJJ · MMA · Muay Thai · Boxing · Grappling · Serious Lifters
                 </p>
               </motion.div>
@@ -500,7 +500,7 @@ export default function ComingSoon() {
                 <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
                   The format
                 </p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
                   Why a stick, not a tub.
                 </h2>
               </motion.div>
@@ -529,7 +529,7 @@ export default function ComingSoon() {
                   transition={{ duration: 0.6, ease: EASE }}
                   className="rounded-[24px] border border-border bg-card p-8"
                 >
-                  <h3 className="text-xl font-display font-bold text-white">
+                  <h3 className="text-xl font-display font-bold text-foreground">
                     Fits the bag
                   </h3>
                   <p className="mt-3 leading-7 text-muted-foreground">
@@ -545,7 +545,7 @@ export default function ComingSoon() {
                   transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
                   className="rounded-[24px] border border-border bg-card p-8"
                 >
-                  <h3 className="text-xl font-display font-bold text-white">
+                  <h3 className="text-xl font-display font-bold text-foreground">
                     One stick, one day
                   </h3>
                   <p className="mt-3 leading-7 text-muted-foreground">
@@ -560,7 +560,7 @@ export default function ComingSoon() {
                   transition={{ duration: 0.6, ease: EASE, delay: 0.2 }}
                   className="rounded-[24px] border border-border bg-card p-8"
                 >
-                  <h3 className="text-xl font-display font-bold text-white">
+                  <h3 className="text-xl font-display font-bold text-foreground">
                     Survives the gym
                   </h3>
                   <p className="mt-3 leading-7 text-muted-foreground">
@@ -585,7 +585,7 @@ export default function ComingSoon() {
                   Flavor lineup
                 </p>
 
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
                   Three flavors. One system.
                 </h2>
 
@@ -604,10 +604,10 @@ export default function ComingSoon() {
                     viewport={{ once: true, margin: "-60px" }}
                     transition={{ duration: 0.65, ease: EASE, delay: i * 0.12 }}
                     whileHover={{ y: -10, transition: { duration: 0.25, ease: EASE } }}
-                    className="overflow-hidden rounded-[24px] border border-border bg-card transition-colors duration-300 hover:border-white/15"
+                    className="overflow-hidden rounded-[24px] border border-border bg-card transition-colors duration-300 hover:border-foreground/15"
                     style={{ willChange: "transform" }}
                   >
-                    <div className="relative aspect-[3/4] overflow-hidden bg-[#161312]">
+                    <div className="relative aspect-[3/4] overflow-hidden bg-muted">
                       <motion.img
                         src={flavor.img}
                         alt={flavor.name}
@@ -618,7 +618,7 @@ export default function ComingSoon() {
                       />
                     </div>
                     <div className="border-t border-border p-6 text-center">
-                      <h3 className="text-2xl font-display font-bold text-white">
+                      <h3 className="text-2xl font-display font-bold text-foreground">
                         {flavor.name}
                       </h3>
                       <p className="mt-3 text-sm leading-7 text-muted-foreground">
@@ -643,7 +643,7 @@ export default function ComingSoon() {
                 <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
                   Quality
                 </p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
                   Clean formula. Nothing hidden.
                 </h2>
                 <p className="mt-6 leading-8 text-muted-foreground">
@@ -670,7 +670,7 @@ export default function ComingSoon() {
                 <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
                   FAQ
                 </p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-white sm:text-4xl">
+                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
                   Questions, answered.
                 </h2>
               </motion.div>
@@ -710,7 +710,7 @@ export default function ComingSoon() {
                     transition={{ duration: 0.55, ease: EASE, delay: (i % 2) * 0.08 }}
                     className="rounded-[24px] border border-border bg-card p-7"
                   >
-                    <h3 className="text-lg font-display font-bold text-white">
+                    <h3 className="text-lg font-display font-bold text-foreground">
                       {item.q}
                     </h3>
                     <p className="mt-3 text-sm leading-7 text-muted-foreground">
@@ -780,7 +780,7 @@ export default function ComingSoon() {
                   {
                     cat: "Train",
                     name: "Training Gear",
-                    img: "/assets/apparel/training-bag-teaser-v2.webp",
+                    img: "/assets/apparel/training-bag-teaser-v3.webp",
                     glow: "radial-gradient(110% 85% at 50% 22%, rgba(168,72,31,0.22), transparent 60%)",
                   },
                 ].map((tile, i) => (

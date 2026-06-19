@@ -112,9 +112,20 @@ export default function ComingSoon() {
   return (
     <>
       <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#0f0b06_0%,#161009_42%,#0c0905_100%)]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-gradient-to-b from-primary/10 via-transparent to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0c0905] to-transparent" />
+        {/* warm cream base wash */}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#F9F3E4_0%,#F7F0DE_45%,#F4ECD8_100%)]" />
+        {/* warm aurora glows */}
+        <div className="pointer-events-none absolute -left-32 -top-40 h-[34rem] w-[44rem] rounded-full bg-[radial-gradient(circle,rgba(216,174,90,0.45),transparent_70%)] blur-[120px]" />
+        <div className="pointer-events-none absolute -right-40 top-24 h-[36rem] w-[42rem] rounded-full bg-[radial-gradient(circle,rgba(168,71,42,0.20),transparent_70%)] blur-[130px]" />
+        {/* fine grain texture */}
+        <div
+          className="pointer-events-none absolute inset-0 mix-blend-multiply"
+          style={{
+            opacity: 0.05,
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          }}
+        />
 
         <main className="relative z-10">
           {/* ── Header ── */}
@@ -122,12 +133,12 @@ export default function ComingSoon() {
             initial={{ opacity: 0, y: -18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, ease: "easeOut" }}
-            className="border-b border-border"
+            className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md backdrop-saturate-150"
           >
             <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-5 md:px-8 lg:px-10">
               <Link
                 href="/"
-                className="font-wordmark text-3xl font-bold tracking-[0.14em] text-foreground transition-colors hover:text-foreground"
+                className="font-wordmark text-4xl font-bold leading-none tracking-[0.16em] text-foreground transition-colors hover:text-foreground sm:text-5xl"
               >
                 KIM<span className="text-accent">O</span>RA
               </Link>
@@ -155,7 +166,7 @@ export default function ComingSoon() {
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
-                  className="text-sm font-medium uppercase tracking-[0.28em] text-primary"
+                  className="inline-block bg-gradient-to-r from-[#8A6520] via-[#B5862E] to-[#D8AE5A] bg-clip-text text-sm font-semibold uppercase tracking-[0.30em] text-transparent"
                 >
                   Coming soon
                 </motion.p>
@@ -225,7 +236,7 @@ export default function ComingSoon() {
                   initial={{ opacity: 0, y: 40 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.75, ease: EASE, delay: 1.08 }}
-                  className="mt-10 rounded-[30px] border border-border bg-foreground/[0.035] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.4)] backdrop-blur-sm sm:p-6"
+                  className="mt-10 rounded-[30px] border border-border bg-card/70 p-5 shadow-[0_24px_60px_rgba(66,48,28,0.16),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-md sm:p-6"
                 >
                   <div className="flex flex-col gap-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -264,7 +275,7 @@ export default function ComingSoon() {
                       ))}
 
                       {/* Seconds — subtle pulse on each tick */}
-                      <div className="rounded-2xl border border-primary/30 bg-primary/10 px-3 py-4 text-center shadow-[0_0_28px_rgba(168,72,31,0.14)]">
+                      <div className="rounded-2xl border border-accent/30 bg-accent/10 px-3 py-4 text-center shadow-[0_0_28px_rgba(168,71,42,0.16)]">
                         <motion.div
                           key={countdown.seconds}
                           initial={{ opacity: 0.4, scale: 0.78 }}
@@ -274,7 +285,7 @@ export default function ComingSoon() {
                         >
                           {countdown.seconds}
                         </motion.div>
-                        <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-primary">
+                        <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-accent">
                           Seconds
                         </div>
                       </div>
@@ -300,7 +311,7 @@ export default function ComingSoon() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.97 }}
                         transition={{ duration: 0.15 }}
-                        className="h-16 rounded-2xl bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-[0_10px_24px_rgba(168,72,31,0.30)] transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
+                        className="h-16 rounded-2xl bg-[linear-gradient(180deg,#D8AE5A_0%,#B5862E_55%,#8A6520_100%)] px-7 text-sm font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-[0_12px_26px_rgba(181,134,46,0.40),inset_0_1px_0_rgba(255,255,255,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(181,134,46,0.5)] disabled:opacity-60"
                       >
                         {submitting ? "Submitting..." : "Join the Waitlist"}
                       </motion.button>
@@ -342,7 +353,7 @@ export default function ComingSoon() {
                   <motion.div
                     animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.08, 1] }}
                     transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}
-                    className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[680px] -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-primary/12 blur-[160px]"
+                    className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[680px] -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-primary/25 blur-[150px]"
                   />
                   <motion.div
                     initial={{ opacity: 0, y: 18 }}
@@ -351,11 +362,11 @@ export default function ComingSoon() {
                     className="relative z-10 w-full max-w-[640px] lg:max-w-[760px] xl:max-w-[820px] lg:-mr-10 xl:-mr-16"
                   >
                     <motion.img
-                      src="/assets/products/lineup_hero_v9.webp"
+                      src="/assets/products/lineup_hero_v11.webp"
                       alt="Kimora creatine + electrolytes — Raspberry Dragonfruit, Strawberry Guava, and Lemon Lychee"
                       animate={{ y: [0, -6, 0] }}
                       transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}
-                      className="block h-auto w-full drop-shadow-[0_26px_40px_rgba(0,0,0,0.5)]"
+                      className="block h-auto w-full drop-shadow-[0_30px_40px_rgba(66,48,28,0.28)]"
                     />
                   </motion.div>
                 </div>

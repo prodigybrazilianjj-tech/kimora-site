@@ -8,7 +8,7 @@ export default function Privacy() {
 
       <main className="pt-32 pb-24">
         <div className="container px-4 mx-auto max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-8">
+          <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-8">
             Privacy Policy
           </h1>
 
@@ -26,7 +26,7 @@ export default function Privacy() {
               interact with our products and services.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Information We Collect
             </h2>
             <p>
@@ -76,7 +76,7 @@ export default function Privacy() {
               information is processed directly by Stripe.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               How We Use Your Information
             </h2>
             <p>We use your information to:</p>
@@ -101,7 +101,7 @@ export default function Privacy() {
               <li>Comply with legal obligations</li>
             </ul>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Cookies &amp; Tracking Technologies
             </h2>
             <p>
@@ -192,7 +192,7 @@ export default function Privacy() {
               (GPC) signals where applicable.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Service Providers &amp; Third Parties
             </h2>
             <p>
@@ -242,7 +242,7 @@ export default function Privacy() {
               customers, or others.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">Your Rights</h2>
+            <h2 className="text-foreground font-bold text-lg mt-8">Your Rights</h2>
             <p>Depending on your location, you may have rights to:</p>
             <ul className="list-disc pl-6 space-y-1">
               <li>
@@ -288,7 +288,7 @@ export default function Privacy() {
               lodge a complaint with your local data protection authority.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Children’s Privacy
             </h2>
             <p>
@@ -299,7 +299,7 @@ export default function Privacy() {
               will delete it promptly.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Data Retention
             </h2>
             <p>
@@ -309,7 +309,7 @@ export default function Privacy() {
               information is no longer needed, we delete or anonymize it.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">Data Security</h2>
+            <h2 className="text-foreground font-bold text-lg mt-8">Data Security</h2>
             <p>
               We use reasonable administrative, technical, and physical
               safeguards to protect personal information. However, no system is
@@ -318,7 +318,7 @@ export default function Privacy() {
               applicable law.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               International Data Transfers
             </h2>
             <p>
@@ -328,7 +328,7 @@ export default function Privacy() {
               provide the same level of data protection as your home country.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Changes to This Policy
             </h2>
             <p>
@@ -337,7 +337,7 @@ export default function Privacy() {
               will be communicated through our website or by email.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">Contact</h2>
+            <h2 className="text-foreground font-bold text-lg mt-8">Contact</h2>
             <p>
               Questions or requests about this Privacy Policy:
               <br />

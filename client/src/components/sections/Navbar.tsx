@@ -188,7 +188,7 @@ export function Navbar() {
             e.preventDefault();
             goHomeTop();
           }}
-          className="font-wordmark text-3xl font-bold tracking-[0.14em] text-white hover:text-foreground transition-colors"
+          className="font-wordmark text-3xl font-bold tracking-[0.14em] text-foreground hover:text-foreground transition-colors"
         >
           KIM<span className="text-accent">O</span>RA
         </Link>
@@ -199,7 +199,7 @@ export function Navbar() {
             <button
               key={link.name}
               onClick={link.action}
-              className="text-sm font-medium transition-colors uppercase tracking-wide text-muted-foreground hover:text-white"
+              className="text-sm font-medium transition-colors uppercase tracking-wide text-muted-foreground hover:text-foreground"
             >
               {link.name}
             </button>
@@ -207,11 +207,11 @@ export function Navbar() {
 
           <Link
             href="/cart"
-            className="relative text-muted-foreground hover:text-white transition-colors"
+            className="relative text-muted-foreground hover:text-foreground transition-colors"
           >
             <ShoppingBag className="w-5 h-5" />
             {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+              <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
                 {cartCount}
               </span>
             )}
@@ -221,7 +221,7 @@ export function Navbar() {
           {!PRELAUNCH && (
             <Button
               onClick={() => setLocation("/shop")}
-              className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider"
             >
               Shop Now
             </Button>
@@ -232,12 +232,12 @@ export function Navbar() {
         <div className="md:hidden flex items-center gap-4">
           <Link
             href="/cart"
-            className="relative text-white"
+            className="relative text-foreground"
             onClick={() => closeMobile()}
           >
             <ShoppingBag className="w-6 h-6" />
             {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+              <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
                 {cartCount}
               </span>
             )}
@@ -245,7 +245,7 @@ export function Navbar() {
 
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-white">
+              <Button variant="ghost" size="icon" className="text-foreground">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
@@ -257,7 +257,7 @@ export function Navbar() {
               <div className="flex flex-col gap-6 mt-10">
                 <button
                   onClick={goHomeTop}
-                  className="text-lg font-display text-left text-white/90 hover:text-white transition-colors"
+                  className="text-lg font-display text-left text-foreground/90 hover:text-foreground transition-colors"
                 >
                   Home
                 </button>
@@ -266,7 +266,7 @@ export function Navbar() {
                   <button
                     key={link.name}
                     onClick={link.action}
-                    className="text-lg font-display text-left text-muted-foreground hover:text-white transition-colors"
+                    className="text-lg font-display text-left text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {link.name}
                   </button>
@@ -279,7 +279,7 @@ export function Navbar() {
                       closeMobile();
                       setLocation("/shop");
                     }}
-                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider mt-4"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider mt-4"
                   >
                     Shop Now
                   </Button>

@@ -8,7 +8,7 @@ export default function Terms() {
 
       <main className="pt-32 pb-24">
         <div className="container px-4 mx-auto max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-8">
+          <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-8">
             Terms of Service
           </h1>
 
@@ -35,7 +35,7 @@ export default function Terms() {
               </strong>
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">Eligibility</h2>
+            <h2 className="text-foreground font-bold text-lg mt-8">Eligibility</h2>
             <p>
               You must be at least 18 years old (or the age of majority in your
               state of residence) to use our site or purchase our products. By
@@ -43,7 +43,7 @@ export default function Terms() {
               requirement.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Accounts &amp; Registration
             </h2>
             <p>
@@ -60,7 +60,7 @@ export default function Terms() {
               to Kimora.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Products &amp; Supplements
             </h2>
             <p>
@@ -79,7 +79,7 @@ export default function Terms() {
               delivered.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Orders, Pricing &amp; Payments
             </h2>
             <p>
@@ -104,7 +104,7 @@ export default function Terms() {
               Terms.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Subscriptions &amp; Auto-Renewal
             </h2>
             <p>
@@ -144,7 +144,7 @@ export default function Terms() {
               Shoppers’ Confidence Act (ROSCA), and similar state laws.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Shipping &amp; Delivery
             </h2>
             <p>
@@ -161,7 +161,7 @@ export default function Terms() {
               delivery confirmation.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Returns &amp; Refunds
             </h2>
             <p>
@@ -173,7 +173,7 @@ export default function Terms() {
               review it before placing an order.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Promotional Codes &amp; Discounts
             </h2>
             <p>
@@ -185,7 +185,7 @@ export default function Terms() {
               qualifying purchase unless we expressly state otherwise.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Email &amp; SMS Communications
             </h2>
             <p>
@@ -206,7 +206,7 @@ export default function Terms() {
               to opt out.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               User Content &amp; Reviews
             </h2>
             <p>
@@ -225,7 +225,7 @@ export default function Terms() {
               that we determine is inappropriate, in our sole discretion.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Intellectual Property
             </h2>
             <p>
@@ -244,7 +244,7 @@ export default function Terms() {
               are the property of their respective owners.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Prohibited Uses
             </h2>
             <p>You agree not to:</p>
@@ -259,7 +259,7 @@ export default function Terms() {
               <li>Submit false, misleading, or fraudulent reviews or content</li>
             </ul>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Third-Party Links &amp; Services
             </h2>
             <p>
@@ -269,7 +269,7 @@ export default function Terms() {
               third-party services is subject to their own terms and policies.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Disclaimer of Warranties
             </h2>
             <p>
@@ -287,7 +287,7 @@ export default function Terms() {
               you.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Limitation of Liability
             </h2>
             <p>
@@ -307,7 +307,7 @@ export default function Terms() {
               (US$100).
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Indemnification
             </h2>
             <p>
@@ -319,7 +319,7 @@ export default function Terms() {
               or your violation of any law or third-party right.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Dispute Resolution &amp; Arbitration
             </h2>
             <p>
@@ -360,7 +360,7 @@ export default function Terms() {
               affect any other provision of these Terms.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Governing Law &amp; Venue
             </h2>
             <p>
@@ -372,7 +372,7 @@ export default function Terms() {
               venue there.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Changes to These Terms
             </h2>
             <p>
@@ -384,7 +384,7 @@ export default function Terms() {
               updated Terms.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Termination
             </h2>
             <p>
@@ -396,7 +396,7 @@ export default function Terms() {
               and Dispute Resolution) will survive.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Severability &amp; Entire Agreement
             </h2>
             <p>
@@ -408,7 +408,7 @@ export default function Terms() {
               agreements.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">Contact</h2>
+            <h2 className="text-foreground font-bold text-lg mt-8">Contact</h2>
             <p>
               Questions about these Terms:
               <br />

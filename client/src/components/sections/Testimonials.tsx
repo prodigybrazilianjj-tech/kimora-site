@@ -21,13 +21,13 @@ const testimonials = [
 
 export function Testimonials() {
   return (
-    <section className="py-24 bg-card/30 border-t border-white/5">
+    <section className="py-24 bg-card/30 border-t border-foreground/5">
       <div className="container px-4 mx-auto max-w-6xl">
         <div className="text-center mb-14">
           <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary mb-4">
             From the community
           </p>
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-white">
+          <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground">
             Real athletes. Real consistency.
           </h2>
         </div>
@@ -36,7 +36,7 @@ export function Testimonials() {
           {testimonials.map((t) => (
             <div
               key={t.name}
-              className="rounded-2xl border border-white/8 bg-white/[0.03] p-7 flex flex-col gap-5"
+              className="rounded-2xl border border-foreground/8 bg-foreground/[0.03] p-7 flex flex-col gap-5"
             >
               {/* Stars */}
               <div className="flex gap-1">
@@ -51,19 +51,19 @@ export function Testimonials() {
                 ))}
               </div>
 
-              <p className="text-white/80 leading-relaxed text-sm flex-1">
+              <p className="text-foreground/80 leading-relaxed text-sm flex-1">
                 "{t.quote}"
               </p>
 
               <div>
-                <p className="text-white font-semibold text-sm">{t.name}</p>
+                <p className="text-foreground font-semibold text-sm">{t.name}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{t.detail}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <p className="text-center text-xs text-white/25 mt-10 tracking-wide">
+        <p className="text-center text-xs text-foreground/25 mt-10 tracking-wide">
           Early access community · Testimonials are from beta users
         </p>
       </div>

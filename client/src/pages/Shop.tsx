@@ -49,20 +49,20 @@ export default function Shop() {
       <main className="pt-32 pb-24">
         <div className="container px-4 mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-7xl font-display font-bold text-white mb-6">
+            <h1 className="text-5xl md:text-7xl font-display font-bold text-foreground mb-6">
               SHOP KIMORA
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
               Daily electrolytes + creatine. Choose your fuel.
             </p>
 
-            <div className="flex items-center justify-center gap-4 bg-secondary/30 w-fit mx-auto p-1.5 rounded-full border border-white/5">
+            <div className="flex items-center justify-center gap-4 bg-secondary/30 w-fit mx-auto p-1.5 rounded-full border border-foreground/5">
               <button
                 onClick={() => setIsSubscribe(false)}
                 className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
                   !isSubscribe
-                    ? "bg-white text-black"
-                    : "text-muted-foreground hover:text-white"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 One-time
@@ -71,8 +71,8 @@ export default function Shop() {
                 onClick={() => setIsSubscribe(true)}
                 className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
                   isSubscribe
-                    ? "bg-primary text-white"
-                    : "text-muted-foreground hover:text-white"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Subscribe & Save 15%
@@ -97,7 +97,7 @@ export default function Shop() {
                       className="block h-full rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/60"
                       aria-label={`View ${product.name}`}
                     >
-                      <Card className="bg-card border-white/5 overflow-hidden hover:border-white/10 transition-all group h-full flex flex-col cursor-pointer">
+                      <Card className="bg-card border-foreground/5 overflow-hidden hover:border-foreground/10 transition-all group h-full flex flex-col cursor-pointer">
                         <CardContent className="p-0 flex flex-col h-full">
                           {/* Image Area */}
                           <div className="relative aspect-[4/5] bg-secondary/20 p-8 flex items-center justify-center overflow-hidden">
@@ -113,7 +113,7 @@ export default function Shop() {
 
                           {/* Content Area */}
                           <div className="p-6 flex flex-col flex-grow">
-                            <h3 className="text-2xl font-display font-bold text-white mb-2">
+                            <h3 className="text-2xl font-display font-bold text-foreground mb-2">
                               {product.name}
                             </h3>
                             <p className="text-sm text-muted-foreground mb-6 flex-grow">
@@ -126,7 +126,7 @@ export default function Shop() {
                                   30 Sticks
                                 </span>
                                 <div className="flex items-baseline gap-2">
-                                  <span className="text-2xl font-bold text-white">
+                                  <span className="text-2xl font-bold text-foreground">
                                     ${displayPrice}
                                   </span>
 
@@ -142,7 +142,7 @@ export default function Shop() {
                             {/* Button stays for UX, but doesn't need to handle navigation */}
                             <Button
                               type="button"
-                              className="w-full bg-white/10 hover:bg-white text-white hover:text-black font-bold uppercase tracking-wider border border-white/10 hover:border-white transition-all"
+                              className="w-full bg-foreground/10 hover:bg-foreground text-foreground hover:text-background font-bold uppercase tracking-wider border border-foreground/10 hover:border-foreground transition-all"
                             >
                               Select
                             </Button>

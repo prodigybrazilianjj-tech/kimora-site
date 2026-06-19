@@ -11,7 +11,7 @@ export function Comparison() {
           
           {/* LEFT SIDE TEXT */}
           <div>
-            <h2 className="text-4xl md:text-6xl font-display font-bold text-white mb-6 leading-[0.9]">
+            <h2 className="text-4xl md:text-6xl font-display font-bold text-foreground mb-6 leading-[0.9]">
               WHY NOT JUST A HUGE TUB OF PLAIN CREATINE?
             </h2>
 
@@ -30,9 +30,9 @@ export function Comparison() {
               ].map((item) => (
                 <li key={item} className="flex items-center gap-3">
                   <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                    <Check className="w-4 h-4 text-white" />
+                    <Check className="w-4 h-4 text-foreground" />
                   </div>
-                  <span className="text-white font-medium">{item}</span>
+                  <span className="text-foreground font-medium">{item}</span>
                 </li>
               ))}
             </ul>

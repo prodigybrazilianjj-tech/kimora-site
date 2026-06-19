@@ -111,7 +111,7 @@ export default function Product() {
         <div className="container px-4 mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24">
           {/* Left Column: Images */}
           <div className="space-y-6">
-            <div className="relative aspect-[4/5] bg-secondary/10 rounded-2xl flex items-center justify-center p-8 overflow-hidden border border-white/5">
+            <div className="relative aspect-[4/5] bg-secondary/10 rounded-2xl flex items-center justify-center p-8 overflow-hidden border border-foreground/5">
               <div
                 className={`absolute inset-0 bg-gradient-to-t ${product.gradient} to-transparent opacity-50`}
               />
@@ -130,7 +130,7 @@ export default function Product() {
                   "w-20 h-20 rounded-lg border bg-card p-2 transition-all",
                   currentImage === "pouch"
                     ? "border-primary ring-1 ring-primary"
-                    : "border-white/10 hover:border-white/30"
+                    : "border-foreground/10 hover:border-foreground/30"
                 )}
               >
                 <img
@@ -145,7 +145,7 @@ export default function Product() {
                   "w-20 h-20 rounded-lg border bg-card p-2 transition-all",
                   currentImage === "stick"
                     ? "border-primary ring-1 ring-primary"
-                    : "border-white/10 hover:border-white/30"
+                    : "border-foreground/10 hover:border-foreground/30"
                 )}
               >
                 <img
@@ -159,7 +159,7 @@ export default function Product() {
 
           {/* Right Column: Details & Purchase */}
           <div className="flex flex-col">
-            <h1 className="text-5xl md:text-6xl font-display font-bold text-white mb-4">
+            <h1 className="text-5xl md:text-6xl font-display font-bold text-foreground mb-4">
               {product.name}
             </h1>
             <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
@@ -167,7 +167,7 @@ export default function Product() {
             </p>
 
             <div className="mb-8">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4">
                 What's Inside
               </h3>
               <ul className="grid grid-cols-2 gap-y-2 gap-x-4">
@@ -196,7 +196,7 @@ export default function Product() {
                   "border rounded-xl p-4 cursor-pointer transition-all relative overflow-hidden",
                   purchaseType === "subscribe"
                     ? "border-primary bg-primary/5"
-                    : "border-white/10 hover:border-white/20"
+                    : "border-foreground/10 hover:border-foreground/20"
                 )}
                 onClick={() => setPurchaseType("subscribe")}
               >
@@ -215,7 +215,7 @@ export default function Product() {
                       )}
                     </div>
                     <div>
-                      <span className="font-bold text-white block">
+                      <span className="font-bold text-foreground block">
                         Subscribe & Save
                       </span>
                       <span className="text-xs text-primary font-medium">
@@ -224,7 +224,7 @@ export default function Product() {
                     </div>
                   </div>
 
-                  <span className="font-bold text-white">
+                  <span className="font-bold text-foreground">
                     ${pricePerShipmentSub}
                     <span className="text-xs text-muted-foreground font-normal">
                       {" "}
@@ -254,7 +254,7 @@ export default function Product() {
                   "border rounded-xl p-4 cursor-pointer transition-all",
                   purchaseType === "onetime"
                     ? "border-primary bg-primary/5"
-                    : "border-white/10 hover:border-white/20"
+                    : "border-foreground/10 hover:border-foreground/20"
                 )}
                 onClick={() => setPurchaseType("onetime")}
               >
@@ -272,30 +272,30 @@ export default function Product() {
                         <div className="w-2.5 h-2.5 rounded-full bg-primary" />
                       )}
                     </div>
-                    <span className="font-bold text-white">
+                    <span className="font-bold text-foreground">
                       One-time Purchase
                     </span>
                   </div>
-                  <span className="font-bold text-white">${priceOneTime}</span>
+                  <span className="font-bold text-foreground">${priceOneTime}</span>
                 </div>
               </div>
             </div>
 
             {/* Quantity & CTA */}
             <div className="flex gap-4 mb-6">
-              <div className="flex items-center border border-white/10 rounded-lg bg-white/5 h-14">
+              <div className="flex items-center border border-foreground/10 rounded-lg bg-foreground/5 h-14">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-4 text-white hover:text-primary transition-colors"
+                  className="px-4 text-foreground hover:text-primary transition-colors"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
-                <span className="w-8 text-center font-bold text-white">
+                <span className="w-8 text-center font-bold text-foreground">
                   {quantity}
                 </span>
                 <button
                   onClick={() => setQuantity(Math.min(6, quantity + 1))}
-                  className="px-4 text-white hover:text-primary transition-colors"
+                  className="px-4 text-foreground hover:text-primary transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -303,14 +303,14 @@ export default function Product() {
 
               <Button
                 onClick={handleAddToCart}
-                className="flex-1 h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg"
+                className="flex-1 h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider text-lg"
               >
                 Add to Cart - ${(currentUnitPrice * quantity).toFixed(2)}
               </Button>
             </div>
 
             {/* Trust Badges */}
-            <div className="grid grid-cols-3 gap-4 border-t border-white/10 pt-6">
+            <div className="grid grid-cols-3 gap-4 border-t border-foreground/10 pt-6">
               <div className="flex flex-col items-center text-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-muted-foreground" />
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider">

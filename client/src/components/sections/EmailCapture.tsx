@@ -40,13 +40,13 @@ export function EmailCapture() {
   }
 
   return (
-    <section className="py-24 bg-background border-t border-white/5">
+    <section className="py-24 bg-background border-t border-foreground/5">
       <div className="container px-4 mx-auto max-w-2xl text-center">
         <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary mb-5">
           Limited launch offer
         </p>
 
-        <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-4 leading-[0.95]">
+        <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4 leading-[0.95]">
           10% OFF YOUR FIRST ORDER
         </h2>
 
@@ -63,9 +63,9 @@ export function EmailCapture() {
             >
               WELCOME10
             </div>
-            <p className="text-white text-lg font-medium mb-1">Check your inbox.</p>
+            <p className="text-foreground text-lg font-medium mb-1">Check your inbox.</p>
             <p className="text-muted-foreground text-sm">
-              We sent your code to <span className="text-white">{email}</span>. Apply it at
+              We sent your code to <span className="text-foreground">{email}</span>. Apply it at
               checkout for 10% off.
             </p>
           </div>
@@ -78,12 +78,12 @@ export function EmailCapture() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={state === "loading"}
-              className="flex-1 bg-card border border-white/10 text-white placeholder:text-muted-foreground rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition disabled:opacity-50"
+              className="flex-1 bg-card border border-foreground/10 text-foreground placeholder:text-muted-foreground rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={state === "loading"}
-              className="bg-primary hover:bg-primary/90 text-white font-semibold text-sm px-6 py-3 rounded-xl transition disabled:opacity-60 whitespace-nowrap"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-6 py-3 rounded-xl transition disabled:opacity-60 whitespace-nowrap"
             >
               {state === "loading" ? "Sending…" : "Get 10% off"}
             </button>

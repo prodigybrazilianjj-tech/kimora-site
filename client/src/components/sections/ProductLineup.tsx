@@ -35,7 +35,7 @@ export function ProductLineup() {
     >
       <div className="container px-4 mx-auto">
         <div className="text-center mb-8 md:mb-10">
-          <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
+          <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">
             Daily Fuel. Zero Compromise.
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -58,7 +58,7 @@ export function ProductLineup() {
                 className="block rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/60"
                 aria-label={`View ${product.name}`}
               >
-                <Card className="bg-card/50 border-white/5 hover:border-white/10 transition-colors duration-300 overflow-hidden group cursor-pointer">
+                <Card className="bg-card/50 border-foreground/5 hover:border-foreground/10 transition-colors duration-300 overflow-hidden group cursor-pointer">
                   <CardContent className="p-0 relative">
                     <div
                       className={`pointer-events-none absolute inset-0 bg-gradient-to-t ${product.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
@@ -72,8 +72,8 @@ export function ProductLineup() {
                       />
                     </div>
 
-                    <div className="p-6 text-center border-t border-white/5 bg-card/80 backdrop-blur-sm">
-                      <h3 className="text-2xl font-display font-bold text-white mb-2">
+                    <div className="p-6 text-center border-t border-foreground/5 bg-card/80 backdrop-blur-sm">
+                      <h3 className="text-2xl font-display font-bold text-foreground mb-2">
                         {product.name}
                       </h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">

@@ -183,19 +183,19 @@ export default function WholesaleApply() {
 
         <main className="pt-32 pb-24">
           <div className="container mx-auto max-w-2xl px-4 text-center">
-            <h1 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
+            <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
               Application received ✅
             </h1>
 
-            <p className="text-white/70 mb-2">
+            <p className="text-foreground/70 mb-2">
               Thanks — we’ll review your wholesale request and follow up by email.
             </p>
 
-            <p className="text-xs text-white/45 mb-8">
+            <p className="text-xs text-foreground/45 mb-8">
               If you don’t see a reply within 1–2 business days, email{" "}
               <a
                 href="mailto:support@kimoraco.com"
-                className="underline underline-offset-4 hover:text-white"
+                className="underline underline-offset-4 hover:text-foreground"
               >
                 support@kimoraco.com
               </a>
@@ -204,23 +204,23 @@ export default function WholesaleApply() {
 
             <div className="flex flex-col sm:flex-row justify-center gap-3">
               <Link href="/wholesale">
-                <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white">
+                <Button variant="secondary" className="bg-foreground/10 hover:bg-foreground/20 text-foreground">
                   Back to Wholesale
                 </Button>
               </Link>
 
               <Link href="/shop">
-                <Button className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider">
                   Shop Retail
                 </Button>
               </Link>
             </div>
 
-            <div className="mt-10 rounded-2xl border border-white/10 bg-black/30 p-6 text-left">
-              <div className="text-xs uppercase tracking-wider text-white/45 mb-2">
+            <div className="mt-10 rounded-2xl border border-foreground/10 bg-muted p-6 text-left">
+              <div className="text-xs uppercase tracking-wider text-foreground/45 mb-2">
                 What happens next
               </div>
-              <ul className="text-sm text-white/75 space-y-2 list-disc pl-5">
+              <ul className="text-sm text-foreground/75 space-y-2 list-disc pl-5">
                 <li>We confirm fit (in-gym retail, partner alignment, MAP/MSRP adherence).</li>
                 <li>We send your wholesale tiers + ordering details.</li>
                 <li>We help you launch strong with a first order plan.</li>
@@ -244,26 +244,26 @@ export default function WholesaleApply() {
         <div className="container mx-auto max-w-3xl px-4">
           {/* Header */}
           <div className="text-center mb-10">
-            <h1 className="text-4xl md:text-5xl font-display font-bold text-white">
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground">
               Wholesale Application
             </h1>
-            <p className="mt-4 text-white/70 max-w-2xl mx-auto">
+            <p className="mt-4 text-foreground/70 max-w-2xl mx-auto">
               Built for gyms that take training seriously.
             </p>
 
-            <p className="mt-3 text-sm text-white/55 max-w-2xl mx-auto">
+            <p className="mt-3 text-sm text-foreground/55 max-w-2xl mx-auto">
               Fill this out and we’ll confirm fit + send wholesale tiers, MOQ, and ordering details.
             </p>
 
             <div className="mt-6 flex justify-center gap-3">
               <Link href="/wholesale">
-                <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white">
+                <Button variant="secondary" className="bg-foreground/10 hover:bg-foreground/20 text-foreground">
                   Back
                 </Button>
               </Link>
               <Button
                 onClick={() => setLocation("/shop")}
-                className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider"
               >
                 Shop Retail
               </Button>
@@ -271,14 +271,14 @@ export default function WholesaleApply() {
           </div>
 
           {/* Form */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 md:p-8">
+          <div className="rounded-2xl border border-foreground/10 bg-foreground/5 p-6 md:p-8">
             {submitError ? (
               <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200 text-sm">
                 {submitError}
                 <div className="mt-2 text-xs text-red-200/80">
                   If you’d rather, email your request to{" "}
                   <a
-                    className="underline underline-offset-4 hover:text-white"
+                    className="underline underline-offset-4 hover:text-foreground"
                     href="mailto:alex@kimoraco.com"
                   >
                     alex@kimoraco.com
@@ -291,15 +291,15 @@ export default function WholesaleApply() {
             {/* Business */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label className="text-sm text-white mb-2 block" htmlFor="businessName">
-                  Business name <span className="text-white/40">*</span>
+                <Label className="text-sm text-foreground mb-2 block" htmlFor="businessName">
+                  Business name <span className="text-foreground/40">*</span>
                 </Label>
                 <Input
                   id="businessName"
                   value={form.businessName}
                   onChange={(e) => update("businessName", e.target.value)}
                   onBlur={() => markTouched("businessName")}
-                  className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                  className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
                   placeholder="e.g., Apex Jiu-Jitsu"
                 />
                 {showErr("businessName") && !form.businessName.trim() ? (
@@ -308,15 +308,15 @@ export default function WholesaleApply() {
               </div>
 
               <div>
-                <Label className="text-sm text-white mb-2 block" htmlFor="contactName">
-                  Contact name <span className="text-white/40">*</span>
+                <Label className="text-sm text-foreground mb-2 block" htmlFor="contactName">
+                  Contact name <span className="text-foreground/40">*</span>
                 </Label>
                 <Input
                   id="contactName"
                   value={form.contactName}
                   onChange={(e) => update("contactName", e.target.value)}
                   onBlur={() => markTouched("contactName")}
-                  className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                  className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
                   placeholder="Your name"
                 />
                 {showErr("contactName") && !form.contactName.trim() ? (
@@ -325,8 +325,8 @@ export default function WholesaleApply() {
               </div>
 
               <div>
-                <Label className="text-sm text-white mb-2 block" htmlFor="email">
-                  Email <span className="text-white/40">*</span>
+                <Label className="text-sm text-foreground mb-2 block" htmlFor="email">
+                  Email <span className="text-foreground/40">*</span>
                 </Label>
                 <Input
                   id="email"
@@ -335,7 +335,7 @@ export default function WholesaleApply() {
                   onBlur={() => markTouched("email")}
                   inputMode="email"
                   autoComplete="email"
-                  className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                  className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
                   placeholder="owner@gym.com"
                 />
                 {showErr("email") && (!emailNormalized || !isValidEmail(emailNormalized)) ? (
@@ -344,15 +344,15 @@ export default function WholesaleApply() {
               </div>
 
               <div>
-                <Label className="text-sm text-white mb-2 block" htmlFor="phone">
-                  Phone <span className="text-white/40">*</span>
+                <Label className="text-sm text-foreground mb-2 block" htmlFor="phone">
+                  Phone <span className="text-foreground/40">*</span>
                 </Label>
                 <Input
                   id="phone"
                   value={form.phone}
                   onChange={(e) => update("phone", e.target.value)}
                   onBlur={() => markTouched("phone")}
-                  className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                  className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
                   placeholder="(555) 555-5555"
                 />
                 {showErr("phone") && (!phoneDigits || phoneDigits.length < 10) ? (
@@ -361,29 +361,29 @@ export default function WholesaleApply() {
               </div>
 
               <div>
-                <Label className="text-sm text-white mb-2 block" htmlFor="websiteOrInstagram">
+                <Label className="text-sm text-foreground mb-2 block" htmlFor="websiteOrInstagram">
                   Website / Instagram (optional)
                 </Label>
                 <Input
                   id="websiteOrInstagram"
                   value={form.websiteOrInstagram}
                   onChange={(e) => update("websiteOrInstagram", e.target.value)}
-                  className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                  className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
                   placeholder="https://… or @handle"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm text-white mb-2 block" htmlFor="city">
-                    City <span className="text-white/40">*</span>
+                  <Label className="text-sm text-foreground mb-2 block" htmlFor="city">
+                    City <span className="text-foreground/40">*</span>
                   </Label>
                   <Input
                     id="city"
                     value={form.city}
                     onChange={(e) => update("city", e.target.value)}
                     onBlur={() => markTouched("city")}
-                    className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                    className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
                     placeholder="Sedona"
                   />
                   {showErr("city") && !form.city.trim() ? (
@@ -392,15 +392,15 @@ export default function WholesaleApply() {
                 </div>
 
                 <div>
-                  <Label className="text-sm text-white mb-2 block" htmlFor="state">
-                    State <span className="text-white/40">*</span>
+                  <Label className="text-sm text-foreground mb-2 block" htmlFor="state">
+                    State <span className="text-foreground/40">*</span>
                   </Label>
                   <Input
                     id="state"
                     value={form.state}
                     onChange={(e) => update("state", e.target.value)}
                     onBlur={() => markTouched("state")}
-                    className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                    className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
                     placeholder="AZ"
                   />
                   {showErr("state") && !form.state.trim() ? (
@@ -411,12 +411,12 @@ export default function WholesaleApply() {
             </div>
 
             {/* Divider */}
-            <div className="h-px w-full bg-white/10 my-8" />
+            <div className="h-px w-full bg-foreground/10 my-8" />
 
             {/* Business type + retail */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <div className="text-sm text-white mb-2">Business type</div>
+                <div className="text-sm text-foreground mb-2">Business type</div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     ["gym", "Gym"],
@@ -433,8 +433,8 @@ export default function WholesaleApply() {
                       className={[
                         "rounded-xl border px-3 py-3 text-left text-sm transition-colors",
                         form.businessType === value
-                          ? "border-primary bg-primary/15 text-white"
-                          : "border-white/10 bg-black/30 text-white/70 hover:text-white hover:bg-white/5",
+                          ? "border-primary bg-primary/15 text-primary-foreground"
+                          : "border-foreground/10 bg-muted text-foreground/70 hover:text-foreground hover:bg-foreground/5",
                       ].join(" ")}
                     >
                       {label}
@@ -444,15 +444,15 @@ export default function WholesaleApply() {
 
                 {form.businessType === "other" ? (
                   <div className="mt-3">
-                    <Label className="text-sm text-white mb-2 block" htmlFor="businessTypeOther">
-                      Please specify <span className="text-white/40">*</span>
+                    <Label className="text-sm text-foreground mb-2 block" htmlFor="businessTypeOther">
+                      Please specify <span className="text-foreground/40">*</span>
                     </Label>
                     <Input
                       id="businessTypeOther"
                       value={form.businessTypeOther}
                       onChange={(e) => update("businessTypeOther", e.target.value)}
                       onBlur={() => markTouched("businessTypeOther")}
-                      className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                      className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
                       placeholder="e.g., CrossFit box"
                     />
                     {showErr("businessTypeOther") && !form.businessTypeOther.trim() ? (
@@ -463,15 +463,15 @@ export default function WholesaleApply() {
               </div>
 
               <div>
-                <Label className="text-sm text-white mb-2 block" htmlFor="memberCount">
-                  Approx members / active clients <span className="text-white/40">*</span>
+                <Label className="text-sm text-foreground mb-2 block" htmlFor="memberCount">
+                  Approx members / active clients <span className="text-foreground/40">*</span>
                 </Label>
                 <Input
                   id="memberCount"
                   value={form.memberCount}
                   onChange={(e) => update("memberCount", e.target.value)}
                   onBlur={() => markTouched("memberCount")}
-                  className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                  className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
                   placeholder="e.g., 150"
                 />
                 {showErr("memberCount") &&
@@ -479,7 +479,7 @@ export default function WholesaleApply() {
                   <p className="text-xs text-red-200 mt-2">Approx member count is required.</p>
                 ) : null}
 
-                <div className="mt-4 text-sm text-white mb-2">Retail setup</div>
+                <div className="mt-4 text-sm text-foreground mb-2">Retail setup</div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     ["front_desk", "Front desk"],
@@ -494,8 +494,8 @@ export default function WholesaleApply() {
                       className={[
                         "rounded-xl border px-3 py-3 text-left text-sm transition-colors",
                         form.retailSetup === value
-                          ? "border-primary bg-primary/15 text-white"
-                          : "border-white/10 bg-black/30 text-white/70 hover:text-white hover:bg-white/5",
+                          ? "border-primary bg-primary/15 text-primary-foreground"
+                          : "border-foreground/10 bg-muted text-foreground/70 hover:text-foreground hover:bg-foreground/5",
                       ].join(" ")}
                     >
                       {label}
@@ -506,11 +506,11 @@ export default function WholesaleApply() {
             </div>
 
             {/* Divider */}
-            <div className="h-px w-full bg-white/10 my-8" />
+            <div className="h-px w-full bg-foreground/10 my-8" />
 
             {/* Interested in */}
             <div>
-              <div className="text-sm text-white mb-3">Interested in</div>
+              <div className="text-sm text-foreground mb-3">Interested in</div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <button
                   type="button"
@@ -523,12 +523,12 @@ export default function WholesaleApply() {
                   className={[
                     "rounded-xl border px-4 py-4 text-left text-sm transition-colors",
                     form.interestedIn.onShelf
-                      ? "border-primary bg-primary/15 text-white"
-                      : "border-white/10 bg-black/30 text-white/70 hover:text-white hover:bg-white/5",
+                      ? "border-primary bg-primary/15 text-primary-foreground"
+                      : "border-foreground/10 bg-muted text-foreground/70 hover:text-foreground hover:bg-foreground/5",
                   ].join(" ")}
                 >
                   <div className="font-semibold">On-shelf wholesale</div>
-                  <div className="text-xs text-white/60 mt-1">Stock Kimora in your gym</div>
+                  <div className="text-xs text-foreground/60 mt-1">Stock Kimora in your gym</div>
                 </button>
 
                 <button
@@ -545,12 +545,12 @@ export default function WholesaleApply() {
                   className={[
                     "rounded-xl border px-4 py-4 text-left text-sm transition-colors",
                     form.interestedIn.coachAffiliate
-                      ? "border-primary bg-primary/15 text-white"
-                      : "border-white/10 bg-black/30 text-white/70 hover:text-white hover:bg-white/5",
+                      ? "border-primary bg-primary/15 text-primary-foreground"
+                      : "border-foreground/10 bg-muted text-foreground/70 hover:text-foreground hover:bg-foreground/5",
                   ].join(" ")}
                 >
                   <div className="font-semibold">Coach / affiliate</div>
-                  <div className="text-xs text-white/60 mt-1">Coaches promote to members</div>
+                  <div className="text-xs text-foreground/60 mt-1">Coaches promote to members</div>
                 </button>
 
                 <button
@@ -567,26 +567,26 @@ export default function WholesaleApply() {
                   className={[
                     "rounded-xl border px-4 py-4 text-left text-sm transition-colors",
                     form.interestedIn.eventSponsorship
-                      ? "border-primary bg-primary/15 text-white"
-                      : "border-white/10 bg-black/30 text-white/70 hover:text-white hover:bg-white/5",
+                      ? "border-primary bg-primary/15 text-primary-foreground"
+                      : "border-foreground/10 bg-muted text-foreground/70 hover:text-foreground hover:bg-foreground/5",
                   ].join(" ")}
                 >
                   <div className="font-semibold">Events / sponsorship</div>
-                  <div className="text-xs text-white/60 mt-1">Tournament + gym events</div>
+                  <div className="text-xs text-foreground/60 mt-1">Tournament + gym events</div>
                 </button>
               </div>
             </div>
 
             {/* Notes */}
             <div className="mt-8">
-              <Label className="text-sm text-white mb-2 block" htmlFor="notes">
+              <Label className="text-sm text-foreground mb-2 block" htmlFor="notes">
                 Notes (optional)
               </Label>
               <textarea
                 id="notes"
                 value={form.notes}
                 onChange={(e) => update("notes", e.target.value)}
-                className="w-full min-h-[120px] rounded-xl bg-background border border-white/10 text-white p-4 placeholder:text-white/40"
+                className="w-full min-h-[120px] rounded-xl bg-background border border-foreground/10 text-foreground p-4 placeholder:text-foreground/40"
                 placeholder="Tell us about your gym, your members, and how you plan to sell Kimora…"
               />
             </div>
@@ -596,25 +596,25 @@ export default function WholesaleApply() {
               <Button
                 onClick={submit}
                 disabled={!requiredOk || submitting}
-                className="h-12 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider"
+                className="h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider"
               >
                 {submitting ? "Submitting…" : "Submit application"}
               </Button>
 
               <Button
                 variant="secondary"
-                className="h-12 bg-white/10 hover:bg-white/20 text-white"
+                className="h-12 bg-foreground/10 hover:bg-foreground/20 text-foreground"
                 onClick={() => setLocation("/wholesale")}
                 disabled={submitting}
               >
                 Back to Wholesale
               </Button>
 
-              <p className="text-xs text-white/45 text-center">
+              <p className="text-xs text-foreground/45 text-center">
                 Prefer email? Send your request to{" "}
                 <a
                   href="mailto:alex@kimoraco.com"
-                  className="underline underline-offset-4 hover:text-white"
+                  className="underline underline-offset-4 hover:text-foreground"
                 >
                   alex@kimoraco.com
                 </a>
@@ -624,7 +624,7 @@ export default function WholesaleApply() {
           </div>
 
           {/* Footer note */}
-          <div className="mt-8 text-center text-xs text-white/40">
+          <div className="mt-8 text-center text-xs text-foreground/40">
             By applying, you agree to respect MAP/MSRP guidelines and in-gym retail positioning.
             Wholesale details are provided after approval.
           </div>

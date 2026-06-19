@@ -294,7 +294,7 @@ export default function OrderSuccess() {
 
       <main className="pt-32 pb-24">
         <div className="container mx-auto max-w-2xl px-4 text-center">
-          <h1 className="text-3xl font-display font-bold text-white mb-4">
+          <h1 className="text-3xl font-display font-bold text-foreground mb-4">
             Order Confirmed 🎉
           </h1>
 
@@ -303,7 +303,7 @@ export default function OrderSuccess() {
             made a good one.
           </p>
 
-          <p className="text-xs text-white/50 mb-8">
+          <p className="text-xs text-foreground/50 mb-8">
             You’ll receive an email receipt from Stripe shortly.
           </p>
 
@@ -315,11 +315,11 @@ export default function OrderSuccess() {
 
           {/* MIXED CART: NEXT STEP */}
           {showFinishSecondCheckout && (
-            <div className="bg-card/50 border border-white/10 rounded-xl p-6 mb-6 text-left">
-              <h3 className="text-white font-semibold text-center mb-1">
+            <div className="bg-card/50 border border-foreground/10 rounded-xl p-6 mb-6 text-left">
+              <h3 className="text-foreground font-semibold text-center mb-1">
                 One more step
               </h3>
-              <p className="text-sm text-white/70 text-center mb-4">
+              <p className="text-sm text-foreground/70 text-center mb-4">
                 Your{" "}
                 <b>
                   {remainingInfo?.completedMode === "subscription"
@@ -329,11 +329,11 @@ export default function OrderSuccess() {
                 checkout is complete. You still have items waiting in your cart.
               </p>
 
-              <div className="rounded-lg border border-white/10 bg-black/30 p-4 mb-4">
-                <div className="text-xs uppercase tracking-wider text-white/45 mb-2">
+              <div className="rounded-lg border border-foreground/10 bg-muted p-4 mb-4">
+                <div className="text-xs uppercase tracking-wider text-foreground/45 mb-2">
                   Remaining items
                 </div>
-                <div className="text-sm text-white/80">
+                <div className="text-sm text-foreground/80">
                   {remainingInfo?.remaining.length} item
                   {remainingInfo?.remaining.length === 1 ? "" : "s"} ready to
                   checkout.
@@ -353,7 +353,7 @@ export default function OrderSuccess() {
                   </Button>
                 </Link>
 
-                <p className="text-[11px] text-white/45 text-center">
+                <p className="text-[11px] text-foreground/45 text-center">
                   Subscriptions + one-time items require separate Stripe checkouts.
                 </p>
               </div>
@@ -362,11 +362,11 @@ export default function OrderSuccess() {
 
           {/* SUBSCRIPTION CONTROL */}
           {!sessionLoading && isSubscription && (
-            <div className="bg-card/50 border border-white/10 rounded-xl p-6 mb-6 text-left">
-              <h3 className="text-white font-semibold text-center mb-1">
+            <div className="bg-card/50 border border-foreground/10 rounded-xl p-6 mb-6 text-left">
+              <h3 className="text-foreground font-semibold text-center mb-1">
                 You’re in control
               </h3>
-              <p className="text-xs text-white/55 text-center mb-5">
+              <p className="text-xs text-foreground/55 text-center mb-5">
                 Switch your flavor, pause, or cancel anytime — flavor changes
                 apply to your next shipment. No games.
               </p>
@@ -384,7 +384,7 @@ export default function OrderSuccess() {
                     placeholder="Email used at checkout"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full mb-3 px-4 py-3 rounded-md bg-black/40 border border-white/10 text-white"
+                    className="w-full mb-3 px-4 py-3 rounded-md bg-muted border border-foreground/10 text-foreground"
                     autoComplete="email"
                     inputMode="email"
                   />
@@ -397,15 +397,15 @@ export default function OrderSuccess() {
                     {sending ? "Sending…" : "Email me a secure link"}
                   </Button>
 
-                  <div className="mt-3 text-[11px] text-white/45 text-center">
+                  <div className="mt-3 text-[11px] text-foreground/45 text-center">
                     Links expire after ~15 minutes. If it expires, request a new one.
                   </div>
 
-                  <div className="mt-2 text-[11px] text-white/35 text-center">
+                  <div className="mt-2 text-[11px] text-foreground/35 text-center">
                     Or manage anytime at{" "}
                     <Link
                       href="/manage-subscription"
-                      className="underline underline-offset-4 hover:text-white"
+                      className="underline underline-offset-4 hover:text-foreground"
                     >
                       kimoraco.com/manage-subscription
                     </Link>
@@ -413,7 +413,7 @@ export default function OrderSuccess() {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-white/80 text-center">
+                <p className="text-sm text-foreground/80 text-center">
                   If that email is in our system, you’ll receive a link shortly.
                 </p>
               )}
@@ -421,17 +421,17 @@ export default function OrderSuccess() {
           )}
 
           {/* GUIDANCE */}
-          <div className="bg-card/50 border border-white/10 rounded-xl p-6 mb-6 text-left">
-            <h3 className="text-white font-semibold text-center mb-4">
+          <div className="bg-card/50 border border-foreground/10 rounded-xl p-6 mb-6 text-left">
+            <h3 className="text-foreground font-semibold text-center mb-4">
               Your routine starts now
             </h3>
 
             <div className="grid gap-5">
               <div>
-                <div className="text-sm font-semibold text-white mb-2">
+                <div className="text-sm font-semibold text-foreground mb-2">
                   How to take Kimora
                 </div>
-                <ul className="text-sm text-white/75 space-y-2 list-disc pl-5">
+                <ul className="text-sm text-foreground/75 space-y-2 list-disc pl-5">
                   <li>
                     Mix <b>1 stick</b> in <b>12–16 oz</b> of cold water.
                   </li>
@@ -442,13 +442,13 @@ export default function OrderSuccess() {
                 </ul>
               </div>
 
-              <div className="h-px w-full bg-white/10" />
+              <div className="h-px w-full bg-foreground/10" />
 
               <div>
-                <div className="text-sm font-semibold text-white mb-2">
+                <div className="text-sm font-semibold text-foreground mb-2">
                   What’s next
                 </div>
-                <ul className="text-sm text-white/75 space-y-2 list-disc pl-5">
+                <ul className="text-sm text-foreground/75 space-y-2 list-disc pl-5">
                   <li>
                     You’ll get an order email from Stripe (check spam/promotions if you
                     don’t see it).
@@ -463,11 +463,11 @@ export default function OrderSuccess() {
           </div>
 
           {/* COMMITMENT */}
-          <div className="mx-auto max-w-2xl mb-8 rounded-xl border border-white/10 bg-black/30 px-6 py-4">
-            <div className="text-xs uppercase tracking-wider text-white/45 mb-1">
+          <div className="mx-auto max-w-2xl mb-8 rounded-xl border border-foreground/10 bg-muted px-6 py-4">
+            <div className="text-xs uppercase tracking-wider text-foreground/45 mb-1">
               Commitment tip
             </div>
-            <div className="text-sm text-white/80">
+            <div className="text-sm text-foreground/80">
               Pick a routine — same time every day for 14 days.{" "}
               <b>Progress stacks fast when you don’t negotiate with yourself.</b>
             </div>
@@ -486,7 +486,7 @@ export default function OrderSuccess() {
             </Link>
           </div>
 
-          <p className="text-xs text-white/50 mt-6">
+          <p className="text-xs text-foreground/50 mt-6">
             If you don’t see the email within a few minutes, check spam/promotions.
           </p>
         </div>

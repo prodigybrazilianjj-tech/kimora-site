@@ -220,12 +220,12 @@ export default function ManageSubscription() {
         <div className="container mx-auto px-4 md:px-6">
           {view === "loading" && (
             <div className="max-w-md mx-auto">
-              <div className="bg-card/50 border border-white/10 rounded-2xl p-8 text-center">
-                <Loader2 className="w-6 h-6 mx-auto animate-spin text-white/70" />
-                <h2 className="text-2xl font-display font-bold text-white mt-4">
+              <div className="bg-card/50 border border-foreground/10 rounded-2xl p-8 text-center">
+                <Loader2 className="w-6 h-6 mx-auto animate-spin text-foreground/70" />
+                <h2 className="text-2xl font-display font-bold text-foreground mt-4">
                   Loading your subscription…
                 </h2>
-                <p className="text-xs text-white/40 mt-3">
+                <p className="text-xs text-foreground/40 mt-3">
                   If this takes more than a few seconds, your link may be expired.
                 </p>
               </div>
@@ -235,7 +235,7 @@ export default function ManageSubscription() {
           {view === "manage" && (
             <div className="max-w-2xl mx-auto">
               <div className="text-center mb-8">
-                <h1 className="text-3xl md:text-4xl font-display font-bold text-white">
+                <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground">
                   Manage Subscription
                 </h1>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -245,11 +245,11 @@ export default function ManageSubscription() {
               </div>
 
               {subscriptions.length === 0 ? (
-                <div className="bg-card/50 border border-white/10 rounded-2xl p-6 text-center">
+                <div className="bg-card/50 border border-foreground/10 rounded-2xl p-6 text-center">
                   <p className="text-sm text-muted-foreground">
                     We couldn’t find an active subscription on your account. If you
                     think this is a mistake, open your billing portal below or email{" "}
-                    <a href="mailto:support@kimoraco.com" className="text-white/70 underline">
+                    <a href="mailto:support@kimoraco.com" className="text-foreground/70 underline">
                       support@kimoraco.com
                     </a>
                     .
@@ -258,7 +258,7 @@ export default function ManageSubscription() {
                     onClick={openBillingPortal}
                     disabled={portalLoading}
                     variant="outline"
-                    className="mt-5 border-white/15 text-white hover:bg-white/5"
+                    className="mt-5 border-foreground/15 text-foreground hover:bg-foreground/5"
                   >
                     {portalLoading ? "Opening…" : "Open billing portal"}
                   </Button>
@@ -274,17 +274,17 @@ export default function ManageSubscription() {
                     return (
                       <div
                         key={sub.id}
-                        className="bg-card/50 border border-white/10 rounded-2xl p-6"
+                        className="bg-card/50 border border-foreground/10 rounded-2xl p-6"
                       >
                         <div className="flex items-center justify-between gap-4 flex-wrap">
                           <div>
-                            <p className="text-xs uppercase tracking-wider text-white/40">
+                            <p className="text-xs uppercase tracking-wider text-foreground/40">
                               Current flavor
                             </p>
-                            <p className="text-lg font-display font-bold text-white">
+                            <p className="text-lg font-display font-bold text-foreground">
                               {sub.currentFlavor.name}
                             </p>
-                            <p className="text-xs text-white/50 mt-0.5">
+                            <p className="text-xs text-foreground/50 mt-0.5">
                               Ships {frequencyLabel(sub.frequencyWeeks)}
                               {nextDate ? ` · next renews ${nextDate}` : ""}
                             </p>
@@ -297,7 +297,7 @@ export default function ManageSubscription() {
                         </div>
 
                         <div className="mt-5">
-                          <p className="text-xs uppercase tracking-wider text-white/40 mb-3">
+                          <p className="text-xs uppercase tracking-wider text-foreground/40 mb-3">
                             Choose your next flavor
                           </p>
                           <div className="grid grid-cols-3 gap-3">
@@ -315,12 +315,12 @@ export default function ManageSubscription() {
                                   className={`relative rounded-xl border p-3 text-center transition-all focus:outline-none focus:ring-2 focus:ring-white/30 ${
                                     isSelected
                                       ? "border-primary bg-primary/10"
-                                      : "border-white/10 bg-black/30 hover:border-white/25"
+                                      : "border-foreground/10 bg-muted hover:border-foreground/25"
                                   }`}
                                 >
                                   {isSelected && (
                                     <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                                      <Check className="w-3 h-3 text-white" />
+                                      <Check className="w-3 h-3 text-foreground" />
                                     </span>
                                   )}
                                   <img
@@ -329,11 +329,11 @@ export default function ManageSubscription() {
                                     loading="lazy"
                                     className="w-full aspect-square object-contain mb-2"
                                   />
-                                  <p className="text-xs font-semibold text-white leading-tight">
+                                  <p className="text-xs font-semibold text-foreground leading-tight">
                                     {f.name}
                                   </p>
                                   {isCurrent && (
-                                    <p className="text-[10px] text-white/40 mt-0.5">Current</p>
+                                    <p className="text-[10px] text-foreground/40 mt-0.5">Current</p>
                                   )}
                                 </button>
                               );
@@ -345,7 +345,7 @@ export default function ManageSubscription() {
                           <Button
                             onClick={() => applyFlavorChange(sub)}
                             disabled={!changed || savingId === sub.id}
-                            className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider disabled:opacity-40"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider disabled:opacity-40"
                           >
                             {savingId === sub.id
                               ? "Saving…"
@@ -355,7 +355,7 @@ export default function ManageSubscription() {
                           </Button>
 
                           {changed && (
-                            <p className="text-xs text-white/40 mt-2 text-center">
+                            <p className="text-xs text-foreground/40 mt-2 text-center">
                               Applies to your next shipment
                               {nextDate ? ` on ${nextDate}` : ""}. No charge now.
                             </p>
@@ -375,26 +375,26 @@ export default function ManageSubscription() {
                     );
                   })}
 
-                  <div className="bg-card/30 border border-white/10 rounded-2xl p-5 text-left">
-                    <p className="text-sm text-white/70 font-semibold">
+                  <div className="bg-card/30 border border-foreground/10 rounded-2xl p-5 text-left">
+                    <p className="text-sm text-foreground/70 font-semibold">
                       Need to skip, pause, change frequency, update payment, or cancel?
                     </p>
-                    <p className="text-xs text-white/50 mt-1 mb-4">
+                    <p className="text-xs text-foreground/50 mt-1 mb-4">
                       Manage billing and delivery details in your secure Stripe portal.
                     </p>
                     <Button
                       onClick={openBillingPortal}
                       disabled={portalLoading}
                       variant="outline"
-                      className="border-white/15 text-white hover:bg-white/5"
+                      className="border-foreground/15 text-foreground hover:bg-foreground/5"
                     >
                       {portalLoading ? "Opening…" : "Open billing portal"}
                     </Button>
                   </div>
 
-                  <p className="text-xs text-white/40 text-center">
+                  <p className="text-xs text-foreground/40 text-center">
                     Questions? Email{" "}
-                    <a href="mailto:support@kimoraco.com" className="text-white/60 underline">
+                    <a href="mailto:support@kimoraco.com" className="text-foreground/60 underline">
                       support@kimoraco.com
                     </a>{" "}
                     and we’ll handle it directly.
@@ -406,8 +406,8 @@ export default function ManageSubscription() {
 
           {(view === "request" || view === "sent" || view === "error") && (
             <div className="max-w-md mx-auto">
-              <div className="bg-card/50 border border-white/10 rounded-2xl p-6 text-center">
-                <h2 className="text-2xl font-display font-bold text-white">
+              <div className="bg-card/50 border border-foreground/10 rounded-2xl p-6 text-center">
+                <h2 className="text-2xl font-display font-bold text-foreground">
                   Manage Subscription
                 </h2>
 
@@ -447,50 +447,50 @@ export default function ManageSubscription() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") requestNewLink();
                     }}
-                    className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-foreground/10 text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-white/20"
                   />
 
                   <Button
                     onClick={requestNewLink}
                     disabled={sending}
-                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider"
                   >
                     {sending ? "Sending…" : "Email me a secure link"}
                   </Button>
 
-                  <p className="text-xs text-white/40">
+                  <p className="text-xs text-foreground/40">
                     Secure links expire in 15 minutes. If it expires, just request another.
                   </p>
 
                   {view === "sent" && (
                     <>
-                      <p className="text-xs text-white/40">
+                      <p className="text-xs text-foreground/40">
                         Tip: check Spam or Promotions if you don’t see it right away.
                       </p>
-                      <p className="text-xs text-white/30">
+                      <p className="text-xs text-foreground/30">
                         This secure link is unique to your email and expires automatically.
                       </p>
                     </>
                   )}
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-white/10 space-y-3 text-left">
-                  <p className="text-xs text-white/50 leading-relaxed">
-                    <strong className="text-white/70">Switching flavors:</strong>{" "}
+                <div className="mt-6 pt-6 border-t border-foreground/10 space-y-3 text-left">
+                  <p className="text-xs text-foreground/50 leading-relaxed">
+                    <strong className="text-foreground/70">Switching flavors:</strong>{" "}
                     Changes apply to your next shipment. Anything already charged or
                     shipped goes out as-is.
                   </p>
 
-                  <p className="text-xs text-white/50 leading-relaxed">
-                    <strong className="text-white/70">Faster path:</strong>{" "}
+                  <p className="text-xs text-foreground/50 leading-relaxed">
+                    <strong className="text-foreground/70">Faster path:</strong>{" "}
                     Every subscription email we send includes a direct manage link
                     that skips this step.
                   </p>
 
-                  <p className="text-xs text-white/50 leading-relaxed">
-                    <strong className="text-white/70">Need help?</strong>{" "}
+                  <p className="text-xs text-foreground/50 leading-relaxed">
+                    <strong className="text-foreground/70">Need help?</strong>{" "}
                     Email{" "}
-                    <a href="mailto:support@kimoraco.com" className="text-white/70 underline">
+                    <a href="mailto:support@kimoraco.com" className="text-foreground/70 underline">
                       support@kimoraco.com
                     </a>{" "}
                     and we’ll handle it directly.

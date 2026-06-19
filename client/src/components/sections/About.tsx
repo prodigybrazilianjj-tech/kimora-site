@@ -4,7 +4,7 @@ export function About() {
       {/* ✅ OFFSET ANCHOR */}
       <div id="about-anchor" className="h-[140px] md:h-[160px]" />
 
-      <section id="about" className="py-24 bg-secondary/10 border-y border-white/5">
+      <section id="about" className="py-24 bg-secondary/10 border-y border-foreground/5">
         <div className="container px-4 mx-auto max-w-5xl">
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
@@ -15,7 +15,7 @@ export function About() {
                 Why Kimora exists
               </p>
 
-              <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-8 leading-[0.95]">
+              <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-8 leading-[0.95]">
                 BUILT ON THE MATS.
               </h2>
 
@@ -38,7 +38,7 @@ export function About() {
                   enough that you look forward to it, and fits in your gym bag
                   without a second thought.
                 </p>
-                <p className="text-white/80">
+                <p className="text-foreground/80">
                   The name is a nod to the kimura — a submission that rewards
                   patience, leverage, and persistence. That's the philosophy
                   here too. Show up every day. The results compound.
@@ -63,7 +63,7 @@ export function About() {
                 },
               ].map((item) => (
                 <div key={item.label} className="border-l-2 border-primary/40 pl-5">
-                  <p className="text-white font-semibold mb-1">{item.label}</p>
+                  <p className="text-foreground font-semibold mb-1">{item.label}</p>
                   <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>
                 </div>
               ))}

@@ -402,7 +402,7 @@ export default function Checkout() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Left */}
             <div>
-              <h1 className="text-3xl font-display font-bold text-white mb-6">
+              <h1 className="text-3xl font-display font-bold text-foreground mb-6">
                 Checkout
               </h1>
 
@@ -413,11 +413,11 @@ export default function Checkout() {
 
               {/* If resuming, show a small banner */}
               {resumeMode ? (
-                <div className="mb-6 rounded-xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-white font-semibold mb-1">
+                <div className="mb-6 rounded-xl border border-foreground/10 bg-foreground/5 p-4">
+                  <div className="text-foreground font-semibold mb-1">
                     Resuming checkout
                   </div>
-                  <p className="text-sm text-white/70">
+                  <p className="text-sm text-foreground/70">
                     We’re sending you to Stripe for your{" "}
                     <b>{resumeMode === "onetime" ? "one-time items" : "subscription"}</b>.
                     {loading ? " Redirecting now…" : ""}
@@ -426,7 +426,7 @@ export default function Checkout() {
               ) : null}
 
               <div className="mb-6">
-                <Label className="text-sm text-white mb-2 block" htmlFor="email">
+                <Label className="text-sm text-foreground mb-2 block" htmlFor="email">
                   Email for receipt
                 </Label>
 
@@ -438,7 +438,7 @@ export default function Checkout() {
                   placeholder="you@example.com"
                   inputMode="email"
                   autoComplete="email"
-                  className="h-12 bg-background border-white/10 text-white placeholder:text-white/40"
+                  className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
                   disabled={!!loading}
                 />
 
@@ -447,7 +447,7 @@ export default function Checkout() {
                     Please enter a valid email address.
                   </p>
                 ) : (
-                  <p className="text-xs text-white/50 mt-2">
+                  <p className="text-xs text-foreground/50 mt-2">
                     Stripe will pre-fill this on the next screen and send your receipt
                     automatically.
                   </p>
@@ -455,11 +455,11 @@ export default function Checkout() {
               </div>
 
               {isMixed ? (
-                <div className="mb-6 rounded-xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-white font-semibold mb-1">
+                <div className="mb-6 rounded-xl border border-foreground/10 bg-foreground/5 p-4">
+                  <div className="text-foreground font-semibold mb-1">
                     Two-part checkout
                   </div>
-                  <p className="text-sm text-white/70">
+                  <p className="text-sm text-foreground/70">
                     Subscriptions and one-time orders must be checked out separately.
                   </p>
                 </div>
@@ -474,7 +474,7 @@ export default function Checkout() {
                       <Button
                         type="button"
                         variant="secondary"
-                        className="h-10 bg-white/10 hover:bg-white/20 text-white"
+                        className="h-10 bg-foreground/10 hover:bg-foreground/20 text-foreground"
                         onClick={() => setLocation("/cart")}
                         disabled={!!loading}
                       >
@@ -492,7 +492,7 @@ export default function Checkout() {
                     type="button"
                     onClick={() => startCheckout(hasSub ? "subscription" : "onetime")}
                     disabled={singleCheckoutDisabled}
-                    className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg disabled:opacity-60"
+                    className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider text-lg disabled:opacity-60"
                   >
                     {loading
                       ? "Redirecting to Stripe..."
@@ -506,7 +506,7 @@ export default function Checkout() {
                       type="button"
                       onClick={() => startCheckout("subscription")}
                       disabled={subscriptionCheckoutDisabled}
-                      className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider text-lg disabled:opacity-60"
+                      className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider text-lg disabled:opacity-60"
                     >
                       {loading === "subscription"
                         ? "Redirecting to Stripe..."
@@ -519,7 +519,7 @@ export default function Checkout() {
                       type="button"
                       onClick={() => startCheckout("onetime")}
                       disabled={onetimeCheckoutDisabled}
-                      className="w-full h-14 bg-white/10 hover:bg-white/20 text-white font-bold uppercase tracking-wider text-lg disabled:opacity-60"
+                      className="w-full h-14 bg-foreground/10 hover:bg-foreground/20 text-foreground font-bold uppercase tracking-wider text-lg disabled:opacity-60"
                     >
                       {loading === "onetime"
                         ? "Redirecting to Stripe..."
@@ -528,7 +528,7 @@ export default function Checkout() {
                           : "Checkout One-Time Items"}
                     </Button>
 
-                    <p className="text-xs text-white/50">
+                    <p className="text-xs text-foreground/50">
                       After the first checkout, you can come back and complete the
                       other one.
                     </p>
@@ -538,30 +538,30 @@ export default function Checkout() {
                 <Button
                   type="button"
                   variant="secondary"
-                  className="w-full h-12 bg-white/10 hover:bg-white/20 text-white"
+                  className="w-full h-12 bg-foreground/10 hover:bg-foreground/20 text-foreground"
                   onClick={() => setLocation("/cart")}
                   disabled={!!loading}
                 >
                   Back to Cart
                 </Button>
 
-                <p className="text-xs text-white/50 mt-2">
+                <p className="text-xs text-foreground/50 mt-2">
                   Powered by Stripe. We never see your card details.
                 </p>
               </div>
             </div>
 
             {/* Right: Order Summary */}
-            <div className="lg:pl-12 lg:border-l border-white/10">
-              <div className="bg-card/50 p-6 rounded-xl border border-white/5 sticky top-32">
-                <h3 className="text-lg font-bold text-white mb-6">Order Summary</h3>
+            <div className="lg:pl-12 lg:border-l border-foreground/10">
+              <div className="bg-card/50 p-6 rounded-xl border border-foreground/5 sticky top-32">
+                <h3 className="text-lg font-bold text-foreground mb-6">Order Summary</h3>
 
                 {payloadItems.length ? (
                   <div className="space-y-6 mb-6">
                     {isMixed ? (
                       <>
                         <div>
-                          <div className="text-sm font-semibold text-white mb-2">
+                          <div className="text-sm font-semibold text-foreground mb-2">
                             Subscription
                           </div>
                           <div className="space-y-3">
@@ -571,10 +571,10 @@ export default function Checkout() {
                                 className="flex justify-between gap-4"
                               >
                                 <div className="min-w-0">
-                                  <div className="text-white font-medium truncate">
+                                  <div className="text-foreground font-medium truncate">
                                     {prettyFlavor(it.flavor)}
                                   </div>
-                                  <div className="text-xs text-white/60">
+                                  <div className="text-xs text-foreground/60">
                                     {`Monthly subscription • qty ${it.quantity}`}
                                   </div>
                                 </div>
@@ -583,8 +583,8 @@ export default function Checkout() {
                           </div>
                         </div>
 
-                        <div className="border-t border-white/10 pt-5">
-                          <div className="text-sm font-semibold text-white mb-2">
+                        <div className="border-t border-foreground/10 pt-5">
+                          <div className="text-sm font-semibold text-foreground mb-2">
                             One-time items
                           </div>
                           <div className="space-y-3">
@@ -594,10 +594,10 @@ export default function Checkout() {
                                 className="flex justify-between gap-4"
                               >
                                 <div className="min-w-0">
-                                  <div className="text-white font-medium truncate">
+                                  <div className="text-foreground font-medium truncate">
                                     {prettyFlavor(it.flavor)}
                                   </div>
-                                  <div className="text-xs text-white/60">
+                                  <div className="text-xs text-foreground/60">
                                     {`One-time purchase • qty ${it.quantity}`}
                                   </div>
                                 </div>
@@ -614,10 +614,10 @@ export default function Checkout() {
                             className="flex justify-between gap-4"
                           >
                             <div className="min-w-0">
-                              <div className="text-white font-medium truncate">
+                              <div className="text-foreground font-medium truncate">
                                 {prettyFlavor(it.flavor)}
                               </div>
-                              <div className="text-xs text-white/60">
+                              <div className="text-xs text-foreground/60">
                                 {it.type === "subscribe"
                                   ? "Monthly subscription"
                                   : "One-time purchase"}
@@ -630,9 +630,9 @@ export default function Checkout() {
                     )}
                   </div>
                 ) : (
-                  <div className="text-white/60 mb-6">
+                  <div className="text-foreground/60 mb-6">
                     Your cart is empty.{" "}
-                    <Link href="/shop" className="underline text-white">
+                    <Link href="/shop" className="underline text-foreground">
                       Go shop
                     </Link>
                     .
@@ -641,24 +641,24 @@ export default function Checkout() {
 
                 <div className="flex justify-between mb-4">
                   <span className="text-muted-foreground">Cart subtotal</span>
-                  <span className="text-white font-medium">
+                  <span className="text-foreground font-medium">
                     ${Number(subtotal || 0).toFixed(2)}
                   </span>
                 </div>
 
                 <div className="flex justify-between mb-4">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span className="text-white font-medium">Calculated on Stripe</span>
+                  <span className="text-foreground font-medium">Calculated on Stripe</span>
                 </div>
 
-                <div className="border-t border-white/10 pt-4 flex justify-between">
-                  <span className="text-xl font-bold text-white">Total</span>
+                <div className="border-t border-foreground/10 pt-4 flex justify-between">
+                  <span className="text-xl font-bold text-foreground">Total</span>
                   <span className="text-xl font-bold text-primary">
                     Finalized in Stripe
                   </span>
                 </div>
 
-                <p className="text-xs text-white/50 mt-4">
+                <p className="text-xs text-foreground/50 mt-4">
                   Taxes/shipping (if any) are finalized in Stripe Checkout.
                 </p>
               </div>

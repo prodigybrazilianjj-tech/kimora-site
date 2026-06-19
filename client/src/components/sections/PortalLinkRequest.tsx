@@ -53,13 +53,13 @@ export function PortalLinkRequest({
       className={
         compact
           ? "flex flex-col gap-2"
-          : "rounded-xl border border-white/10 bg-white/5 p-5"
+          : "rounded-xl border border-foreground/10 bg-foreground/5 p-5"
       }
     >
       {!compact && (
         <div className="mb-3">
           <div className="text-lg font-semibold">Manage your subscription</div>
-          <div className="text-sm text-white/70">
+          <div className="text-sm text-foreground/70">
             Enter the email you used at checkout. We’ll send a secure link.
           </div>
         </div>
@@ -70,13 +70,13 @@ export function PortalLinkRequest({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
-          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-white outline-none focus:border-white/30"
+          className="w-full rounded-lg border border-foreground/10 bg-muted px-3 py-2 text-foreground outline-none focus:border-foreground/30"
           autoComplete="email"
         />
         <button
           onClick={submit}
           disabled={status === "sending"}
-          className="rounded-lg bg-white text-black px-4 py-2 font-medium disabled:opacity-60"
+          className="rounded-lg bg-foreground text-background px-4 py-2 font-medium disabled:opacity-60"
         >
           {status === "sending" ? "Sending..." : "Email me a link"}
         </button>
@@ -92,7 +92,7 @@ export function PortalLinkRequest({
         <div className="text-sm text-red-300">{error}</div>
       )}
 
-      <div className="text-xs text-white/50">
+      <div className="text-xs text-foreground/50">
         Links expire in ~15 minutes for security. If it expires, just request a new one.
       </div>
     </div>

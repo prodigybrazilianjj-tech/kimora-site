@@ -8,7 +8,7 @@ export default function Refunds() {
 
       <main className="pt-32 pb-24">
         <div className="container px-4 mx-auto max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-8">
+          <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-8">
             Refund &amp; Return Policy
           </h1>
 
@@ -26,7 +26,7 @@ export default function Refunds() {
               terms.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Return Eligibility
             </h2>
             <p>
@@ -41,7 +41,7 @@ export default function Refunds() {
               We do not charge restocking fees.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               How to Initiate a Return
             </h2>
             <p>
@@ -53,7 +53,7 @@ export default function Refunds() {
               Returns sent without prior authorization may not be processed.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Return Shipping
             </h2>
             <p>
@@ -67,7 +67,7 @@ export default function Refunds() {
               See “Damaged, Defective, or Incorrect Orders” below.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Return Address
             </h2>
             <p>
@@ -85,7 +85,7 @@ export default function Refunds() {
               </strong>
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Refund Processing
             </h2>
             <p>
@@ -101,7 +101,7 @@ export default function Refunds() {
               full retail price. Original shipping charges are non-refundable.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Subscription Orders
             </h2>
             <p>
@@ -120,7 +120,7 @@ export default function Refunds() {
               eligible.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Damaged, Defective, or Incorrect Orders
             </h2>
             <p>
@@ -146,7 +146,7 @@ export default function Refunds() {
               the situation.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Wrong Addresses &amp; Refused Packages
             </h2>
             <p>
@@ -163,7 +163,7 @@ export default function Refunds() {
               resalable condition.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Bundles, Free Gifts &amp; Promotional Items
             </h2>
             <p>
@@ -173,7 +173,7 @@ export default function Refunds() {
               its retail value will be deducted from your refund.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               Wholesale &amp; Ambassador Orders
             </h2>
             <p>
@@ -183,7 +183,7 @@ export default function Refunds() {
               representative or support@kimoraco.com for assistance.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">
+            <h2 className="text-foreground font-bold text-lg mt-8">
               International Orders
             </h2>
             <p>
@@ -191,7 +191,7 @@ export default function Refunds() {
               policy applies to orders shipped to U.S. addresses.
             </p>
 
-            <h2 className="text-white font-bold text-lg mt-8">Contact</h2>
+            <h2 className="text-foreground font-bold text-lg mt-8">Contact</h2>
             <p>
               For all return or refund inquiries:
               <br />

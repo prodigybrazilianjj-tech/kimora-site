@@ -10,7 +10,7 @@ export function Formula() {
       <section id="formula" className="py-24 bg-card/30">
         <div className="container px-4 mx-auto max-w-4xl">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-6">
+            <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-6">
               What’s Inside Each Stick
             </h2>
             <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto">
@@ -27,28 +27,28 @@ export function Formula() {
                 Performance & Hydration
               </h3>
               <ul className="space-y-4">
-                <li className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                  <span className="text-white font-medium">
+                <li className="flex justify-between items-baseline border-b border-foreground/5 pb-2">
+                  <span className="text-foreground font-medium">
                     5g Creatine Monohydrate
                   </span>
                   <span className="text-sm text-muted-foreground">
                     Strength & Power
                   </span>
                 </li>
-                <li className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                  <span className="text-white font-medium">~500 mg Sodium</span>
+                <li className="flex justify-between items-baseline border-b border-foreground/5 pb-2">
+                  <span className="text-foreground font-medium">~500 mg Sodium</span>
                   <span className="text-sm text-muted-foreground">
                     Hydration & Performance
                   </span>
                 </li>
-                <li className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                  <span className="text-white font-medium">250 mg Potassium</span>
+                <li className="flex justify-between items-baseline border-b border-foreground/5 pb-2">
+                  <span className="text-foreground font-medium">250 mg Potassium</span>
                   <span className="text-sm text-muted-foreground">
                     Muscle Function
                   </span>
                 </li>
-                <li className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                  <span className="text-white font-medium">60 mg Magnesium</span>
+                <li className="flex justify-between items-baseline border-b border-foreground/5 pb-2">
+                  <span className="text-foreground font-medium">60 mg Magnesium</span>
                   <span className="text-sm text-muted-foreground">
                     Recovery Support
                   </span>
@@ -57,33 +57,33 @@ export function Formula() {
             </div>
 
             {/* Vertical Divider for Desktop */}
-            <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-white/10 -translate-x-1/2" />
+            <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-foreground/10 -translate-x-1/2" />
 
             <div className="space-y-6">
               <h3 className="text-xl font-bold text-primary tracking-wider uppercase mb-8">
                 Clean, Daily Formula
               </h3>
               <ul className="space-y-4">
-                <li className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                  <span className="text-white font-medium">Monk Fruit + Stevia</span>
+                <li className="flex justify-between items-baseline border-b border-foreground/5 pb-2">
+                  <span className="text-foreground font-medium">Monk Fruit + Stevia</span>
                   <span className="text-sm text-muted-foreground">
                     Naturally Sweetened
                   </span>
                 </li>
-                <li className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                  <span className="text-white font-medium">Acid Flavor System</span>
+                <li className="flex justify-between items-baseline border-b border-foreground/5 pb-2">
+                  <span className="text-foreground font-medium">Acid Flavor System</span>
                   <span className="text-sm text-muted-foreground">
                     Citric · Malic · Ascorbic
                   </span>
                 </li>
-                <li className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                  <span className="text-white font-medium">Natural Flavors</span>
+                <li className="flex justify-between items-baseline border-b border-foreground/5 pb-2">
+                  <span className="text-foreground font-medium">Natural Flavors</span>
                   <span className="text-sm text-muted-foreground">
                     Nothing Artificial
                   </span>
                 </li>
-                <li className="flex justify-between items-baseline border-b border-white/5 pb-2">
-                  <span className="text-white font-medium">Rice Hull Flow Agent</span>
+                <li className="flex justify-between items-baseline border-b border-foreground/5 pb-2">
+                  <span className="text-foreground font-medium">Rice Hull Flow Agent</span>
                   <span className="text-sm text-muted-foreground">
                     No Silicon Dioxide
                   </span>

@@ -20,17 +20,17 @@ export function Hero() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="space-y-6"
         >
-          <div className="inline-block border border-white/10 rounded-full px-4 py-1.5 bg-white/5 backdrop-blur-sm mb-4">
+          <div className="inline-block border border-foreground/10 rounded-full px-4 py-1.5 bg-foreground/5 backdrop-blur-sm mb-4">
             <span className="text-xs font-medium tracking-[0.2em] text-primary uppercase">
               Creatine · Electrolytes · Daily
             </span>
           </div>
 
-          <h1 className="font-wordmark text-7xl md:text-9xl font-bold tracking-[0.04em] text-white leading-[0.9]">
+          <h1 className="font-wordmark text-7xl md:text-9xl font-bold tracking-[0.04em] text-foreground leading-[0.9]">
             KIM<span className="text-accent">O</span>RA
           </h1>
 
-          <p className="text-xl md:text-3xl font-light tracking-widest text-white/80 uppercase">
+          <p className="text-xl md:text-3xl font-light tracking-widest text-foreground/80 uppercase">
             Grow Stronger. Think Sharper.
           </p>
 
@@ -42,7 +42,7 @@ export function Hero() {
             <Button 
               size="lg" 
               onClick={scrollToShop}
-              className="h-14 px-8 bg-primary hover:bg-primary/90 text-white text-lg font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(168,72,31,0.35)] hover:shadow-[0_0_30px_rgba(168,72,31,0.55)] transition-all duration-300"
+              className="h-14 px-8 bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(168,72,31,0.35)] hover:shadow-[0_0_30px_rgba(168,72,31,0.55)] transition-all duration-300"
             >
               Shop Now <ChevronRight className="ml-2 h-5 w-5" />
             </Button>

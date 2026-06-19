@@ -20,9 +20,9 @@ function TikTokIcon({ className }: { className?: string }) {
 
 export function Footer() {
   return (
-    <footer className="py-12 bg-[#0c0905] border-t border-white/5">
+    <footer className="py-12 bg-secondary border-t border-border">
       <div className="container px-4 mx-auto text-center">
-        <p className="text-3xl font-display font-bold text-white/20 tracking-[0.18em] mb-8">
+        <p className="text-3xl font-display font-bold text-foreground/20 tracking-[0.18em] mb-8">
           GROW STRONGER. THINK SHARPER.
         </p>
 
@@ -33,7 +33,7 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Kimora on Instagram"
-              className="hover:text-white transition-colors"
+              className="hover:text-foreground transition-colors"
             >
               <InstagramIcon className="w-5 h-5" />
             </a>
@@ -43,7 +43,7 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Kimora on TikTok"
-              className="hover:text-white transition-colors"
+              className="hover:text-foreground transition-colors"
             >
               <TikTokIcon className="w-5 h-5" />
             </a>
@@ -51,48 +51,48 @@ export function Footer() {
 
           <span>Kimora Co. © 2026. All rights reserved.</span>
 
-          <span className="text-xs text-white/40">
+          <span className="text-xs text-foreground/40">
             PO Box 20024, Sedona, AZ 86341
           </span>
 
           <a
             href="mailto:support@kimoraco.com"
-            className="hover:text-white transition-colors"
+            className="hover:text-foreground transition-colors"
           >
             support@kimoraco.com
           </a>
 
           {/* Legal + Utility Links */}
           <div className="flex flex-wrap justify-center gap-6 text-xs">
-            <Link href="/terms" className="hover:text-white transition-colors">
+            <Link href="/terms" className="hover:text-foreground transition-colors">
               Terms of Service
             </Link>
 
-            <Link href="/privacy" className="hover:text-white transition-colors">
+            <Link href="/privacy" className="hover:text-foreground transition-colors">
               Privacy Policy
             </Link>
 
             <Link
               href="/manage-subscription"
-              className="hover:text-white transition-colors"
+              className="hover:text-foreground transition-colors"
             >
               Manage Subscription
             </Link>
 
-            <Link href="/refunds" className="hover:text-white transition-colors">
+            <Link href="/refunds" className="hover:text-foreground transition-colors">
               Refund Policy
             </Link>
 
             <Link
               href="/wholesale"
-              className="hover:text-white transition-colors"
+              className="hover:text-foreground transition-colors"
             >
               Wholesale
             </Link>
           </div>
         </div>
 
-        <p className="text-xs text-white/20 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-xs text-foreground/20 max-w-2xl mx-auto leading-relaxed">
           These statements have not been evaluated by the Food and Drug
           Administration. This product is not intended to diagnose, treat, cure,
           or prevent any disease. Always consult your healthcare provider before

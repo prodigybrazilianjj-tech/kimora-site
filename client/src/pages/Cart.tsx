@@ -24,15 +24,15 @@ export default function Cart() {
 
       <main className="pt-32 pb-24">
         <div className="container px-4 mx-auto max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-8">
+          <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-8">
             Your Cart
           </h1>
 
           {safeItems.length === 0 ? (
-            <div className="text-center py-24 bg-card border border-white/5 rounded-2xl">
+            <div className="text-center py-24 bg-card border border-foreground/5 rounded-2xl">
               <p className="text-xl text-muted-foreground mb-6">Your cart is empty.</p>
               <Link href="/shop">
-                <Button className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider">
                   Start Shopping
                 </Button>
               </Link>
@@ -43,7 +43,7 @@ export default function Cart() {
                 {safeItems.map((item: any) => (
                   <div
                     key={item.id}
-                    className="flex items-center gap-6 p-4 bg-card border border-white/5 rounded-xl"
+                    className="flex items-center gap-6 p-4 bg-card border border-foreground/5 rounded-xl"
                   >
                     <div className="w-20 h-20 bg-secondary/30 rounded-lg p-2 flex-shrink-0">
                       <img
@@ -54,7 +54,7 @@ export default function Cart() {
                     </div>
 
                     <div className="flex-grow min-w-0">
-                      <h3 className="font-bold text-white text-lg truncate">
+                      <h3 className="font-bold text-foreground text-lg truncate">
                         {prettyFlavor(item.flavor)}
                       </h3>
 
@@ -70,11 +70,11 @@ export default function Cart() {
                     </div>
 
                     <div className="flex flex-col items-end gap-4">
-                      <div className="flex items-center border border-white/10 rounded-lg bg-white/5 h-9">
+                      <div className="flex items-center border border-foreground/10 rounded-lg bg-foreground/5 h-9">
                         <button
                           type="button"
                           onClick={() => updateQuantity(item.id, -1)}
-                          className="px-2 text-white hover:text-primary transition-colors h-full flex items-center"
+                          className="px-2 text-foreground hover:text-primary transition-colors h-full flex items-center"
                           aria-label={`Decrease quantity of ${prettyFlavor(item.flavor)}`}
                         >
                           <Minus className="w-3 h-3" />
@@ -94,14 +94,14 @@ export default function Cart() {
                               setQuantity(item.id, next);
                             }
                           }}
-                          className="w-12 text-center text-sm font-bold text-white bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="w-12 text-center text-sm font-bold text-foreground bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           aria-label={`Quantity of ${prettyFlavor(item.flavor)}`}
                         />
 
                         <button
                           type="button"
                           onClick={() => updateQuantity(item.id, 1)}
-                          className="px-2 text-white hover:text-primary transition-colors h-full flex items-center"
+                          className="px-2 text-foreground hover:text-primary transition-colors h-full flex items-center"
                           aria-label={`Increase quantity of ${prettyFlavor(item.flavor)}`}
                         >
                           <Plus className="w-3 h-3" />
@@ -120,9 +120,9 @@ export default function Cart() {
                   </div>
                 ))}
 
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-white font-semibold mb-1">Cart tip</div>
-                  <p className="text-sm text-white/70">
+                <div className="rounded-xl border border-foreground/10 bg-foreground/5 p-4">
+                  <div className="text-foreground font-semibold mb-1">Cart tip</div>
+                  <p className="text-sm text-foreground/70">
                     You can adjust quantities here before checkout. If inventory is limited,
                     reduce the quantity and try again.
                   </p>
@@ -130,8 +130,8 @@ export default function Cart() {
               </div>
 
               {/* Summary */}
-              <div className="bg-card border border-white/5 rounded-xl p-6 h-fit">
-                <h3 className="font-display font-bold text-2xl text-white mb-6">
+              <div className="bg-card border border-foreground/5 rounded-xl p-6 h-fit">
+                <h3 className="font-display font-bold text-2xl text-foreground mb-6">
                   Order Summary
                 </h3>
 
@@ -146,14 +146,14 @@ export default function Cart() {
                     <span>Calculated at checkout</span>
                   </div>
 
-                  <div className="border-t border-white/10 pt-3 flex justify-between text-white font-bold text-lg">
+                  <div className="border-t border-foreground/10 pt-3 flex justify-between text-foreground font-bold text-lg">
                     <span>Total</span>
                     <span>${Number(subtotal || 0).toFixed(2)}</span>
                   </div>
                 </div>
 
                 <Link href="/checkout">
-                  <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider">
+                  <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider">
                     Checkout <ArrowRight className="ml-2 w-4 h-4" />
                   </Button>
                 </Link>

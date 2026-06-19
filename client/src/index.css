@@ -36,34 +36,34 @@
 }
 
 :root {
-  /* Concept B — Red Rock + Brass. Warm, deep, moody by default. */
-  --background: 28 40% 6%; /* warm near-black #14100a */
-  --foreground: 40 30% 90%; /* bone */
+  /* Option B — Cream & Brass. Light, warm, cream-forward with Sedona earthtone accents. */
+  --background: 44 56% 92%; /* cream #F7F0DE */
+  --foreground: 32 40% 19%; /* espresso brown #42301C */
 
-  --card: 28 33% 9%; /* warm raised surface */
-  --card-foreground: 40 30% 90%;
+  --card: 44 60% 96%; /* lighter cream raised surface #FCF8EC */
+  --card-foreground: 32 40% 19%;
 
-  --popover: 28 40% 6%;
-  --popover-foreground: 40 30% 90%;
+  --popover: 44 60% 96%;
+  --popover-foreground: 32 40% 19%;
 
-  --primary: 18 69% 39%; /* Red Rock #A8481F */
-  --primary-foreground: 40 45% 96%;
+  --primary: 39 60% 45%; /* Brass #B5862E — the lead accent */
+  --primary-foreground: 43 60% 94%; /* cream text on brass #FBF5E6 */
 
-  --secondary: 28 26% 15%;
-  --secondary-foreground: 40 30% 92%;
+  --secondary: 43 49% 84%; /* warm sand #ECE0C4 */
+  --secondary-foreground: 32 40% 19%;
 
-  --muted: 28 24% 14%;
-  --muted-foreground: 36 14% 62%;
+  --muted: 43 45% 87%; /* muted sand #EFE6CF */
+  --muted-foreground: 39 49% 29%; /* taupe brown #705626 */
 
-  --accent: 39 47% 60%; /* Brass #C9A86A */
-  --accent-foreground: 28 40% 8%;
+  --accent: 14 60% 41%; /* Red Rock #A8472A — outlines / secondary energy */
+  --accent-foreground: 43 60% 94%;
 
-  --destructive: 0 62.8% 30.6%;
+  --destructive: 0 70% 42%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 34 22% 16%;
-  --input: 34 22% 16%;
-  --ring: 18 69% 39%;
+  --border: 40 33% 78%; /* warm sand border */
+  --input: 40 33% 78%;
+  --ring: 39 60% 45%;
 
   --radius: 0.5rem;
 }

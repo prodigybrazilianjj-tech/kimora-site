@@ -606,7 +606,10 @@ export function registerWholesaleRoutes(app: Express) {
         return res.status(400).json({ ok: false, message: "Add at least one product with quantity > 0." });
       }
 
-      const taxRate = Math.max(0, parseFloat(String(body.taxRate ?? 0)) || 0);
+      // Tax + terms are read from the signed token (account-controlled), NOT the
+      // client body — a gym cannot set its own tax rate or payment terms from the
+      // reorder page. taxRate defaults to 0 (resale-exempt, cert on file).
+      const taxRate = Math.max(0, Number(result.payload.taxRate) || 0);
       const subtotal = lineItems.reduce((s, l) => s + Number(l.qty) * unitPrice, 0);
       const taxAmount = subtotal * (taxRate / 100);
       const notes = safeString(body.notes, 2000);
@@ -614,7 +617,7 @@ export function registerWholesaleRoutes(app: Express) {
       const daysMap: Record<string, number> = {
         "Due on Receipt": 0, "Net 15": 15, "Net 30": 30, "50% Deposit": 7,
       };
-      const paymentTerms = safeString(body.paymentTerms, 64) || "Net 30";
+      const paymentTerms = safeString(result.payload.paymentTerms, 64) || "Net 30";
       const daysUntilDue = daysMap[paymentTerms] ?? 30;
 
       // Use existing customer or re-look up by email

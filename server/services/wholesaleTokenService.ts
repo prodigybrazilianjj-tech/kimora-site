@@ -1,12 +1,24 @@
 // server/services/wholesaleTokenService.ts
 import { createHmac, timingSafeEqual } from "crypto";
 
+export type ReorderLineItem = {
+  name: string;
+  flavor?: string;
+  qty: number;
+};
+
 export type ReorderTokenPayload = {
   email: string;
   businessName: string;
   tier: string;
   unitPrice: number;
   stripeCustomerId: string;
+  // Account-controlled fields baked into the signed token at generation time.
+  // The gym cannot edit these from the reorder page — the server reads them
+  // from the token, never from the client request body.
+  lastOrder?: ReorderLineItem[]; // snapshot of the last paid order, for pre-fill
+  taxRate?: number;              // 0 = resale-exempt (cert on file)
+  paymentTerms?: string;         // e.g. "Net 15", carried from the original order
 };
 
 function getSecret(): string {
@@ -70,6 +82,17 @@ export function validateReorderToken(raw: string): TokenValidResult {
       };
     }
 
+    const lastOrder: ReorderLineItem[] = (Array.isArray(data.lastOrder) ? data.lastOrder : [])
+      .map((l: any) => ({
+        name: String(l?.name || "").slice(0, 120),
+        flavor: l?.flavor ? String(l.flavor).slice(0, 120) : undefined,
+        qty: Math.max(0, Math.trunc(Number(l?.qty) || 0)),
+      }))
+      .filter((l: ReorderLineItem) => l.name && l.qty > 0)
+      .slice(0, 20);
+
+    const taxRate = Number.isFinite(Number(data.taxRate)) ? Math.max(0, Number(data.taxRate)) : 0;
+
     return {
       valid: true,
       payload: {
@@ -78,6 +101,9 @@ export function validateReorderToken(raw: string): TokenValidResult {
         tier: String(data.tier || ""),
         unitPrice: Number(data.unitPrice) || inferUnitPrice(data.tier),
         stripeCustomerId: String(data.stripeCustomerId || ""),
+        lastOrder,
+        taxRate,
+        paymentTerms: String(data.paymentTerms || ""),
       },
     };
   } catch {

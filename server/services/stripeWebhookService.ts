@@ -495,12 +495,32 @@ export async function processStripeWebhook(rawBody: Buffer, signature: string) {
                 parseFloat(invoice.metadata?.unitPrice || "0") ||
                 inferUnitPrice(tier);
 
+              // Snapshot the just-paid order so the reorder page can pre-fill
+              // quantities. Parse name/flavor back out of the line description
+              // ("Name — Flavor (Tier)") and skip the sales-tax line.
+              const lastOrder = (invoice.lines?.data || [])
+                .filter((l: any) => !/^Sales Tax/i.test(String(l?.description || "")))
+                .map((l: any) => {
+                  const desc = String(l?.description || "");
+                  const noTier = desc.replace(/\s*\([^)]*\)\s*$/, "").trim(); // strip trailing " (Tier)"
+                  const [namePart, flavorPart] = noTier.split(" — ");
+                  return {
+                    name: (namePart || noTier).trim(),
+                    flavor: flavorPart ? flavorPart.trim() : undefined,
+                    qty: Math.max(1, Math.trunc(Number(l?.quantity) || 1)),
+                  };
+                })
+                .filter((l: any) => l.name);
+
               const token = generateReorderToken({
                 email: customerEmail,
                 businessName,
                 tier,
                 unitPrice,
                 stripeCustomerId,
+                lastOrder,
+                taxRate: 0, // wholesale resale orders are tax-exempt (resale cert on file)
+                paymentTerms: String(invoice.metadata?.paymentTerms || ""),
               });
 
               const siteUrl =

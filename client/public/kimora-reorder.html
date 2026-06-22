@@ -34,12 +34,16 @@
   .doc-badge { display: inline-block; background: rgba(200,169,110,0.15); color: var(--gold); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(200,169,110,0.3); margin-top: 4px; }
 
   /* ACCOUNT BANNER */
-  .account-banner { background: rgba(200,169,110,0.08); border: 1px solid rgba(200,169,110,0.3); border-radius: 6px; padding: 16px 18px; margin-bottom: 26px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .account-banner { background: rgba(200,169,110,0.08); border: 1px solid rgba(200,169,110,0.3); border-radius: 6px; padding: 16px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
   .acct-gym { font-size: 17px; font-weight: 800; color: var(--white); }
   .acct-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
   .tier-pill { background: rgba(200,169,110,0.15); border: 1px solid var(--gold); border-radius: 20px; padding: 6px 16px; text-align: right; }
   .tier-pill .price { font-size: 22px; font-weight: 900; color: var(--gold); }
   .tier-pill .label { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); margin-top: 2px; }
+
+  /* REORDER-LAST CTA */
+  .reorder-last { display: none; width: 100%; padding: 13px; background: transparent; border: 1px solid var(--gold); color: var(--gold-lt); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; border-radius: 4px; cursor: pointer; font-family: inherit; margin-bottom: 24px; transition: all 0.15s; }
+  .reorder-last:hover { background: rgba(200,169,110,0.1); }
 
   /* SECTION */
   .section { margin-bottom: 26px; }
@@ -49,45 +53,40 @@
   .order-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
   .order-table th { text-align: left; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); font-weight: 600; padding: 6px 8px 6px 0; border-bottom: 1px solid var(--rule); }
   .order-table th.r, .order-table td.r { text-align: right; }
-  .order-table td { padding: 9px 8px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  .order-table th.c, .order-table td.c { text-align: center; }
+  .order-table td { padding: 11px 8px 11px 0; border-bottom: 1px solid var(--rule); vertical-align: middle; }
   .product-name { font-weight: 600; }
   .product-sku { font-size: 10px; color: var(--dim); display: block; }
-  .order-table input { background: transparent; border: none; border-bottom: 1px solid var(--rule); color: var(--white); font-size: 13px; padding: 3px 4px; outline: none; font-family: inherit; width: 100%; }
-  .order-table input:focus { border-bottom-color: var(--gold); }
-  .order-table input.qty { width: 52px; text-align: center; font-weight: 700; font-size: 15px; }
-  .unit-price { text-align: right; color: var(--dim); font-size: 13px; min-width: 70px; }
-  .line-total { text-align: right; font-weight: 700; color: var(--white); min-width: 80px; font-size: 14px; }
+  .unit-price { color: var(--dim); font-size: 13px; }
+  .margin-cell { color: var(--green); font-size: 12px; font-weight: 600; }
+  .margin-cell .pct { color: var(--dim); font-size: 10px; font-weight: 400; }
+  .line-total { font-weight: 700; color: var(--white); font-size: 14px; }
   .line-total.has-val { color: var(--gold-lt); }
 
+  /* QTY STEPPER */
+  .stepper { display: inline-flex; align-items: center; gap: 6px; }
+  .step { width: 30px; height: 30px; border: 1px solid var(--rule); background: transparent; color: var(--gold); font-size: 18px; line-height: 1; border-radius: 4px; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; }
+  .step:hover { border-color: var(--gold); }
+  .stepper input.qty { background: transparent; border: none; border-bottom: 1px solid var(--rule); color: var(--white); font-size: 16px; padding: 3px 2px; outline: none; font-family: inherit; width: 46px; text-align: center; font-weight: 700; }
+  .stepper input.qty:focus { border-bottom-color: var(--gold); }
+
   /* TOTALS */
-  .totals-block { margin-left: auto; width: 260px; margin-top: 10px; }
+  .totals-block { margin-left: auto; width: 300px; margin-top: 12px; }
   .totals-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: 12px; }
   .t-label { color: var(--dim); }
   .t-val { font-weight: 600; min-width: 90px; text-align: right; }
-  .totals-row.discount .t-val { color: var(--green); }
+  .totals-row.exempt .t-val { color: var(--green); font-weight: 600; }
   .totals-row.grand { font-size: 16px; font-weight: 800; color: var(--gold-lt); border-bottom: none; padding-top: 10px; }
   .totals-row.grand .t-label { color: var(--white); }
-  .tax-input { width: 44px; text-align: right; border: none; border-bottom: 1px solid var(--rule); background: transparent; color: var(--white); font-size: 12px; padding: 2px 0; outline: none; font-family: inherit; }
-  .qty-note { font-size: 10px; color: var(--dim); margin-top: 6px; text-align: right; }
-
-  /* TERMS */
-  .terms-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-  .term { border: 1px solid var(--rule); border-radius: 20px; padding: 5px 14px; font-size: 11px; color: var(--dim); cursor: pointer; transition: all 0.12s; }
-  .term:hover { border-color: var(--gold); color: var(--gold); }
-  .term.sel { border-color: var(--gold); color: var(--gold-lt); background: rgba(200,169,110,0.08); }
+  .profit-note { font-size: 12px; color: var(--green); margin-top: 8px; text-align: right; font-weight: 600; }
+  .qty-note { font-size: 10px; color: var(--dim); margin-top: 4px; text-align: right; }
 
   /* NOTES */
   .notes-box { width: 100%; background: transparent; border: 1px solid var(--rule); color: var(--white); font-size: 12px; padding: 10px; outline: none; font-family: inherit; resize: none; height: 52px; border-radius: 3px; }
   .notes-box:focus { border-color: var(--gold); }
 
-  /* FIELD */
-  .field label { display: block; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
-  .field input { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--rule); color: var(--white); font-size: 13px; padding: 4px 0; outline: none; font-family: inherit; }
-  .field input:focus { border-bottom-color: var(--gold); }
-  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
-
   /* SUBMIT */
-  .btn-submit { display: block; width: 100%; padding: 18px; background: var(--gold); color: #080808; font-size: 14px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; transition: background 0.15s; margin-top: 28px; }
+  .btn-submit { display: block; width: 100%; padding: 18px; background: var(--gold); color: #080808; font-size: 14px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; transition: background 0.15s; margin-top: 12px; }
   .btn-submit:hover { background: var(--gold-lt); }
   .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
   #submit-msg { margin-top: 14px; padding: 14px 16px; border-radius: 4px; font-size: 13px; display: none; line-height: 1.7; }
@@ -97,8 +96,9 @@
   .footer { margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--rule); display: flex; justify-content: space-between; font-size: 10px; color: var(--dim); }
 
   @media (max-width: 520px) {
-    .account-banner { flex-direction: column; }
-    .field-row { grid-template-columns: 1fr; }
+    .account-banner { flex-direction: column; align-items: flex-start; }
+    .totals-block { width: 100%; }
+    .order-table th.hide-sm, .order-table td.hide-sm { display: none; }
   }
 </style>
 </head>
@@ -146,62 +146,41 @@
     </div>
   </div>
 
+  <!-- REORDER LAST ORDER (shown only if we have a last order on file) -->
+  <button type="button" class="reorder-last" id="reorder-last" onclick="reorderLast()">↻ Reorder last order</button>
+
   <!-- ORDER -->
   <div class="section">
     <div class="section-label">Your Order</div>
     <table class="order-table">
       <thead>
         <tr>
-          <th style="width:36%">Product</th>
-          <th style="width:26%">Flavor / Variant</th>
-          <th style="width:12%" class="r">Qty</th>
-          <th style="width:13%" class="r">Unit Price</th>
-          <th style="width:13%" class="r">Line Total</th>
+          <th style="width:34%">Product</th>
+          <th style="width:30%" class="c">Qty</th>
+          <th style="width:12%" class="r hide-sm">Unit</th>
+          <th style="width:12%" class="r">Your Margin</th>
+          <th style="width:12%" class="r">Line Total</th>
         </tr>
       </thead>
       <tbody id="order-body"></tbody>
     </table>
     <div class="totals-block">
       <div class="totals-row"><span class="t-label">Subtotal</span><span class="t-val" id="t-sub">$0.00</span></div>
-      <div class="totals-row">
-        <span class="t-label">Tax <span style="font-size:10px">(auto-fills from state)</span></span>
-        <span class="t-val" style="display:flex;justify-content:flex-end;align-items:center;gap:4px;">
-          <input type="number" class="tax-input" id="tax-rate" value="0" min="0" max="20" step="0.1" oninput="recalc()">
-          <span style="color:var(--dim)">%</span>
-        </span>
-      </div>
+      <div class="totals-row exempt"><span class="t-label">Tax</span><span class="t-val" id="t-tax">—</span></div>
+      <div class="totals-row" id="terms-row" style="display:none"><span class="t-label">Terms</span><span class="t-val" id="t-terms">—</span></div>
       <div class="totals-row grand"><span class="t-label">Total Due</span><span class="t-val" id="t-total">$0.00</span></div>
     </div>
+    <div class="profit-note" id="t-profit"></div>
     <div class="qty-note" id="qty-note"></div>
-  </div>
-
-  <!-- SHIPPING / STATE (for tax) -->
-  <div class="section">
-    <div class="section-label">Shipping Details</div>
-    <div class="field-row">
-      <div class="field"><label>Ship-to State (for tax)</label><input type="text" id="f-state" maxlength="2" placeholder="TX" style="text-transform:uppercase"></div>
-      <div class="field"><label>Invoice Reference</label><input type="text" id="f-invoiceref" placeholder="KIM-INV-002"></div>
-    </div>
-  </div>
-
-  <!-- TERMS -->
-  <div class="section">
-    <div class="section-label">Payment Terms</div>
-    <div class="terms-row">
-      <div class="term sel" onclick="toggleTerm(this)">Net 30</div>
-      <div class="term" onclick="toggleTerm(this)">Net 15</div>
-      <div class="term" onclick="toggleTerm(this)">Due on Receipt</div>
-      <div class="term" onclick="toggleTerm(this)">50% Deposit</div>
-    </div>
   </div>
 
   <!-- NOTES -->
   <div class="section">
-    <div class="section-label">Notes</div>
-    <textarea class="notes-box" id="f-notes" placeholder="Flavor preferences, delivery notes, anything else..."></textarea>
+    <div class="section-label">Notes <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+    <textarea class="notes-box" id="f-notes" placeholder="Delivery notes, anything else..."></textarea>
   </div>
 
-  <button class="btn-submit" id="btn-submit" onclick="submitReorder()">Send Invoice Request</button>
+  <button class="btn-submit" id="btn-submit" onclick="submitReorder()">Place Reorder</button>
   <div id="submit-msg"></div>
 
   <div class="footer">
@@ -212,26 +191,18 @@
 </div><!-- /state-main -->
 
 <script>
-const MSRP = 49.99;
+const MSRP = 49.99; // retail price per bag — used to show the gym its margin
 const PRODUCTS = [
   { name: 'Strawberry Guava',      sku: 'KIM-SG' },
   { name: 'Lemon Lychee',          sku: 'KIM-LL' },
   { name: 'Raspberry Dragonfruit', sku: 'KIM-RD' },
-  { name: '',                      sku: ''       },
 ];
-
-const STATE_TAX = {
-  AL:4.00, AK:0.00, AZ:5.60, AR:6.50, CA:7.25, CO:2.90, CT:6.35, DE:0.00,
-  FL:6.00, GA:4.00, HI:4.00, ID:6.00, IL:6.25, IN:7.00, IA:6.00, KS:6.50,
-  KY:6.00, LA:4.45, ME:5.50, MD:6.00, MA:6.25, MI:6.00, MN:6.875, MS:7.00,
-  MO:4.225, MT:0.00, NE:5.50, NV:6.85, NH:0.00, NJ:6.625, NM:5.125, NY:4.00,
-  NC:4.75, ND:5.00, OH:5.75, OK:4.50, OR:0.00, PA:6.00, RI:7.00, SC:6.00,
-  SD:4.50, TN:7.00, TX:6.25, UT:4.85, VT:6.00, VA:5.30, WA:6.50, WV:6.00,
-  WI:5.00, WY:4.00, DC:6.00
-};
 
 let activePrice = null;
 let tokenRaw = '';
+let lastOrder = [];     // [{ name, flavor?, qty }] from the signed token
+let taxRate = 0;        // account-controlled, from the token (0 = resale-exempt)
+let paymentTerms = '';  // account-controlled, from the token
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 (async function init() {
@@ -252,16 +223,30 @@ let tokenRaw = '';
       return;
     }
 
+    // Account-controlled values from the signed token
+    activePrice  = data.unitPrice;
+    lastOrder    = Array.isArray(data.lastOrder) ? data.lastOrder : [];
+    taxRate      = Number(data.taxRate) || 0;
+    paymentTerms = String(data.paymentTerms || '');
+
     // Populate account banner
-    activePrice = data.unitPrice;
     document.getElementById('acct-gym').textContent   = data.businessName;
     document.getElementById('acct-price').textContent = `$${parseFloat(data.unitPrice).toFixed(2)}/unit`;
-    document.getElementById('acct-tier').textContent  = data.tier;
+    document.getElementById('acct-tier').textContent  = data.tier || 'Wholesale';
 
-    // Build order rows
+    // Reveal the one-tap reorder button only if we have a last order on file
+    if (lastOrder.length) {
+      document.getElementById('reorder-last').style.display = 'block';
+    }
+
+    // Payment terms (read-only) — shown only if set
+    if (paymentTerms) {
+      document.getElementById('terms-row').style.display = 'flex';
+      document.getElementById('t-terms').textContent = paymentTerms;
+    }
+
     buildOrderRows();
 
-    // Show main content
     document.getElementById('state-loading').style.display = 'none';
     document.getElementById('state-main').style.display = 'block';
 
@@ -276,19 +261,57 @@ function showError(msg) {
   document.getElementById('state-error').style.display = 'flex';
 }
 
+// Match a product to its quantity in the last order (case-insensitive by name)
+function lastQtyFor(name) {
+  const hit = lastOrder.find(l => String(l.name).toLowerCase() === name.toLowerCase());
+  return hit ? hit.qty : 0;
+}
+
 // ── Order rows ────────────────────────────────────────────────────────────────
 function buildOrderRows() {
   const tbody = document.getElementById('order-body');
+  tbody.innerHTML = '';
+  const marginUnit = Math.max(0, MSRP - activePrice);
+  const marginPct  = MSRP > 0 ? Math.round((marginUnit / MSRP) * 100) : 0;
+
   PRODUCTS.forEach((p, i) => {
+    const qty = lastQtyFor(p.name); // pre-fill from last order (0 if none)
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><span class="product-name">${p.name || '<input type="text" style="width:100%" placeholder="Custom product">'}</span>${p.sku ? `<span class="product-sku">SKU: ${p.sku}</span>` : ''}</td>
-      <td><input type="text" placeholder="—"></td>
-      <td class="r"><input type="number" class="qty" min="0" placeholder="0" oninput="recalc()" id="qty-${i}"></td>
-      <td class="unit-price r" id="up-${i}">$${activePrice.toFixed(2)}</td>
+      <td><span class="product-name">${p.name}</span><span class="product-sku">SKU: ${p.sku}</span></td>
+      <td class="c">
+        <span class="stepper">
+          <button type="button" class="step" onclick="stepQty(${i},-1)" aria-label="decrease">−</button>
+          <input type="number" class="qty" min="0" inputmode="numeric" value="${qty > 0 ? qty : ''}" placeholder="0" oninput="recalc()" id="qty-${i}">
+          <button type="button" class="step" onclick="stepQty(${i},1)" aria-label="increase">+</button>
+        </span>
+      </td>
+      <td class="unit-price r hide-sm" id="up-${i}">$${activePrice.toFixed(2)}</td>
+      <td class="margin-cell r">$${marginUnit.toFixed(2)}<span class="pct"> (${marginPct}%)</span></td>
       <td class="line-total r" id="lt-${i}">—</td>`;
     tbody.appendChild(tr);
   });
+  recalc();
+}
+
+function stepQty(i, delta) {
+  const el = document.getElementById(`qty-${i}`);
+  if (!el) return;
+  const cur = parseInt(el.value) || 0;
+  const next = Math.max(0, cur + delta);
+  el.value = next > 0 ? next : '';
+  recalc();
+}
+
+function reorderLast() {
+  PRODUCTS.forEach((p, i) => {
+    const el = document.getElementById(`qty-${i}`);
+    if (!el) return;
+    const q = lastQtyFor(p.name);
+    el.value = q > 0 ? q : '';
+  });
+  recalc();
+  document.getElementById('btn-submit').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function recalc() {
@@ -302,28 +325,19 @@ function recalc() {
     const ltEl = document.getElementById(`lt-${i}`);
     if (ltEl) { ltEl.textContent = qty > 0 ? `$${lt.toFixed(2)}` : '—'; ltEl.classList.toggle('has-val', qty > 0); }
   });
-  const taxRate = parseFloat(document.getElementById('tax-rate').value) || 0;
+
   const tax = subtotal * (taxRate / 100);
+  const retailValue = totalQty * MSRP;
+  const profit = retailValue - subtotal;
+
   document.getElementById('t-sub').textContent   = `$${subtotal.toFixed(2)}`;
+  document.getElementById('t-tax').textContent   = taxRate > 0 ? `$${tax.toFixed(2)} (${taxRate}%)` : 'Exempt — resale cert on file';
   document.getElementById('t-total').textContent = `$${(subtotal + tax).toFixed(2)}`;
+  document.getElementById('t-profit').textContent = totalQty > 0
+    ? `$${retailValue.toFixed(2)} retail value · you keep ~$${profit.toFixed(2)} at full retail`
+    : '';
   const noteEl = document.getElementById('qty-note');
-  noteEl.textContent = totalQty > 0 ? `${totalQty} unit${totalQty !== 1 ? 's' : ''} · $${subtotal.toFixed(2)} before tax` : '';
-}
-
-// ── Tax auto-fill ─────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('f-state').addEventListener('blur', function() {
-    const st = this.value.trim().toUpperCase();
-    if (Object.prototype.hasOwnProperty.call(STATE_TAX, st)) {
-      document.getElementById('tax-rate').value = STATE_TAX[st];
-      recalc();
-    }
-  });
-});
-
-function toggleTerm(el) {
-  document.querySelectorAll('.term').forEach(e => e.classList.remove('sel'));
-  el.classList.add('sel');
+  noteEl.textContent = totalQty > 0 ? `${totalQty} bag${totalQty !== 1 ? 's' : ''} · $${subtotal.toFixed(2)} before tax` : '';
 }
 
 // ── Build line items ──────────────────────────────────────────────────────────
@@ -331,11 +345,7 @@ function buildLineItems() {
   const items = [];
   PRODUCTS.forEach((p, i) => {
     const qty = parseFloat(document.getElementById(`qty-${i}`)?.value) || 0;
-    if (qty <= 0) return;
-    const row = document.querySelector(`#order-body tr:nth-child(${i + 1})`);
-    const name = p.name || row?.querySelector('td:first-child input')?.value?.trim() || 'Custom Product';
-    const flavor = row?.querySelector('td:nth-child(2) input')?.value?.trim() || '';
-    items.push({ name, flavor, qty });
+    if (qty > 0) items.push({ name: p.name, flavor: '', qty });
   });
   return items;
 }
@@ -348,46 +358,36 @@ async function submitReorder() {
   const lineItems = buildLineItems();
   if (!lineItems.length) {
     msg.className = 'error';
-    msg.textContent = 'Please add at least one product with a quantity.';
+    msg.textContent = 'Add at least one product with a quantity.';
     msg.style.display = 'block';
     return;
   }
 
-  const taxRate   = parseFloat(document.getElementById('tax-rate').value) || 0;
-  const subtotal  = lineItems.reduce((s, l) => s + l.qty * activePrice, 0);
-  const taxAmount = subtotal * (taxRate / 100);
+  const subtotal   = lineItems.reduce((s, l) => s + l.qty * activePrice, 0);
+  const taxAmount  = subtotal * (taxRate / 100);
   const grandTotal = subtotal + taxAmount;
-  const termsSel  = document.querySelector('.term.sel')?.textContent?.trim() || 'Net 30';
-  const notes     = document.getElementById('f-notes').value.trim();
+  const notes      = document.getElementById('f-notes').value.trim();
 
   btn.disabled = true;
-  btn.textContent = 'Sending invoice…';
+  btn.textContent = 'Placing order…';
   msg.style.display = 'none';
 
   try {
+    // Tax + terms are derived server-side from the signed token — we only send
+    // the line items the gym chose plus any notes.
     const res = await fetch('/api/wholesale/reorder', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: tokenRaw,
-        lineItems,
-        taxRate,
-        taxAmount,
-        grandTotal,
-        paymentTerms: termsSel,
-        invoiceNumber: document.getElementById('f-invoiceref').value.trim(),
-        notes,
-      }),
+      body: JSON.stringify({ token: tokenRaw, lineItems, notes }),
     });
     const data = await res.json().catch(() => ({}));
 
     if (res.ok && data.invoiceUrl) {
       msg.className = 'success';
       msg.innerHTML =
-        `✓ Invoice sent! Check your email for the payment link.<br>` +
-        `Total: <strong>$${grandTotal.toFixed(2)}</strong> · Terms: ${termsSel}<br>` +
-        `<a href="${data.invoiceUrl}" target="_blank" style="color:var(--gold-lt);font-weight:700;">View invoice →</a>`;
-      btn.textContent = 'Invoice Sent ✓';
+        `✓ Order placed — <a href="${data.invoiceUrl}" target="_blank" rel="noopener" style="color:var(--gold-lt);font-weight:800;">pay now →</a><br>` +
+        `Total: <strong>$${grandTotal.toFixed(2)}</strong>. A copy is also in your inbox.`;
+      btn.textContent = 'Order Placed ✓';
     } else {
       throw new Error(data.message || `Server error (${res.status})`);
     }
@@ -395,7 +395,7 @@ async function submitReorder() {
     msg.className = 'error';
     msg.textContent = `Something went wrong: ${err.message}. Try again or email support@kimoraco.com.`;
     btn.disabled = false;
-    btn.textContent = 'Send Invoice Request';
+    btn.textContent = 'Place Reorder';
   }
 
   msg.style.display = 'block';

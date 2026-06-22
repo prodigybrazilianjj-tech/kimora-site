@@ -78,6 +78,19 @@ function normalizeFlavorSlug(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+// Resolve a wholesale product/flavor name to the CANONICAL inventory flavor slug,
+// mirroring emailService.mapPriceIdToItem's description fallback. Critical for
+// Lemon: the wholesale display name is "Lemon Lychee" but the inventory slug is
+// "lemon-yuzu" — a naive slug of the display name ("lemon-lychee") would never match.
+function resolveFlavorSlug(raw: string): string {
+  const slug = normalizeFlavorSlug(raw);
+  if (!slug) return "";
+  if (slug.includes("strawberry") || slug.includes("guava")) return "strawberry-guava";
+  if (slug.includes("lemon") || slug.includes("lychee") || slug.includes("yuzu")) return "lemon-yuzu";
+  if (slug.includes("raspberry") || slug.includes("dragonfruit")) return "raspberry-dragonfruit";
+  return slug;
+}
+
 function titleizeSlug(value: string | null | undefined) {
   return String(value || "")
     .split(/[-\s]+/g)
@@ -421,6 +434,116 @@ export async function reconcileInventoryReservationForOrderItem(args: {
       "[inventory] reconcileInventoryReservationForOrderItem failed:",
       safeErrSummary(e)
     );
+  }
+}
+
+// ── Wholesale inventory ────────────────────────────────────────────────────
+// Wholesale orders have no rows in the DTC orders/orderItems tables, and
+// inventory_transactions.order_id / order_item_id are FKs to those tables — so
+// these mirror the DTC reserve/consume math but log with null DTC refs and put
+// the wholesale order id in the note. Reserve on paid, consume on fulfill.
+
+export async function reserveWholesaleInventory(args: {
+  wholesaleOrderId: string;
+  flavor: string;
+  quantity: number;
+}) {
+  const flavor = resolveFlavorSlug(safeString(args.flavor, 120));
+  const quantity = Number(args.quantity ?? 0);
+  if (!flavor || !Number.isFinite(quantity) || quantity <= 0) return;
+
+  const inventoryItem = await findInventoryItemByFlavor(flavor);
+  if (!inventoryItem?.id) {
+    console.warn("[inventory] wholesale reserve: no inventory item for flavor:", flavor, "order:", args.wholesaleOrderId);
+    return;
+  }
+
+  try {
+    const updated = await db
+      .update(inventoryItems)
+      .set({
+        reservedQuantity: sql`${inventoryItems.reservedQuantity} + ${quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(inventoryItems.id, inventoryItem.id),
+          gte(sql`${inventoryItems.onHandQuantity} - ${inventoryItems.reservedQuantity}`, quantity)
+        )!
+      )
+      .returning({ id: inventoryItems.id });
+
+    if (!updated?.length) {
+      console.warn("[inventory] wholesale reserve: insufficient available qty for flavor:", flavor, "requested:", quantity, "order:", args.wholesaleOrderId);
+      return;
+    }
+
+    await db.insert(inventoryTransactions).values({
+      inventoryItemId: inventoryItem.id,
+      orderId: null,
+      orderItemId: null,
+      transactionType: "reservation",
+      quantityDelta: 0,
+      reservedDelta: quantity,
+      note: `Wholesale order reservation for ${flavor} (wholesaleOrder ${args.wholesaleOrderId})`,
+      metadata: { source: "wholesale_webhook", reason: "invoice.paid" },
+    });
+  } catch (e) {
+    console.warn("[inventory] reserveWholesaleInventory failed:", safeErrSummary(e));
+  }
+}
+
+export async function consumeWholesaleInventory(args: {
+  wholesaleOrderId: string;
+  flavor: string;
+  quantity: number;
+}) {
+  const flavor = resolveFlavorSlug(safeString(args.flavor, 120));
+  const quantity = Number(args.quantity ?? 0);
+  if (!flavor || !Number.isFinite(quantity) || quantity <= 0) return;
+
+  const inventoryItem = await findInventoryItemByFlavor(flavor);
+  if (!inventoryItem?.id) {
+    console.warn("[inventory] wholesale consume: no inventory item for flavor:", flavor, "order:", args.wholesaleOrderId);
+    return;
+  }
+
+  try {
+    // Fulfillment consumes physical stock: release the reservation AND draw down
+    // on-hand. Guard so neither goes negative (mirrors the DTC shipped transition).
+    const updated = await db
+      .update(inventoryItems)
+      .set({
+        onHandQuantity: sql`${inventoryItems.onHandQuantity} - ${quantity}`,
+        reservedQuantity: sql`${inventoryItems.reservedQuantity} - ${quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(inventoryItems.id, inventoryItem.id),
+          gte(inventoryItems.onHandQuantity, quantity),
+          gte(inventoryItems.reservedQuantity, quantity)
+        )!
+      )
+      .returning({ id: inventoryItems.id });
+
+    if (!updated?.length) {
+      console.warn("[inventory] wholesale consume: insufficient on-hand/reserved for flavor:", flavor, "qty:", quantity, "order:", args.wholesaleOrderId);
+      return;
+    }
+
+    await db.insert(inventoryTransactions).values({
+      inventoryItemId: inventoryItem.id,
+      orderId: null,
+      orderItemId: null,
+      transactionType: "fulfillment",
+      quantityDelta: -quantity,
+      reservedDelta: -quantity,
+      note: `Wholesale fulfillment for ${flavor} (wholesaleOrder ${args.wholesaleOrderId})`,
+      metadata: { source: "wholesale_fulfillment", reason: "wholesale_order_fulfilled" },
+    });
+  } catch (e) {
+    console.warn("[inventory] consumeWholesaleInventory failed:", safeErrSummary(e));
   }
 }
 

@@ -11,6 +11,7 @@ import {
   validateReorderToken,
   inferUnitPrice,
 } from "../services/wholesaleTokenService";
+import { consumeWholesaleInventory } from "../services/inventoryService";
 
 function safeString(v: any, maxLen = 20000) {
   const s = String(v ?? "").trim();
@@ -177,6 +178,21 @@ export function registerWholesaleRoutes(app: Express) {
       const id = String(req.params.id || "").trim();
       if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
 
+      // Read current state first so we only draw down inventory on the actual
+      // paid -> fulfilled transition (not on a repeat call to an already-fulfilled order).
+      const existing = await db
+        .select({
+          id: wholesaleOrders.id,
+          status: wholesaleOrders.status,
+          lineItems: wholesaleOrders.lineItems,
+        })
+        .from(wholesaleOrders)
+        .where(eq(wholesaleOrders.id, id))
+        .limit(1);
+
+      if (!existing?.length) return res.status(404).json({ ok: false, message: "Not found." });
+      const prevStatus = existing[0].status;
+
       const updated = await db
         .update(wholesaleOrders)
         .set({ status: "fulfilled", fulfilledAt: new Date(), updatedAt: new Date() })
@@ -184,6 +200,19 @@ export function registerWholesaleRoutes(app: Express) {
         .returning({ id: wholesaleOrders.id });
 
       if (!updated?.length) return res.status(404).json({ ok: false, message: "Not found." });
+
+      // Consume physical stock once, only when transitioning into fulfilled.
+      if (prevStatus !== "fulfilled") {
+        const items = Array.isArray(existing[0].lineItems) ? existing[0].lineItems : [];
+        for (const li of items) {
+          await consumeWholesaleInventory({
+            wholesaleOrderId: id,
+            flavor: li.name, // Kimora flavor == product name
+            quantity: Number(li.qty) || 0,
+          });
+        }
+      }
+
       return res.json({ ok: true });
     } catch (err: any) {
       console.error("PATCH /api/admin/wholesale-orders/:id/fulfill error:", safeErrSummary(err));
@@ -547,6 +576,7 @@ export function registerWholesaleRoutes(app: Express) {
           paymentTerms,
           invoiceRef:   invoiceNumber || null,
           notes:        notes || null,
+          lineItems:    lineItems.map((l) => ({ name: l.name, flavor: l.flavor || undefined, qty: Math.max(1, Math.round(Number(l.qty))) })),
           status:       fulfilledOnSpot ? "fulfilled" : "pending",
           fulfilledAt:  fulfilledOnSpot ? new Date() : null,
           isReorder:    false,
@@ -683,6 +713,7 @@ export function registerWholesaleRoutes(app: Express) {
           paymentTerms,
           invoiceRef:   String(body.invoiceNumber || "") || null,
           notes:        notes || null,
+          lineItems:    lineItems.map((l) => ({ name: l.name, flavor: l.flavor || undefined, qty: Math.max(1, Math.round(Number(l.qty))) })),
           status:       "pending",
           fulfilledAt:  null,
           isReorder:    true,

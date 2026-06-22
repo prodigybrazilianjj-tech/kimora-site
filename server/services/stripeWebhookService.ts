@@ -6,7 +6,7 @@ import { generateReorderToken, inferUnitPrice } from "./wholesaleTokenService";
 import { stripe } from "../stripe";
 import { db } from "../db";
 import { orders, orderItems, wholesaleOrders } from "../../shared/schema";
-import { applyInventoryForOrderItem } from "./inventoryService";
+import { applyInventoryForOrderItem, reserveWholesaleInventory } from "./inventoryService";
 import {
   sendOrderConfirmationEmail,
   getStripeCustomerIdFromCheckoutSession,
@@ -575,28 +575,85 @@ export async function processStripeWebhook(rawBody: Buffer, signature: string) {
         console.error("[webhook] invoice.paid email failed:", safeErrSummary(e));
       }
 
-      // Log to wholesaleOrders table (on-conflict-do-nothing so on-the-spot orders aren't overwritten)
+      // Log/update wholesaleOrders, then reserve inventory on the paid transition.
       try {
-        await db.insert(wholesaleOrders).values({
-          stripeInvoiceId:     invoice.id,
-          stripeInvoiceNumber: invoice.number ?? null,
-          stripeCustomerId:    String(invoice.customer ?? "") || null,
-          invoiceUrl:          invoice.hosted_invoice_url ?? null,
-          businessName,
-          email:               customerEmail || "",
-          tier,
-          amountPaid:          invoice.amount_paid ?? null,
-          currency:            invoice.currency ?? "usd",
-          paymentTerms:        invoice.metadata?.paymentTerms ?? null,
-          invoiceRef:          invoice.metadata?.invoiceRef ?? null,
-          notes:               null,
-          status:              "paid",
-          fulfilledAt:         null,
-          isReorder:           invoice.metadata?.reorder === "true",
-          source:              "webhook",
-        }).onConflictDoNothing({ target: wholesaleOrders.stripeInvoiceId });
+        // Parse the paid line items (skip the sales-tax line) so fulfillment
+        // later knows which flavors/qtys to draw down.
+        const paidLineItems = (invoice.lines?.data || [])
+          .filter((l: any) => !/^Sales Tax/i.test(String(l?.description || "")))
+          .map((l: any) => {
+            const desc = String(l?.description || "");
+            const noTier = desc.replace(/\s*\([^)]*\)\s*$/, "").trim(); // strip trailing " (Tier)"
+            const [namePart, flavorPart] = noTier.split(" — ");
+            return {
+              name: (namePart || noTier).trim(),
+              flavor: flavorPart ? flavorPart.trim() : undefined,
+              qty: Math.max(1, Math.trunc(Number(l?.quantity) || 1)),
+            };
+          })
+          .filter((l: any) => l.name);
+
+        // A row usually already exists (created at invoice-send time by the rep
+        // or reorder tool). Find it so we can mark it paid without clobbering.
+        const existingWo = await db
+          .select({ id: wholesaleOrders.id, status: wholesaleOrders.status })
+          .from(wholesaleOrders)
+          .where(eq(wholesaleOrders.stripeInvoiceId, invoice.id))
+          .limit(1);
+
+        let wholesaleOrderId = existingWo?.[0]?.id ?? null;
+        const prevStatus = existingWo?.[0]?.status ?? null;
+
+        if (wholesaleOrderId) {
+          await db.update(wholesaleOrders)
+            .set({
+              // Never downgrade an already-fulfilled order back to paid.
+              status:      prevStatus === "fulfilled" ? "fulfilled" : "paid",
+              amountPaid:  invoice.amount_paid ?? null,
+              invoiceUrl:  invoice.hosted_invoice_url ?? null,
+              lineItems:   paidLineItems.length ? paidLineItems : undefined,
+              updatedAt:   new Date(),
+            })
+            .where(eq(wholesaleOrders.id, wholesaleOrderId));
+        } else {
+          const insertedWo = await db.insert(wholesaleOrders).values({
+            stripeInvoiceId:     invoice.id,
+            stripeInvoiceNumber: invoice.number ?? null,
+            stripeCustomerId:    String(invoice.customer ?? "") || null,
+            invoiceUrl:          invoice.hosted_invoice_url ?? null,
+            businessName,
+            email:               customerEmail || "",
+            tier,
+            amountPaid:          invoice.amount_paid ?? null,
+            currency:            invoice.currency ?? "usd",
+            paymentTerms:        invoice.metadata?.paymentTerms ?? null,
+            invoiceRef:          invoice.metadata?.invoiceRef ?? null,
+            notes:               null,
+            lineItems:           paidLineItems.length ? paidLineItems : null,
+            status:              "paid",
+            fulfilledAt:         null,
+            isReorder:           invoice.metadata?.reorder === "true",
+            source:              "webhook",
+          })
+          .onConflictDoNothing({ target: wholesaleOrders.stripeInvoiceId })
+          .returning({ id: wholesaleOrders.id });
+          wholesaleOrderId = insertedWo?.[0]?.id ?? null;
+        }
+
+        // Reserve inventory only on the transition INTO paid — idempotent against
+        // Stripe webhook retries (a row already 'paid'/'fulfilled' won't re-reserve).
+        const newlyPaid = prevStatus !== "paid" && prevStatus !== "fulfilled";
+        if (wholesaleOrderId && newlyPaid && paidLineItems.length) {
+          for (const li of paidLineItems) {
+            await reserveWholesaleInventory({
+              wholesaleOrderId,
+              flavor: li.name, // Kimora flavor == product name
+              quantity: li.qty,
+            });
+          }
+        }
       } catch (dbErr: any) {
-        console.error("[webhook] wholesaleOrders insert failed:", safeErrSummary(dbErr));
+        console.error("[webhook] wholesaleOrders log/reserve failed:", safeErrSummary(dbErr));
       }
 
       return { received: true as const, eventId: event.id, eventType: event.type, handled: "invoice.paid" as const };

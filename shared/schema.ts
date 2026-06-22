@@ -351,6 +351,10 @@ export const wholesaleOrders = pgTable(
     invoiceRef:   text("invoice_ref"),
     notes:        text("notes"),
 
+    // Snapshot of what was ordered, so fulfillment knows which flavors/qtys to
+    // decrement from inventory (wholesale has no separate order-items table).
+    lineItems:    jsonb("line_items").$type<{ name: string; flavor?: string; qty: number }[]>(),
+
     // 'paid' = awaiting fulfillment, 'fulfilled' = shipped / handed over
     status:      varchar("status", { length: 32 }).notNull().default("paid"),
     fulfilledAt: timestamp("fulfilled_at", { withTimezone: true }),

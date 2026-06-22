@@ -12,6 +12,22 @@ import {
   inferUnitPrice,
 } from "../services/wholesaleTokenService";
 import { consumeWholesaleInventory } from "../services/inventoryService";
+import {
+  getActiveResaleCertForEmail,
+  listResaleCerts,
+  upsertResaleCert,
+  verifyResaleCert,
+  setResaleCertStatus,
+} from "../services/resaleCertService";
+
+function certTypeLabel(certType: string | null | undefined): string {
+  switch (String(certType || "")) {
+    case "az_5000a": return "AZ Form 5000A";
+    case "mtc": return "Multistate (MTC) resale cert";
+    case "state": return "State resale cert";
+    default: return "Resale cert";
+  }
+}
 
 function safeString(v: any, maxLen = 20000) {
   const s = String(v ?? "").trim();
@@ -217,6 +233,92 @@ export function registerWholesaleRoutes(app: Express) {
     } catch (err: any) {
       console.error("PATCH /api/admin/wholesale-orders/:id/fulfill error:", safeErrSummary(err));
       return res.status(500).json({ ok: false, message: "Failed to update order." });
+    }
+  });
+
+  // ── Admin: resale certificates ────────────────────────────────────────────
+  app.get("/api/admin/resale-certs", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+    try {
+      const rows = await listResaleCerts();
+      return res.json({ ok: true, rows });
+    } catch (err: any) {
+      console.error("GET /api/admin/resale-certs error:", safeErrSummary(err));
+      return res.status(500).json({ ok: false, message: "Failed to load resale certificates." });
+    }
+  });
+
+  app.post("/api/admin/resale-certs", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+    try {
+      const b: any = req.body ?? {};
+      const email = normalizeEmail(String(b.email ?? ""));
+      const businessName = safeString(b.businessName, 300);
+      if (!email || !isValidEmail(email)) return res.status(400).json({ ok: false, message: "Valid email required." });
+      if (!businessName) return res.status(400).json({ ok: false, message: "Business name required." });
+
+      const parseDate = (v: any) => {
+        const s = String(v ?? "").trim();
+        if (!s) return null;
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      const cert = await upsertResaleCert({
+        id: b.id || null,
+        email,
+        businessName,
+        stripeCustomerId: safeString(b.stripeCustomerId, 100) || null,
+        certType: safeString(b.certType, 32) || "az_5000a",
+        licenseNumber: safeString(b.licenseNumber, 100) || null,
+        issuingState: safeString(b.issuingState, 8) || "AZ",
+        resaleDescription: safeString(b.resaleDescription, 500) || null,
+        signed: Boolean(b.signed),
+        fileUrl: safeString(b.fileUrl, 2000) || null,
+        receivedAt: parseDate(b.receivedAt),
+        expiresAt: parseDate(b.expiresAt),
+        notes: safeString(b.notes, 2000) || null,
+      });
+      return res.json({ ok: true, cert });
+    } catch (err: any) {
+      console.error("POST /api/admin/resale-certs error:", safeErrSummary(err));
+      return res.status(500).json({ ok: false, message: "Failed to save resale certificate." });
+    }
+  });
+
+  app.post("/api/admin/resale-certs/:id/verify", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+      const verifiedBy = safeString(req.body?.verifiedBy, 200) || "admin";
+      const verificationResult = safeString(req.body?.verificationResult, 500) || "verified via license lookup";
+      const cert = await verifyResaleCert(id, verifiedBy, verificationResult);
+      if (!cert) return res.status(404).json({ ok: false, message: "Not found." });
+      return res.json({ ok: true, cert });
+    } catch (err: any) {
+      console.error("POST /api/admin/resale-certs/:id/verify error:", safeErrSummary(err));
+      return res.status(500).json({ ok: false, message: "Failed to verify certificate." });
+    }
+  });
+
+  app.post("/api/admin/resale-certs/:id/status", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+    try {
+      const id = String(req.params.id || "").trim();
+      const status = String(req.body?.status || "").trim();
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+      if (status !== "active" && status !== "revoked") return res.status(400).json({ ok: false, message: "Invalid status." });
+      const cert = await setResaleCertStatus(id, status as "active" | "revoked");
+      if (!cert) return res.status(404).json({ ok: false, message: "Not found." });
+      return res.json({ ok: true, cert });
+    } catch (err: any) {
+      console.error("POST /api/admin/resale-certs/:id/status error:", safeErrSummary(err));
+      return res.status(500).json({ ok: false, message: "Failed to update certificate." });
     }
   });
 
@@ -464,9 +566,8 @@ export function registerWholesaleRoutes(app: Express) {
         ? (body.lineItems as LineItem[]).filter((l) => Number(l.qty) > 0)
         : [];
 
-      const taxRate = Math.max(0, parseFloat(String(body.taxRate ?? 0)) || 0);
+      const requestedTaxRate = Math.max(0, parseFloat(String(body.taxRate ?? 0)) || 0);
       const subtotal = lineItems.reduce((s, l) => s + Number(l.unitPrice) * Number(l.qty), 0);
-      const taxAmount = subtotal * (taxRate / 100);
 
       if (!email || !isValidEmail(email)) {
         return res.status(400).json({ ok: false, message: "Valid email is required." });
@@ -497,10 +598,39 @@ export function registerWholesaleRoutes(app: Express) {
         await stripe.customers.update(customer.id, { name: contactName || businessName });
       }
 
+      // ── Resale-exemption gate ────────────────────────────────────────────
+      // A $0 resale-exempt invoice is allowed ONLY when a verified, unexpired,
+      // covering cert is on file for this account. Otherwise no exemption claimed.
+      const cert = await getActiveResaleCertForEmail(email, safeString(body.shipToState, 8) || undefined);
+      let taxStatus: string;
+      let resaleCertId: string | null = null;
+      let exemptionNote = "";
+      let effectiveTaxRate = requestedTaxRate;
+
+      if (cert) {
+        taxStatus = "exempt_resale";
+        resaleCertId = cert.id;
+        effectiveTaxRate = 0;
+        exemptionNote =
+          `Resale exempt — ${certTypeLabel(cert.certType)}` +
+          (cert.licenseNumber ? ` #${cert.licenseNumber}` : "") +
+          (cert.receivedAt ? ` on file ${new Date(cert.receivedAt as any).toLocaleDateString("en-US")}` : "");
+        try { await stripe.customers.update(customer.id, { tax_exempt: "exempt" } as any); } catch {}
+      } else {
+        taxStatus = requestedTaxRate > 0 ? "taxed" : "no_cert";
+        try { await stripe.customers.update(customer.id, { tax_exempt: "none" } as any); } catch {}
+      }
+
+      // When Stripe Tax is enabled (you toggle it in the dashboard) and there's no
+      // exemption, let Stripe compute the correct rate instead of a manual line.
+      const stripeTaxAuto = process.env.STRIPE_TAX_ENABLED === "true" && !cert;
+      const taxAmount = subtotal * (effectiveTaxRate / 100);
+
       // Build footer memo
       const footerParts: string[] = [];
       if (invoiceNumber) footerParts.push(`Ref: ${invoiceNumber}`);
       if (paymentTerms === "50% Deposit") footerParts.push("50% deposit due within 7 days. Remainder due before shipment.");
+      if (exemptionNote) footerParts.push(exemptionNote);
       if (notes) footerParts.push(notes.slice(0, 300));
       footerParts.push("Pricing is confidential — not for resale display. Questions? support@kimoraco.com");
 
@@ -511,6 +641,7 @@ export function registerWholesaleRoutes(app: Express) {
         days_until_due: daysUntilDue,
         description: `Kimora Co. Wholesale — ${tier} — ${businessName}`,
         footer: footerParts.join(" | "),
+        ...(stripeTaxAuto ? { automatic_tax: { enabled: true } } : {}),
         metadata: {
           businessName,
           tier,
@@ -518,6 +649,8 @@ export function registerWholesaleRoutes(app: Express) {
           invoiceRef: invoiceNumber || "",
           source: "kimora-wholesale-sheet",
           unitPrice: String(lineItems[0]?.unitPrice ?? inferUnitPrice(tier)),
+          taxStatus,
+          resaleCertId: resaleCertId || "",
           // Accounting channel tag for the QuickBooks connector → Wholesale Revenue.
           kimora_channel: "wholesale",
         },
@@ -545,12 +678,12 @@ export function registerWholesaleRoutes(app: Express) {
         });
       }
 
-      // Add tax line item if applicable
-      if (taxAmount > 0.005) {
+      // Add a manual tax line only when Stripe Tax isn't doing it and we're not exempt.
+      if (!stripeTaxAuto && taxAmount > 0.005) {
         await stripe.invoiceItems.create({
           customer: customer.id,
           invoice: invoice.id,
-          description: `Sales Tax (${taxRate}%)`,
+          description: `Sales Tax (${effectiveTaxRate}%)`,
           amount: Math.round(taxAmount * 100),
           currency: "usd",
         });
@@ -577,6 +710,8 @@ export function registerWholesaleRoutes(app: Express) {
           invoiceRef:   invoiceNumber || null,
           notes:        notes || null,
           lineItems:    lineItems.map((l) => ({ name: l.name, flavor: l.flavor || undefined, qty: Math.max(1, Math.round(Number(l.qty))) })),
+          taxStatus:    taxStatus,
+          resaleCertId: resaleCertId,
           status:       fulfilledOnSpot ? "fulfilled" : "pending",
           fulfilledAt:  fulfilledOnSpot ? new Date() : null,
           isReorder:    false,
@@ -636,12 +771,10 @@ export function registerWholesaleRoutes(app: Express) {
         return res.status(400).json({ ok: false, message: "Add at least one product with quantity > 0." });
       }
 
-      // Tax + terms are read from the signed token (account-controlled), NOT the
-      // client body — a gym cannot set its own tax rate or payment terms from the
-      // reorder page. taxRate defaults to 0 (resale-exempt, cert on file).
-      const taxRate = Math.max(0, Number(result.payload.taxRate) || 0);
+      // Tax is decided by the resale-cert record on file (source of truth), not the
+      // token or the client. The token's taxRate is only a fallback when no cert.
+      const tokenTaxRate = Math.max(0, Number(result.payload.taxRate) || 0);
       const subtotal = lineItems.reduce((s, l) => s + Number(l.qty) * unitPrice, 0);
-      const taxAmount = subtotal * (taxRate / 100);
       const notes = safeString(body.notes, 2000);
 
       const daysMap: Record<string, number> = {
@@ -657,17 +790,43 @@ export function registerWholesaleRoutes(app: Express) {
         customerId = existing.data[0]?.id ?? (await stripe.customers.create({ email, name: businessName, metadata: { businessName, source: "kimora-wholesale" } })).id;
       }
 
+      // ── Resale-exemption gate (same rule as the rep invoice tool) ─────────
+      const cert = await getActiveResaleCertForEmail(email);
+      let taxStatus: string;
+      let resaleCertId: string | null = null;
+      let exemptionNote = "";
+      let effectiveTaxRate = tokenTaxRate;
+      if (cert) {
+        taxStatus = "exempt_resale";
+        resaleCertId = cert.id;
+        effectiveTaxRate = 0;
+        exemptionNote =
+          `Resale exempt — ${certTypeLabel(cert.certType)}` +
+          (cert.licenseNumber ? ` #${cert.licenseNumber}` : "") +
+          (cert.receivedAt ? ` on file ${new Date(cert.receivedAt as any).toLocaleDateString("en-US")}` : "");
+        try { await stripe.customers.update(customerId, { tax_exempt: "exempt" } as any); } catch {}
+      } else {
+        // No verified cert for a self-serve reorder → do not claim exemption.
+        taxStatus = "no_cert";
+        try { await stripe.customers.update(customerId, { tax_exempt: "none" } as any); } catch {}
+      }
+      const stripeTaxAuto = process.env.STRIPE_TAX_ENABLED === "true" && !cert;
+      const taxAmount = subtotal * (effectiveTaxRate / 100);
+
       const invoice = await stripe.invoices.create({
         customer: customerId,
         collection_method: "send_invoice",
         days_until_due: daysUntilDue,
         description: `Kimora Co. Wholesale Reorder — ${tier} — ${businessName}`,
-        footer: `Reorder | Pricing confidential. Questions? support@kimoraco.com`,
+        footer: ["Reorder", exemptionNote, notes ? notes.slice(0, 300) : "", "Pricing confidential. Questions? support@kimoraco.com"].filter(Boolean).join(" | "),
+        ...(stripeTaxAuto ? { automatic_tax: { enabled: true } } : {}),
         metadata: {
           businessName, tier, paymentTerms,
           source: "kimora-wholesale-sheet",
           unitPrice: String(unitPrice),
           reorder: "true",
+          taxStatus,
+          resaleCertId: resaleCertId || "",
           // Accounting channel tag for the QuickBooks connector → Wholesale Revenue.
           kimora_channel: "wholesale",
         },
@@ -685,15 +844,13 @@ export function registerWholesaleRoutes(app: Express) {
         });
       }
 
-      if (taxAmount > 0.005) {
+      if (!stripeTaxAuto && taxAmount > 0.005) {
         await stripe.invoiceItems.create({
           customer: customerId, invoice: invoice.id,
-          description: `Sales Tax (${taxRate}%)`,
+          description: `Sales Tax (${effectiveTaxRate}%)`,
           amount: Math.round(taxAmount * 100), currency: "usd",
         });
       }
-
-      if (notes) await stripe.invoices.update(invoice.id, { footer: notes.slice(0, 500) });
 
       const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
       const sent = await stripe.invoices.sendInvoice(finalized.id);
@@ -714,6 +871,8 @@ export function registerWholesaleRoutes(app: Express) {
           invoiceRef:   String(body.invoiceNumber || "") || null,
           notes:        notes || null,
           lineItems:    lineItems.map((l) => ({ name: l.name, flavor: l.flavor || undefined, qty: Math.max(1, Math.round(Number(l.qty))) })),
+          taxStatus:    taxStatus,
+          resaleCertId: resaleCertId,
           status:       "pending",
           fulfilledAt:  null,
           isReorder:    true,

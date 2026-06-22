@@ -355,6 +355,12 @@ export const wholesaleOrders = pgTable(
     // decrement from inventory (wholesale has no separate order-items table).
     lineItems:    jsonb("line_items").$type<{ name: string; flavor?: string; qty: number }[]>(),
 
+    // Tax treatment recorded at invoice time (audit trail for the resale exemption).
+    // 'exempt_resale' = verified resale cert applied · 'no_cert' = no valid cert, needs review
+    // 'taxed' = tax charged (Stripe Tax) · null = legacy/unknown
+    taxStatus:    varchar("tax_status", { length: 32 }),
+    resaleCertId: varchar("resale_cert_id"), // references wholesale_resale_certs.id when exempt
+
     // 'paid' = awaiting fulfillment, 'fulfilled' = shipped / handed over
     status:      varchar("status", { length: 32 }).notNull().default("paid"),
     fulfilledAt: timestamp("fulfilled_at", { withTimezone: true }),
@@ -376,6 +382,48 @@ export const wholesaleOrders = pgTable(
 
 export type WholesaleOrder = typeof wholesaleOrders.$inferSelect;
 export type InsertWholesaleOrder = typeof wholesaleOrders.$inferInsert;
+
+/** WHOLESALE RESALE CERTIFICATES — one per gym account (keyed by email). A verified,
+ *  unexpired cert is what authorizes a $0 (resale-exempt) wholesale invoice. */
+export const wholesaleResaleCerts = pgTable(
+  "wholesale_resale_certs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    email:            varchar("email", { length: 320 }).notNull(),
+    businessName:     text("business_name").notNull(),
+    stripeCustomerId: text("stripe_customer_id"),
+
+    certType:          varchar("cert_type", { length: 32 }).notNull().default("az_5000a"), // az_5000a | state | mtc
+    licenseNumber:     text("license_number"),   // TPT / resale permit number
+    issuingState:      varchar("issuing_state", { length: 8 }).notNull().default("AZ"),
+    resaleDescription: text("resale_description"),
+    signed:            boolean("signed").notNull().default(false),
+    fileUrl:           text("file_url"),          // link/path to the stored cert image/PDF
+    receivedAt:        timestamp("received_at", { withTimezone: true }),
+    expiresAt:         timestamp("expires_at", { withTimezone: true }), // null = no stated expiry
+
+    verified:           boolean("verified").notNull().default(false),
+    verifiedBy:         text("verified_by"),
+    verifiedAt:         timestamp("verified_at", { withTimezone: true }),
+    verificationResult: text("verification_result"),
+
+    status: varchar("status", { length: 16 }).notNull().default("active"), // active | revoked
+
+    notes: text("notes"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    rcEmailIdx:    index("wholesale_resale_certs_email_idx").on(t.email),
+    rcStateIdx:    index("wholesale_resale_certs_state_idx").on(t.issuingState),
+    rcVerifiedIdx: index("wholesale_resale_certs_verified_idx").on(t.verified),
+  }),
+);
+
+export type WholesaleResaleCert = typeof wholesaleResaleCerts.$inferSelect;
+export type InsertWholesaleResaleCert = typeof wholesaleResaleCerts.$inferInsert;
 
 /** WAITLIST EMAILS */
 export const waitlistEmails = pgTable(

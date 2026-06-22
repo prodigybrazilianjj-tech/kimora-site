@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kimora Co. — Resale Certificates</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --bg:#080808; --white:#F5F3EF; --gold:#C8A96E; --gold-lt:#E2C88A; --dim:#A09994; --rule:#2A2A2A; --green:#6fcf7a; --red:#e07070; --card:#111; }
+  body { background:var(--bg); color:var(--white); font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:13px; line-height:1.5; padding:24px 20px; max-width:960px; margin:0 auto; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--gold); padding-bottom:14px; margin-bottom:20px; }
+  .logo { font-size:24px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; }
+  .logo span { color:var(--gold); }
+  .sub { font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--dim); margin-top:3px; }
+  .tokenbar { display:flex; gap:8px; align-items:center; margin-bottom:18px; }
+  input, select, textarea { background:transparent; border:1px solid var(--rule); color:var(--white); font-size:13px; padding:8px 10px; outline:none; font-family:inherit; border-radius:4px; }
+  input:focus, select:focus, textarea:focus { border-color:var(--gold); }
+  label { display:block; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--dim); margin-bottom:4px; }
+  .btn { background:var(--gold); color:#080808; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; border:none; border-radius:4px; padding:9px 16px; cursor:pointer; font-family:inherit; font-size:12px; }
+  .btn:hover { background:var(--gold-lt); }
+  .btn.ghost { background:transparent; border:1px solid var(--gold); color:var(--gold-lt); }
+  .btn.sm { padding:5px 10px; font-size:11px; }
+  .btn.danger { border-color:var(--red); color:var(--red); background:transparent; }
+  .section-label { font-size:10px; letter-spacing:0.22em; text-transform:uppercase; color:var(--gold); font-weight:700; margin:24px 0 12px; padding-bottom:6px; border-bottom:1px solid var(--rule); }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .field { margin-bottom:0; }
+  .field input, .field select, .field textarea { width:100%; }
+  .row-actions { display:flex; gap:6px; flex-wrap:wrap; }
+  table { width:100%; border-collapse:collapse; margin-top:6px; font-size:12px; }
+  th { text-align:left; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--rule); }
+  td { padding:9px 8px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  .pill { display:inline-block; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; padding:2px 8px; border-radius:12px; border:1px solid var(--rule); }
+  .pill.ok { color:var(--green); border-color:var(--green); }
+  .pill.warn { color:var(--gold-lt); border-color:var(--gold); }
+  .pill.bad { color:var(--red); border-color:var(--red); }
+  .msg { margin:12px 0; padding:10px 14px; border-radius:4px; display:none; font-size:12px; }
+  .msg.ok { display:block; background:rgba(111,207,122,0.1); border:1px solid var(--green); color:var(--green); }
+  .msg.err { display:block; background:rgba(224,112,112,0.1); border:1px solid var(--red); color:var(--red); }
+  .hint { font-size:11px; color:var(--dim); margin-top:4px; }
+  a { color:var(--gold-lt); }
+  @media (max-width:640px){ .grid{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="logo">Kimora<span>.</span></div>
+      <div class="sub">Wholesale · Resale Certificates</div>
+    </div>
+    <div style="text-align:right;font-size:11px;color:var(--dim)">
+      <div>Verify a TPT #:</div>
+      <a href="https://www.aztaxes.gov/Home/LicenseVerification" target="_blank" rel="noopener">AZTaxes License Verification →</a>
+    </div>
+  </div>
+
+  <div class="tokenbar">
+    <div style="flex:1">
+      <label>Admin token</label>
+      <input id="admin-token" type="password" placeholder="ADMIN_DASHBOARD_TOKEN" style="width:100%">
+    </div>
+    <button class="btn" onclick="saveToken()">Save</button>
+    <button class="btn ghost" onclick="loadCerts()">Refresh</button>
+  </div>
+
+  <div id="msg" class="msg"></div>
+
+  <!-- FORM -->
+  <div class="section-label" id="form-title">Add a resale certificate</div>
+  <input type="hidden" id="f-id">
+  <div class="grid">
+    <div class="field"><label>Gym email *</label><input id="f-email" type="email" placeholder="owner@gym.com"></div>
+    <div class="field"><label>Business (legal) name *</label><input id="f-business" placeholder="Combat Club Cottonwood LLC"></div>
+    <div class="field">
+      <label>Certificate type</label>
+      <select id="f-certType">
+        <option value="az_5000a">AZ Form 5000A</option>
+        <option value="state">Other state resale cert</option>
+        <option value="mtc">Multistate (MTC) resale cert</option>
+      </select>
+    </div>
+    <div class="field"><label>License / TPT number</label><input id="f-license" placeholder="8-digit AZ TPT #"></div>
+    <div class="field"><label>Issuing state</label><input id="f-state" maxlength="2" placeholder="AZ" style="text-transform:uppercase"></div>
+    <div class="field"><label>Resale description</label><input id="f-desc" placeholder="creatine/electrolyte stick packs for resale"></div>
+    <div class="field"><label>Date received</label><input id="f-received" type="date"></div>
+    <div class="field"><label>Expiry (blank = none)</label><input id="f-expires" type="date"></div>
+    <div class="field"><label>Cert file URL (Drive/photo link)</label><input id="f-file" placeholder="https://..."></div>
+    <div class="field"><label>Signed?</label><select id="f-signed"><option value="true">Yes — signed copy on file</option><option value="false">No / not yet</option></select></div>
+  </div>
+  <div class="field" style="margin-top:14px"><label>Notes</label><textarea id="f-notes" rows="2" style="width:100%"></textarea></div>
+  <div style="margin-top:14px;display:flex;gap:8px">
+    <button class="btn" onclick="saveCert()">Save certificate</button>
+    <button class="btn ghost" onclick="resetForm()">Clear / new</button>
+  </div>
+  <div class="hint">Saving does <b>not</b> verify the cert. Verify the license number on AZTaxes, then click <b>Verify</b> on the row below. Only a <b>verified, unexpired</b> cert lets that gym invoice at $0 tax.</div>
+
+  <!-- LIST -->
+  <div class="section-label">Certificates on file</div>
+  <table>
+    <thead><tr><th>Gym</th><th>Type / State</th><th>License #</th><th>Status</th><th>Expiry</th><th>Actions</th></tr></thead>
+    <tbody id="cert-rows"><tr><td colspan="6" style="color:var(--dim)">Enter your admin token and Refresh.</td></tr></tbody>
+  </table>
+
+<script>
+let TOKEN = '';
+try { TOKEN = localStorage.getItem('kimora_admin_token') || ''; } catch(e){}
+
+function init() {
+  if (TOKEN) { document.getElementById('admin-token').value = TOKEN; loadCerts(); }
+}
+function saveToken() {
+  TOKEN = document.getElementById('admin-token').value.trim();
+  try { localStorage.setItem('kimora_admin_token', TOKEN); } catch(e){}
+  loadCerts();
+}
+function show(msg, ok) {
+  const m = document.getElementById('msg');
+  m.className = 'msg ' + (ok ? 'ok' : 'err');
+  m.textContent = msg;
+  setTimeout(() => { m.className = 'msg'; }, 5000);
+}
+function headers() { return { 'Content-Type':'application/json', 'x-admin-token': TOKEN }; }
+
+async function loadCerts() {
+  if (!TOKEN) { show('Enter your admin token first.', false); return; }
+  try {
+    const res = await fetch('/api/admin/resale-certs', { headers: headers() });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok) { show(data.message || 'Failed to load (check token).', false); return; }
+    renderRows(data.rows || []);
+  } catch(e) { show('Network error loading certs.', false); }
+}
+
+function fmtDate(d) { if (!d) return '—'; const x = new Date(d); return isNaN(x) ? '—' : x.toLocaleDateString('en-US'); }
+function isExpired(d) { if (!d) return false; const x = new Date(d); return !isNaN(x) && x.getTime() < Date.now(); }
+
+function renderRows(rows) {
+  const tb = document.getElementById('cert-rows');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="6" style="color:var(--dim)">No certificates yet.</td></tr>'; return; }
+  tb.innerHTML = rows.map(r => {
+    const expired = isExpired(r.expiresAt);
+    const revoked = r.status === 'revoked';
+    let statusPill;
+    if (revoked) statusPill = '<span class="pill bad">Revoked</span>';
+    else if (expired) statusPill = '<span class="pill bad">Expired</span>';
+    else if (r.verified) statusPill = '<span class="pill ok">Verified</span>';
+    else statusPill = '<span class="pill warn">Unverified</span>';
+    const fileLink = r.fileUrl ? ` · <a href="${r.fileUrl}" target="_blank" rel="noopener">file</a>` : '';
+    return `<tr>
+      <td><b>${esc(r.businessName)}</b><br><span style="color:var(--dim)">${esc(r.email)}</span>${fileLink}</td>
+      <td>${esc(certLabel(r.certType))}<br><span style="color:var(--dim)">${esc(r.issuingState||'')}</span></td>
+      <td>${esc(r.licenseNumber||'—')}</td>
+      <td>${statusPill}${r.verified && r.verifiedAt ? `<br><span style="color:var(--dim);font-size:10px">${fmtDate(r.verifiedAt)}</span>` : ''}</td>
+      <td>${fmtDate(r.expiresAt)}</td>
+      <td><div class="row-actions">
+        ${!r.verified && !revoked ? `<button class="btn sm" onclick="verifyCert('${r.id}')">Verify</button>` : ''}
+        <button class="btn sm ghost" onclick='editCert(${JSON.stringify(r).replace(/'/g,"&#39;")})'>Edit</button>
+        ${revoked ? `<button class="btn sm ghost" onclick="setStatus('${r.id}','active')">Reactivate</button>`
+                  : `<button class="btn sm danger" onclick="setStatus('${r.id}','revoked')">Revoke</button>`}
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+function certLabel(t){ return ({az_5000a:'AZ Form 5000A',state:'State cert',mtc:'Multistate (MTC)'})[t] || 'Resale cert'; }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function saveCert() {
+  if (!TOKEN) { show('Enter your admin token first.', false); return; }
+  const body = {
+    id: document.getElementById('f-id').value || null,
+    email: document.getElementById('f-email').value.trim(),
+    businessName: document.getElementById('f-business').value.trim(),
+    certType: document.getElementById('f-certType').value,
+    licenseNumber: document.getElementById('f-license').value.trim(),
+    issuingState: document.getElementById('f-state').value.trim().toUpperCase(),
+    resaleDescription: document.getElementById('f-desc').value.trim(),
+    receivedAt: document.getElementById('f-received').value || null,
+    expiresAt: document.getElementById('f-expires').value || null,
+    fileUrl: document.getElementById('f-file').value.trim(),
+    signed: document.getElementById('f-signed').value === 'true',
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+  if (!body.email || !body.businessName) { show('Email and business name are required.', false); return; }
+  try {
+    const res = await fetch('/api/admin/resale-certs', { method:'POST', headers: headers(), body: JSON.stringify(body) });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok) { show(data.message || 'Save failed.', false); return; }
+    show('Saved. Now verify the license on AZTaxes, then click Verify.', true);
+    resetForm(); loadCerts();
+  } catch(e){ show('Network error saving cert.', false); }
+}
+
+async function verifyCert(id) {
+  if (!confirm('Confirm you verified this license number as valid & active on AZTaxes (or the state portal)?')) return;
+  const verifiedBy = prompt('Your name/initials for the record:', 'Alex') || 'admin';
+  try {
+    const res = await fetch(`/api/admin/resale-certs/${id}/verify`, { method:'POST', headers: headers(), body: JSON.stringify({ verifiedBy, verificationResult:'verified via license lookup' }) });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok) { show(data.message || 'Verify failed.', false); return; }
+    show('Certificate verified — this gym will now invoice at $0 tax.', true);
+    loadCerts();
+  } catch(e){ show('Network error verifying.', false); }
+}
+
+async function setStatus(id, status) {
+  if (status==='revoked' && !confirm('Revoke this certificate? The gym will no longer invoice tax-free until reactivated.')) return;
+  try {
+    const res = await fetch(`/api/admin/resale-certs/${id}/status`, { method:'POST', headers: headers(), body: JSON.stringify({ status }) });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok || !data.ok) { show(data.message || 'Update failed.', false); return; }
+    show('Updated.', true); loadCerts();
+  } catch(e){ show('Network error.', false); }
+}
+
+function editCert(r) {
+  document.getElementById('form-title').textContent = 'Edit certificate — ' + (r.businessName||'');
+  document.getElementById('f-id').value = r.id || '';
+  document.getElementById('f-email').value = r.email || '';
+  document.getElementById('f-business').value = r.businessName || '';
+  document.getElementById('f-certType').value = r.certType || 'az_5000a';
+  document.getElementById('f-license').value = r.licenseNumber || '';
+  document.getElementById('f-state').value = r.issuingState || '';
+  document.getElementById('f-desc').value = r.resaleDescription || '';
+  document.getElementById('f-received').value = (r.receivedAt||'').slice(0,10);
+  document.getElementById('f-expires').value = (r.expiresAt||'').slice(0,10);
+  document.getElementById('f-file').value = r.fileUrl || '';
+  document.getElementById('f-signed').value = r.signed ? 'true' : 'false';
+  document.getElementById('f-notes').value = r.notes || '';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+function resetForm() {
+  document.getElementById('form-title').textContent = 'Add a resale certificate';
+  ['f-id','f-email','f-business','f-license','f-desc','f-received','f-expires','f-file','f-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-certType').value='az_5000a';
+  document.getElementById('f-state').value='';
+  document.getElementById('f-signed').value='true';
+}
+
+init();
+</script>
+</body>
+</html>

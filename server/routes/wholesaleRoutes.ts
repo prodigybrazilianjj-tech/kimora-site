@@ -128,6 +128,32 @@ function requireAdmin(req: any, res: any) {
   return null;
 }
 
+// Access gate for the resale-cert tool ONLY. Accepts either the full
+// ADMIN_DASHBOARD_TOKEN or a separate, shorter CERT_TOOL_PASSWORD. This password
+// is scoped to the cert endpoints below — it does NOT unlock the other admin tools
+// (applications/orders), which stay on requireAdmin.
+function requireCertAccess(req: any, res: any) {
+  const adminToken = String(process.env.ADMIN_DASHBOARD_TOKEN ?? "").trim();
+  const certPassword = String(process.env.CERT_TOOL_PASSWORD ?? "").trim();
+
+  if (!adminToken && !certPassword) {
+    return res.status(500).json({
+      ok: false,
+      message: "No cert-tool credential is configured (set CERT_TOOL_PASSWORD or ADMIN_DASHBOARD_TOKEN).",
+    });
+  }
+
+  const got = adminTokenFromReq(req);
+  const ok =
+    !!got &&
+    ((adminToken && got === adminToken) || (certPassword && got === certPassword));
+  if (!ok) {
+    return res.status(401).json({ ok: false, message: "Unauthorized" });
+  }
+
+  return null;
+}
+
 export function registerWholesaleRoutes(app: Express) {
   app.get("/api/admin/wholesale-applications", async (req, res) => {
     const denied = requireAdmin(req, res);
@@ -250,7 +276,7 @@ export function registerWholesaleRoutes(app: Express) {
 
   // ── Admin: resale certificates ────────────────────────────────────────────
   app.get("/api/admin/resale-certs", async (req, res) => {
-    const denied = requireAdmin(req, res);
+    const denied = requireCertAccess(req, res);
     if (denied) return;
     try {
       const rows = await listResaleCerts();
@@ -262,7 +288,7 @@ export function registerWholesaleRoutes(app: Express) {
   });
 
   app.post("/api/admin/resale-certs", async (req, res) => {
-    const denied = requireAdmin(req, res);
+    const denied = requireCertAccess(req, res);
     if (denied) return;
     try {
       const b: any = req.body ?? {};
@@ -331,7 +357,7 @@ export function registerWholesaleRoutes(app: Express) {
   });
 
   app.post("/api/admin/resale-certs/:id/verify", async (req, res) => {
-    const denied = requireAdmin(req, res);
+    const denied = requireCertAccess(req, res);
     if (denied) return;
     try {
       const id = String(req.params.id || "").trim();
@@ -348,7 +374,7 @@ export function registerWholesaleRoutes(app: Express) {
   });
 
   app.post("/api/admin/resale-certs/:id/status", async (req, res) => {
-    const denied = requireAdmin(req, res);
+    const denied = requireCertAccess(req, res);
     if (denied) return;
     try {
       const id = String(req.params.id || "").trim();
@@ -367,7 +393,7 @@ export function registerWholesaleRoutes(app: Express) {
   // Serve the uploaded cert file (admin-only). The admin page fetches this with the
   // x-admin-token header and opens the result as a blob, so the token stays off the URL.
   app.get("/api/admin/resale-certs/:id/file", async (req, res) => {
-    const denied = requireAdmin(req, res);
+    const denied = requireCertAccess(req, res);
     if (denied) return;
     try {
       const id = String(req.params.id || "").trim();

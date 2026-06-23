@@ -20,6 +20,9 @@ declare module "http" {
 // Stripe webhooks require raw body for signature verification
 app.use(
   express.json({
+    // Allow inline cert image/PDF uploads (base64) on the admin resale-cert tool.
+    // Base64 inflates ~33%, so 10mb here comfortably covers the ~6MB file cap.
+    limit: "10mb",
     verify: (req: any, _res, buf) => {
       req.rawBody = buf;
     },

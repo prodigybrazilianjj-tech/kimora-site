@@ -78,13 +78,24 @@
         <option value="mtc">Multistate (MTC) resale cert</option>
       </select>
     </div>
-    <div class="field"><label>License / TPT number</label><input id="f-license" placeholder="8-digit AZ TPT #"></div>
+    <div class="field">
+      <label style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <span>License / TPT number</span>
+        <a href="https://www.aztaxes.gov/Home/LicenseVerification" target="_blank" rel="noopener" style="text-transform:none;letter-spacing:0;font-size:10px">Verify on AZTaxes ↗</a>
+      </label>
+      <input id="f-license" placeholder="8-digit AZ TPT #">
+    </div>
     <div class="field"><label>Issuing state</label><input id="f-state" maxlength="2" placeholder="AZ" style="text-transform:uppercase"></div>
     <div class="field"><label>Resale description</label><input id="f-desc" placeholder="creatine/electrolyte stick packs for resale"></div>
     <div class="field"><label>Date received</label><input id="f-received" type="date"></div>
     <div class="field"><label>Expiry (blank = none)</label><input id="f-expires" type="date"></div>
-    <div class="field"><label>Cert file URL (Drive/photo link)</label><input id="f-file" placeholder="https://..."></div>
+    <div class="field"><label>Cert link — Google Drive / photo URL (optional)</label><input id="f-file" placeholder="https://drive.google.com/..."></div>
     <div class="field"><label>Signed?</label><select id="f-signed"><option value="true">Yes — signed copy on file</option><option value="false">No / not yet</option></select></div>
+  </div>
+  <div class="field" style="margin-top:14px">
+    <label>Attach cert photo / PDF (stored securely — admin-only)</label>
+    <input id="f-fileinput" type="file" accept="image/*,application/pdf" onchange="onFilePicked(this)" style="width:100%">
+    <div id="f-filestatus" class="hint"></div>
   </div>
   <div class="field" style="margin-top:14px"><label>Notes</label><textarea id="f-notes" rows="2" style="width:100%"></textarea></div>
   <div style="margin-top:14px;display:flex;gap:8px">
@@ -104,8 +115,15 @@
 let TOKEN = '';
 try { TOKEN = localStorage.getItem('kimora_admin_token') || ''; } catch(e){}
 
+// Cert-file upload state (client-side; sent with saveCert)
+let pendingFile = null;          // { fileData(base64), fileMime, fileName } chosen for upload
+let removeExistingFile = false;  // true → clear the stored file on save
+let editingId = '';              // id of the cert currently in the form
+let editingFileName = '';        // filename already on file for the edited cert (if any)
+
 function init() {
   if (TOKEN) { document.getElementById('admin-token').value = TOKEN; loadCerts(); }
+  renderFileStatus();
 }
 function saveToken() {
   TOKEN = document.getElementById('admin-token').value.trim();
@@ -152,7 +170,8 @@ function renderRows(rows) {
       <td>${statusPill}${r.verified && r.verifiedAt ? `<br><span style="color:var(--dim);font-size:10px">${fmtDate(r.verifiedAt)}</span>` : ''}</td>
       <td>${fmtDate(r.expiresAt)}</td>
       <td><div class="row-actions">
-        ${!r.verified && !revoked ? `<button class="btn sm" onclick="verifyCert('${r.id}')">Verify</button>` : ''}
+        ${r.hasFile ? `<button class="btn sm ghost" onclick="viewCertFile('${r.id}')">View file</button>` : ''}
+        ${!r.verified && !revoked ? `<a class="btn sm ghost" href="https://www.aztaxes.gov/Home/LicenseVerification" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none">AZTaxes ↗</a><button class="btn sm" onclick="verifyCert('${r.id}')">Verify</button>` : ''}
         <button class="btn sm ghost" onclick='editCert(${JSON.stringify(r).replace(/'/g,"&#39;")})'>Edit</button>
         ${revoked ? `<button class="btn sm ghost" onclick="setStatus('${r.id}','active')">Reactivate</button>`
                   : `<button class="btn sm danger" onclick="setStatus('${r.id}','revoked')">Revoke</button>`}
@@ -162,6 +181,109 @@ function renderRows(rows) {
 }
 function certLabel(t){ return ({az_5000a:'AZ Form 5000A',state:'State cert',mtc:'Multistate (MTC)'})[t] || 'Resale cert'; }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Cert file: pick, compress, preview ────────────────────────────────────
+function stripExt(n){ return String(n||'cert').replace(/\.[^.]+$/,''); }
+
+function readAsBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = ()=>{ const s=String(r.result||''); const i=s.indexOf(','); resolve(i>=0?s.slice(i+1):s); };
+    r.onerror = ()=>reject('Could not read file.');
+    r.readAsDataURL(file);
+  });
+}
+
+// Downscale + JPEG-compress an image entirely in the browser before upload.
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve,reject)=>{
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=>{
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+      if (!w || !h) { reject('Could not read this image.'); return; }
+      if (w>maxDim || h>maxDim) { const s=Math.min(maxDim/w, maxDim/h); w=Math.round(w*s); h=Math.round(h*s); }
+      const c = document.createElement('canvas'); c.width=w; c.height=h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); // flatten transparency for JPEG
+      ctx.drawImage(img,0,0,w,h);
+      const dataUrl = c.toDataURL('image/jpeg', quality);
+      const b64 = (dataUrl.split(',')[1]) || '';
+      if (!b64) { reject('Could not process image.'); return; }
+      resolve(b64);
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject('Could not read this image (HEIC isn’t supported — convert to JPG/PNG or paste a Drive link).'); };
+    img.src = url;
+  });
+}
+
+async function fileToPayload(file){
+  const mime = file.type || '';
+  if (mime === 'application/pdf') {
+    if (file.size > 6*1024*1024) throw 'PDF too large (max 6MB). Use a smaller scan or paste a Drive link.';
+    const b64 = await readAsBase64(file);
+    return { fileData:b64, fileMime:'application/pdf', fileName:file.name };
+  }
+  if (mime.indexOf('image/') === 0) {
+    const b64 = await compressImage(file, 1600, 0.82);
+    return { fileData:b64, fileMime:'image/jpeg', fileName: stripExt(file.name)+'.jpg' };
+  }
+  throw 'Only images (JPG/PNG/WebP) or PDF are supported.';
+}
+
+async function onFilePicked(input){
+  removeExistingFile = false;
+  const file = input.files && input.files[0];
+  const statusEl = document.getElementById('f-filestatus');
+  if (!file) { pendingFile = null; renderFileStatus(); return; }
+  statusEl.textContent = 'Processing…';
+  try {
+    pendingFile = await fileToPayload(file);
+    renderFileStatus();
+  } catch (err) {
+    pendingFile = null; input.value = '';
+    statusEl.innerHTML = '<span style="color:var(--red)">'+esc(String(err))+'</span>';
+  }
+}
+
+function renderFileStatus(){
+  const el = document.getElementById('f-filestatus');
+  if (!el) return;
+  if (pendingFile) {
+    const kb = Math.round((pendingFile.fileData.length*3/4)/1024);
+    el.innerHTML = 'Ready to upload: <b>'+esc(pendingFile.fileName)+'</b> (~'+kb+' KB) — stored when you click <b>Save certificate</b>.';
+    return;
+  }
+  if (removeExistingFile) {
+    el.innerHTML = '<span style="color:var(--red)">Stored file will be removed on save.</span> · <a href="#" onclick="undoRemoveFile();return false;">undo</a>';
+    return;
+  }
+  if (editingFileName) {
+    el.innerHTML = 'On file: <b>'+esc(editingFileName)+'</b> · <a href="#" onclick="viewCertFile(editingId);return false;">view</a> · <a href="#" onclick="markRemoveFile();return false;">remove</a> · or choose a file above to replace it.';
+    return;
+  }
+  el.textContent = 'Optional. JPG/PNG/PDF — photos are auto-compressed before upload. Or paste a Drive link above.';
+}
+
+function markRemoveFile(){
+  removeExistingFile = true; pendingFile = null;
+  const fi = document.getElementById('f-fileinput'); if (fi) fi.value='';
+  renderFileStatus();
+}
+function undoRemoveFile(){ removeExistingFile = false; renderFileStatus(); }
+
+async function viewCertFile(id){
+  if (!TOKEN) { show('Enter your admin token first.', false); return; }
+  try {
+    const res = await fetch(`/api/admin/resale-certs/${id}/file`, { headers: { 'x-admin-token': TOKEN } });
+    if (!res.ok) { const d = await res.json().catch(()=>({})); show(d.message || 'Could not load file.', false); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  } catch(e){ show('Network error loading file.', false); }
+}
 
 async function saveCert() {
   if (!TOKEN) { show('Enter your admin token first.', false); return; }
@@ -179,6 +301,8 @@ async function saveCert() {
     signed: document.getElementById('f-signed').value === 'true',
     notes: document.getElementById('f-notes').value.trim(),
   };
+  if (pendingFile) { body.fileData = pendingFile.fileData; body.fileMime = pendingFile.fileMime; body.fileName = pendingFile.fileName; }
+  if (removeExistingFile) { body.removeFile = true; }
   if (!body.email || !body.businessName) { show('Email and business name are required.', false); return; }
   try {
     const res = await fetch('/api/admin/resale-certs', { method:'POST', headers: headers(), body: JSON.stringify(body) });
@@ -225,6 +349,13 @@ function editCert(r) {
   document.getElementById('f-file').value = r.fileUrl || '';
   document.getElementById('f-signed').value = r.signed ? 'true' : 'false';
   document.getElementById('f-notes').value = r.notes || '';
+  // Reset upload state to reflect this cert's stored file (if any).
+  editingId = r.id || '';
+  editingFileName = r.hasFile ? (r.fileName || 'cert file') : '';
+  pendingFile = null;
+  removeExistingFile = false;
+  const fi = document.getElementById('f-fileinput'); if (fi) fi.value='';
+  renderFileStatus();
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 function resetForm() {
@@ -233,6 +364,10 @@ function resetForm() {
   document.getElementById('f-certType').value='az_5000a';
   document.getElementById('f-state').value='';
   document.getElementById('f-signed').value='true';
+  // Clear upload state
+  editingId = ''; editingFileName = ''; pendingFile = null; removeExistingFile = false;
+  const fi = document.getElementById('f-fileinput'); if (fi) fi.value='';
+  renderFileStatus();
 }
 
 init();

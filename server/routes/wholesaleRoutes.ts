@@ -14,11 +14,23 @@ import {
 import { consumeWholesaleInventory } from "../services/inventoryService";
 import {
   getActiveResaleCertForEmail,
+  getResaleCertFileById,
   listResaleCerts,
   upsertResaleCert,
   verifyResaleCert,
   setResaleCertStatus,
 } from "../services/resaleCertService";
+
+// Allowed upload types + size cap for an attached resale-cert image/PDF.
+const ALLOWED_CERT_FILE_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+]);
+// ~6MB of binary → ~8M base64 chars. Body limit (server/index.ts) is 10mb to cover this.
+const MAX_CERT_FILE_B64_LEN = 8_400_000;
 
 function certTypeLabel(certType: string | null | undefined): string {
   switch (String(certType || "")) {
@@ -266,6 +278,30 @@ export function registerWholesaleRoutes(app: Express) {
         return isNaN(d.getTime()) ? null : d;
       };
 
+      // Optional uploaded cert file (base64). Validate type + size before storing.
+      const removeFile = Boolean(b.removeFile);
+      let fileData: string | null = null;
+      let fileMime: string | null = null;
+      let fileName: string | null = null;
+      if (!removeFile && typeof b.fileData === "string" && b.fileData.length > 0) {
+        // Accept either a raw base64 string or a data URL; normalize to raw base64.
+        let raw = String(b.fileData);
+        const m = raw.match(/^data:([^;]+);base64,(.*)$/s);
+        if (m) {
+          fileMime = m[1];
+          raw = m[2];
+        }
+        if (typeof b.fileMime === "string" && b.fileMime) fileMime = String(b.fileMime);
+        if (!fileMime || !ALLOWED_CERT_FILE_MIMES.has(fileMime)) {
+          return res.status(400).json({ ok: false, message: "Unsupported file type. Use JPG, PNG, WebP, GIF, or PDF." });
+        }
+        if (raw.length > MAX_CERT_FILE_B64_LEN) {
+          return res.status(400).json({ ok: false, message: "File too large. Max ~6MB — try a smaller photo or paste a Drive link instead." });
+        }
+        fileData = raw;
+        fileName = safeString(b.fileName, 300) || "cert";
+      }
+
       const cert = await upsertResaleCert({
         id: b.id || null,
         email,
@@ -280,8 +316,14 @@ export function registerWholesaleRoutes(app: Express) {
         receivedAt: parseDate(b.receivedAt),
         expiresAt: parseDate(b.expiresAt),
         notes: safeString(b.notes, 2000) || null,
+        fileData,
+        fileMime,
+        fileName,
+        removeFile,
       });
-      return res.json({ ok: true, cert });
+      // Don't echo the (large) base64 blob back to the client.
+      const { fileData: _omit, ...certLite } = (cert as any) ?? {};
+      return res.json({ ok: true, cert: certLite });
     } catch (err: any) {
       console.error("POST /api/admin/resale-certs error:", safeErrSummary(err));
       return res.status(500).json({ ok: false, message: "Failed to save resale certificate." });
@@ -319,6 +361,30 @@ export function registerWholesaleRoutes(app: Express) {
     } catch (err: any) {
       console.error("POST /api/admin/resale-certs/:id/status error:", safeErrSummary(err));
       return res.status(500).json({ ok: false, message: "Failed to update certificate." });
+    }
+  });
+
+  // Serve the uploaded cert file (admin-only). The admin page fetches this with the
+  // x-admin-token header and opens the result as a blob, so the token stays off the URL.
+  app.get("/api/admin/resale-certs/:id/file", async (req, res) => {
+    const denied = requireAdmin(req, res);
+    if (denied) return;
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+      const file = await getResaleCertFileById(id);
+      if (!file) return res.status(404).json({ ok: false, message: "No file on file for this certificate." });
+
+      const buf = Buffer.from(file.fileData, "base64");
+      const mime = file.fileMime || "application/octet-stream";
+      const safeName = (file.fileName || "cert").replace(/[^\w.\-]+/g, "_");
+      res.setHeader("Content-Type", mime);
+      res.setHeader("Content-Disposition", `inline; filename="${safeName}"`);
+      res.setHeader("Cache-Control", "private, no-store");
+      return res.send(buf);
+    } catch (err: any) {
+      console.error("GET /api/admin/resale-certs/:id/file error:", safeErrSummary(err));
+      return res.status(500).json({ ok: false, message: "Failed to load certificate file." });
     }
   });
 

@@ -2,7 +2,7 @@
 // Resale-certificate records per wholesale gym account (keyed by email).
 // A cert authorizes a $0 resale-exempt invoice ONLY when it is verified, active,
 // unexpired, and covers the destination state. Anything short of that → NOT exempt.
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "../db";
 import { wholesaleResaleCerts } from "../../shared/schema";
@@ -62,9 +62,38 @@ export async function getActiveResaleCertForEmail(
   return valid[0] ?? null;
 }
 
-export async function listResaleCerts(): Promise<WholesaleResaleCert[]> {
+// Row shape for the admin list. We deliberately omit the (potentially large) base64
+// fileData blob from list payloads and expose a lightweight `hasFile` flag instead;
+// the actual bytes are fetched on demand via getResaleCertFileById / the file endpoint.
+export type ResaleCertListRow = Omit<WholesaleResaleCert, "fileData"> & { hasFile: boolean };
+
+export async function listResaleCerts(): Promise<ResaleCertListRow[]> {
   return db
-    .select()
+    .select({
+      id: wholesaleResaleCerts.id,
+      email: wholesaleResaleCerts.email,
+      businessName: wholesaleResaleCerts.businessName,
+      stripeCustomerId: wholesaleResaleCerts.stripeCustomerId,
+      certType: wholesaleResaleCerts.certType,
+      licenseNumber: wholesaleResaleCerts.licenseNumber,
+      issuingState: wholesaleResaleCerts.issuingState,
+      resaleDescription: wholesaleResaleCerts.resaleDescription,
+      signed: wholesaleResaleCerts.signed,
+      fileUrl: wholesaleResaleCerts.fileUrl,
+      fileMime: wholesaleResaleCerts.fileMime,
+      fileName: wholesaleResaleCerts.fileName,
+      receivedAt: wholesaleResaleCerts.receivedAt,
+      expiresAt: wholesaleResaleCerts.expiresAt,
+      verified: wholesaleResaleCerts.verified,
+      verifiedBy: wholesaleResaleCerts.verifiedBy,
+      verifiedAt: wholesaleResaleCerts.verifiedAt,
+      verificationResult: wholesaleResaleCerts.verificationResult,
+      status: wholesaleResaleCerts.status,
+      notes: wholesaleResaleCerts.notes,
+      createdAt: wholesaleResaleCerts.createdAt,
+      updatedAt: wholesaleResaleCerts.updatedAt,
+      hasFile: sql<boolean>`(${wholesaleResaleCerts.fileData} IS NOT NULL)`,
+    })
     .from(wholesaleResaleCerts)
     .orderBy(desc(wholesaleResaleCerts.updatedAt))
     .limit(500);
@@ -77,6 +106,24 @@ export async function getResaleCertById(id: string): Promise<WholesaleResaleCert
     .where(eq(wholesaleResaleCerts.id, id))
     .limit(1);
   return rows?.[0] ?? null;
+}
+
+/** Fetch just the uploaded file bytes for one cert (admin-only download). */
+export async function getResaleCertFileById(
+  id: string,
+): Promise<{ fileData: string; fileMime: string | null; fileName: string | null } | null> {
+  const rows = await db
+    .select({
+      fileData: wholesaleResaleCerts.fileData,
+      fileMime: wholesaleResaleCerts.fileMime,
+      fileName: wholesaleResaleCerts.fileName,
+    })
+    .from(wholesaleResaleCerts)
+    .where(eq(wholesaleResaleCerts.id, id))
+    .limit(1);
+  const r = rows?.[0];
+  if (!r || !r.fileData) return null;
+  return { fileData: r.fileData, fileMime: r.fileMime ?? null, fileName: r.fileName ?? null };
 }
 
 type UpsertCertInput = {
@@ -93,6 +140,12 @@ type UpsertCertInput = {
   receivedAt?: Date | null;
   expiresAt?: Date | null;
   notes?: string | null;
+  // Uploaded cert file. Provide fileData (base64) to attach/replace; set removeFile
+  // to clear an existing upload. Omitting all three leaves any existing file untouched.
+  fileData?: string | null;
+  fileMime?: string | null;
+  fileName?: string | null;
+  removeFile?: boolean;
 };
 
 /** Create or update a cert record. Editing cert fields does NOT mark it verified —
@@ -114,16 +167,36 @@ export async function upsertResaleCert(input: UpsertCertInput): Promise<Wholesal
     updatedAt: new Date(),
   };
 
+  // Only touch the stored file when explicitly replacing or removing it, so editing
+  // other fields on an existing cert never wipes a previously uploaded image/PDF.
+  const fileFields: {
+    fileData?: string | null;
+    fileMime?: string | null;
+    fileName?: string | null;
+  } = {};
+  if (input.removeFile) {
+    fileFields.fileData = null;
+    fileFields.fileMime = null;
+    fileFields.fileName = null;
+  } else if (typeof input.fileData === "string" && input.fileData.length > 0) {
+    fileFields.fileData = input.fileData;
+    fileFields.fileMime = input.fileMime ?? null;
+    fileFields.fileName = input.fileName ?? null;
+  }
+
   if (input.id) {
     const rows = await db
       .update(wholesaleResaleCerts)
-      .set(base)
+      .set({ ...base, ...fileFields })
       .where(eq(wholesaleResaleCerts.id, input.id))
       .returning();
     return rows?.[0] ?? null;
   }
 
-  const rows = await db.insert(wholesaleResaleCerts).values(base).returning();
+  const rows = await db
+    .insert(wholesaleResaleCerts)
+    .values({ ...base, ...fileFields })
+    .returning();
   return rows?.[0] ?? null;
 }
 

@@ -399,7 +399,11 @@ export const wholesaleResaleCerts = pgTable(
     issuingState:      varchar("issuing_state", { length: 8 }).notNull().default("AZ"),
     resaleDescription: text("resale_description"),
     signed:            boolean("signed").notNull().default(false),
-    fileUrl:           text("file_url"),          // link/path to the stored cert image/PDF
+    fileUrl:           text("file_url"),          // optional external link (e.g. Google Drive) to the cert
+    // Uploaded cert image/PDF stored inline (admin-only). file_data is base64 (no data-URL prefix).
+    fileData:          text("file_data"),         // base64-encoded bytes of the uploaded cert
+    fileMime:          varchar("file_mime", { length: 100 }), // e.g. image/jpeg, application/pdf
+    fileName:          varchar("file_name", { length: 300 }), // original/derived filename
     receivedAt:        timestamp("received_at", { withTimezone: true }),
     expiresAt:         timestamp("expires_at", { withTimezone: true }), // null = no stated expiry
 

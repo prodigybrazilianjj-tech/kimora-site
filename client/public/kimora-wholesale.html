@@ -318,7 +318,7 @@
     <div class="term" onclick="toggleTerm(this)">50% Deposit</div>
   </div>
   <div class="field-row">
-    <div class="field"><label>Invoice #</label><input type="text" placeholder="KIM-INV-001"></div>
+    <div class="field"><label>PO / Ref (optional)</label><input type="text" id="f-ref" placeholder="Gym PO # or internal note"></div>
     <div class="field"><label>Order Date</label><input type="text" id="order-date"></div>
   </div>
 </div>
@@ -359,7 +359,7 @@
   <div class="tip-box">
     <p><strong>Submit Order Application</strong> does two things at once: logs the application to your database (with confirmation email to the gym), then creates and emails a <strong>Stripe invoice</strong> directly to the gym owner — with a payment link they can use online.</p>
     <p><strong>Tax note:</strong> The state rate auto-fills when you tab out of the State field. Most wholesale-for-resale purchases are tax-exempt — if the gym has a resale certificate, set the rate to 0%.</p>
-    <p><strong>Invoice # tip:</strong> Use the format KIM-INV-001 and log it here. That number carries into the Stripe invoice footer so your records stay clean.</p>
+    <p><strong>PO / Ref (optional):</strong> Stripe assigns the official invoice number automatically. This field is just an optional internal reference — a gym's PO number or your own note — and it shows in the Stripe invoice footer. Leave it blank if you don't need it.</p>
   </div>
 </div>
 
@@ -511,8 +511,8 @@ function buildOrderSummary() {
   const termEl = document.querySelector('.term.sel');
   if (payEl) lines.push(`Payment: ${payEl.textContent.trim()}`);
   if (termEl) lines.push(`Terms: ${termEl.textContent.trim()}`);
-  const inv = document.querySelector('input[placeholder="KIM-INV-001"]')?.value;
-  if (inv) lines.push(`Invoice #: ${inv}`);
+  const inv = document.getElementById('f-ref')?.value;
+  if (inv) lines.push(`PO / Ref: ${inv}`);
   const userNotes = document.getElementById('f-notes')?.value;
   if (userNotes) lines.push(`Notes: ${userNotes}`);
   return lines.join('\n');
@@ -614,7 +614,7 @@ async function submitOrder() {
   const taxAmount   = subtotal * (taxRate / 100);
   const grandTotal  = subtotal + taxAmount;
   const termsSel    = document.querySelector('.term.sel')?.textContent?.trim() || 'Net 30';
-  const invNumber   = document.querySelector('input[placeholder="KIM-INV-001"]')?.value || '';
+  const invNumber   = document.getElementById('f-ref')?.value || '';
 
   try {
     const invRes = await fetch('/api/wholesale/invoice', {

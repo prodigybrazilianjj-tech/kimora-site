@@ -63,6 +63,8 @@
     <button class="btn ghost" onclick="loadCerts()">Refresh</button>
   </div>
 
+  <div id="auth-status" class="hint" style="margin:-8px 0 14px">Enter your cert password (or admin token) and click Save.</div>
+
   <div id="msg" class="msg"></div>
 
   <!-- FORM -->
@@ -145,14 +147,27 @@ function show(msg, ok) {
 }
 function headers() { return { 'Content-Type':'application/json', 'x-admin-token': TOKEN }; }
 
+// Persistent authorized / not-authorized banner under the token bar.
+function setAuthStatus(state, text) {
+  const el = document.getElementById('auth-status');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = state === 'ok' ? 'var(--green)' : state === 'bad' ? 'var(--red)' : 'var(--dim)';
+}
+
 async function loadCerts() {
-  if (!TOKEN) { show('Enter your admin token first.', false); return; }
+  if (!TOKEN) { setAuthStatus('bad', 'Enter your cert password (or admin token) and click Save.'); show('Enter your password first.', false); return; }
+  setAuthStatus('idle', 'Checking…');
   try {
     const res = await fetch('/api/admin/resale-certs', { headers: headers() });
     const data = await res.json().catch(()=>({}));
-    if (!res.ok || !data.ok) { show(data.message || 'Failed to load (check token).', false); return; }
+    if (res.status === 401) { setAuthStatus('bad', '✗ Not authorized — wrong password/token.'); show('Not authorized — check the password.', false); return; }
+    if (!res.ok || !data.ok) { setAuthStatus('bad', '✗ Could not load certificates.'); show(data.message || 'Failed to load.', false); return; }
+    const n = (data.rows || []).length;
     renderRows(data.rows || []);
-  } catch(e) { show('Network error loading certs.', false); }
+    setAuthStatus('ok', '✓ Authorized — ' + n + ' certificate' + (n === 1 ? '' : 's') + ' on file.');
+    show('Authorized — loaded ' + n + ' certificate' + (n === 1 ? '' : 's') + '.', true);
+  } catch(e) { setAuthStatus('bad', 'Network error.'); show('Network error loading certs.', false); }
 }
 
 function fmtDate(d) { if (!d) return '—'; const x = new Date(d); return isNaN(x) ? '—' : x.toLocaleDateString('en-US'); }

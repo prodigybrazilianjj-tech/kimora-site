@@ -58,6 +58,7 @@
       <label>Cert password (or admin token)</label>
       <input id="admin-token" type="password" placeholder="Enter cert password" style="width:100%">
     </div>
+    <button class="btn ghost" id="toggle-token" onclick="toggleToken()" type="button">Show</button>
     <button class="btn" onclick="saveToken()">Save</button>
     <button class="btn ghost" onclick="loadCerts()">Refresh</button>
   </div>
@@ -129,6 +130,12 @@ function saveToken() {
   TOKEN = document.getElementById('admin-token').value.trim();
   try { localStorage.setItem('kimora_admin_token', TOKEN); } catch(e){}
   loadCerts();
+}
+function toggleToken() {
+  const inp = document.getElementById('admin-token');
+  const btn = document.getElementById('toggle-token');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide'; }
+  else { inp.type = 'password'; btn.textContent = 'Show'; }
 }
 function show(msg, ok) {
   const m = document.getElementById('msg');

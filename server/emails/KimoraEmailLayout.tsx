@@ -12,7 +12,7 @@ import {
   Link,
 } from "@react-email/components";
 
-const PRIMARY = "#00806a";
+const PRIMARY = "#C8A96E";
 const BG_OUTER = "#080808";
 const BG_CARD = "#0e0e0e";
 const BG_CARD_BORDER = "#1f1f1f";
@@ -142,7 +142,7 @@ export const styles = {
     padding: "14px 28px",
     borderRadius: "10px",
     backgroundColor: PRIMARY,
-    color: "#ffffff",
+    color: "#0a0a0a",
     textDecoration: "none",
     fontSize: "13px",
     fontWeight: "700",

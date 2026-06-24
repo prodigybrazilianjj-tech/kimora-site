@@ -578,21 +578,35 @@ export function registerWholesaleRoutes(app: Express) {
   )}</pre>
 </div>`;
 
-        const applicantSubject = "Kimora Co — wholesale application received";
-        const applicantText =
-          `Thanks for applying to Kimora Co wholesale.\n\n` +
-          `We received your application for ${businessName} and will review it shortly.\n\n` +
-          `If you need to add anything, reply to this email or contact support@kimoraco.com.\n`;
+        // In-person rep orders (kimora-wholesale.html) are already approved and get an
+        // invoice immediately, so they receive a "welcome / you're approved" email.
+        // Online applicants (public form) get the "we'll review" email instead.
+        const isOnSpot = String((req.body as any)?.source ?? "").toLowerCase() === "rep-onspot";
 
+        const applicantSubject = isOnSpot
+          ? "Welcome to Kimora Co. wholesale — you're all set"
+          : "Kimora Co — wholesale application received";
+        const applicantText = isOnSpot
+          ? `Welcome to Kimora Co. wholesale.\n\n` +
+            `${businessName} is set up as a wholesale account — your invoice for today's order is on its way.\n\n` +
+            `Pay it by card or Apple Pay. After payment you'll get a personal reorder link to restock anytime.\n\n` +
+            `Questions? Reply to this email or contact support@kimoraco.com.\n`
+          : `Thanks for applying to Kimora Co wholesale.\n\n` +
+            `We received your application for ${businessName} and will review it shortly.\n\n` +
+            `If you need to add anything, reply to this email or contact support@kimoraco.com.\n`;
 
         try {
           const { render } = await import("@react-email/render");
           const React = await import("react");
-          const { WholesaleApplicantEmail } = await import("../emails/WholesaleApplicantEmail");
           const wsiteUrl = process.env.PUBLIC_SITE_URL || "https://kimoraco.com";
           const wsupportEmail = String(process.env.SUPPORT_EMAIL || "support@kimoraco.com").trim();
+
+          const EmailComponent = isOnSpot
+            ? (await import("../emails/WholesaleWelcomeEmail")).WholesaleWelcomeEmail
+            : (await import("../emails/WholesaleApplicantEmail")).WholesaleApplicantEmail;
+
           const applicantHtml = await render(
-            React.createElement(WholesaleApplicantEmail, {
+            React.createElement(EmailComponent as any, {
               siteUrl: wsiteUrl,
               supportEmail: wsupportEmail,
               businessName: safeString(businessName),

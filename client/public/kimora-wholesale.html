@@ -592,6 +592,7 @@ async function submitOrder() {
           eventSponsorship: document.getElementById('f-eventSponsorship').checked,
         },
         notes: buildOrderSummary(),
+        source: 'rep-onspot',   // in-person, already-approved order → triggers welcome email (not "we'll review")
       }),
     });
     const applyData = await applyRes.json().catch(() => ({}));

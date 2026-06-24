@@ -25,14 +25,14 @@ const productData: Record<string, any> = {
     pouch: "/assets/products/strawberry-guava/pouch.webp",
     stick: "/assets/products/strawberry-guava/stick.png",
   },
-  "lemon-yuzu": {
+  "lemon-lychee": {
     name: "Lemon Lychee",
     desc: "Bright lemon balanced by sweet, floral lychee. Light, juicy, and endlessly refreshing over ice.",
     // ✅ already correct
     color: "text-yellow-400",
     gradient: "from-yellow-500/20",
-    pouch: "/assets/products/lemon-yuzu/pouch_lychee.webp",
-    stick: "/assets/products/lemon-yuzu/stick_lychee.png",
+    pouch: "/assets/products/lemon-lychee/pouch_lychee.webp",
+    stick: "/assets/products/lemon-lychee/stick_lychee.png",
   },
   "raspberry-dragonfruit": {
     name: "Raspberry Dragonfruit",
@@ -55,7 +55,8 @@ export default function Product() {
   const [purchaseType, setPurchaseType] = useState<"onetime" | "subscribe">(
     "subscribe"
   );
-  // Single monthly cadence — reuses the existing 4-week price.
+  // Single monthly cadence. Kept as "4" so the cart/server contract (which
+  // still validates a frequency) stays satisfied; billing is monthly.
   const [frequency] = useState<"2" | "4" | "6">("4");
   const [quantity, setQuantity] = useState(1);
   const [currentImage, setCurrentImage] = useState<"pouch" | "stick">("pouch");
@@ -64,7 +65,7 @@ export default function Product() {
 
   // Pricing
   const priceOneTime = 49.99;
-  const pricePerShipmentSub = 42.49;
+  const pricePerShipmentSub = 39.99;
 
   // Fire view_item / ViewContent on mount and when the flavor changes.
   // Uses the one-time price as the canonical "list price" since the user
@@ -83,14 +84,14 @@ export default function Product() {
     });
   }, [flavor, product.name]);
 
-  // What the customer pays per order/renewal (NOT "monthly")
+  // What the customer pays per month (subscribe) or per order (one-time).
   const currentUnitPrice =
     purchaseType === "subscribe" ? pricePerShipmentSub : priceOneTime;
 
   const handleAddToCart = () => {
     const id =
       purchaseType === "subscribe"
-        ? `${flavor}-sub-${frequency}` // IMPORTANT: frequency in ID so 2/4/6wk are unique
+        ? `${flavor}-sub-monthly` // single monthly cadence
         : `${flavor}-onetime`;
 
     addToCart({
@@ -219,7 +220,7 @@ export default function Product() {
                         Subscribe & Save
                       </span>
                       <span className="text-xs text-primary font-medium">
-                        Save 15% + Free Shipping
+                        Save 20% + Free Shipping
                       </span>
                     </div>
                   </div>
@@ -228,7 +229,7 @@ export default function Product() {
                     ${pricePerShipmentSub}
                     <span className="text-xs text-muted-foreground font-normal">
                       {" "}
-                      / shipment
+                      / month
                     </span>
                   </span>
                 </div>

@@ -9,7 +9,7 @@ import { useCart } from "@/lib/cart";
 import { generateEventId, getCheckoutContext, track } from "@/lib/analytics";
 
 type CheckoutItem = {
-  flavor: string; // e.g. "lemon-yuzu"
+  flavor: string; // e.g. "lemon-lychee"
   type: "onetime" | "subscribe";
   frequency?: "2" | "4" | "6";
   quantity: number;

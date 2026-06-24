@@ -16,7 +16,7 @@ _Last updated 2026-06-17. Covers the 6/10 pricing framework and getting the back
 - Wholesale invoices (new + reorder) → `kimora_channel: "wholesale"`.
 - This is the tag a connector reads to post each sale to the correct income account.
 
-**Retail/sub display prices** ($49.99 / $42.49) were already correct in the frontend — no change needed there.
+**Retail/sub display prices** ($49.99 one-time / $39.99 monthly sub) are set in the frontend.
 
 > ⚠️ These edits are committed to the working tree but **not deployed**. Run `npm run check` locally, then build + push to Render.
 
@@ -25,7 +25,7 @@ _Last updated 2026-06-17. Covers the 6/10 pricing framework and getting the back
 ### 2a. Verify the live Stripe Price objects (important)
 The actual amount charged comes from Stripe Price IDs in your Render env vars, **not** from the code. Confirm each points to the right amount:
 - `STRIPE_PRICE_*_ONETIME` → **$49.99**
-- `STRIPE_PRICE_*_SUB_4W` (the live monthly sub price) → **$42.49**
+- `STRIPE_PRICE_*_SUB_MONTHLY` (the live monthly sub price) → **$39.99**
 
 Stripe prices are **immutable** — you can't edit an amount. If any is wrong: create a new Price on that Product at the correct amount, then update the env var on Render to the new `price_…` ID. (This is the same swap pattern the flavor switcher already relies on.)
 

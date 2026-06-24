@@ -94,26 +94,25 @@ function getLaunchWindowText() {
   return String(process.env.EARLY_ACCESS_WINDOW_TEXT || "Early access is now open.").trim();
 }
 
-function envPriceId(
-  flavor: string,
-  type: "onetime" | "subscribe",
-  frequency?: "2" | "4" | "6"
-) {
+function envPriceId(flavor: string, type: "onetime" | "subscribe") {
   const flavorKey = slugToEnvKey(normalizeFlavorSlug(flavor));
   const envName =
     type === "onetime"
       ? `STRIPE_PRICE_${flavorKey}_ONETIME`
-      : `STRIPE_PRICE_${flavorKey}_SUB_${frequency}W`;
+      : `STRIPE_PRICE_${flavorKey}_SUB_MONTHLY`;
 
   return process.env[envName] || null;
 }
+
+// Subscriptions are a single monthly cadence (Stripe interval=month).
+const MONTHLY_FREQUENCY_WEEKS = 4;
 
 function mapPriceIdToItem(priceId: string): {
   flavor: string;
   purchaseType: "onetime" | "subscribe";
   frequencyWeeks: number | null;
 } {
-  const flavors = ["strawberry-guava", "lemon-yuzu", "raspberry-dragonfruit"] as const;
+  const flavors = ["strawberry-guava", "lemon-lychee", "raspberry-dragonfruit"] as const;
 
   for (const flavor of flavors) {
     const onetime = envPriceId(flavor, "onetime");
@@ -121,11 +120,9 @@ function mapPriceIdToItem(priceId: string): {
       return { flavor, purchaseType: "onetime", frequencyWeeks: null };
     }
 
-    for (const f of ["2", "4", "6"] as const) {
-      const sub = envPriceId(flavor, "subscribe", f);
-      if (sub === priceId) {
-        return { flavor, purchaseType: "subscribe", frequencyWeeks: Number(f) };
-      }
+    const sub = envPriceId(flavor, "subscribe");
+    if (sub === priceId) {
+      return { flavor, purchaseType: "subscribe", frequencyWeeks: MONTHLY_FREQUENCY_WEEKS };
     }
   }
 
@@ -135,7 +132,7 @@ function mapPriceIdToItem(priceId: string): {
 function flavorFromDescription(description: string | null | undefined): string | null {
   const desc = String(description || "").toLowerCase();
   if (desc.includes("strawberry")) return "strawberry-guava";
-  if (desc.includes("lemon") || desc.includes("lychee") || desc.includes("yuzu")) return "lemon-yuzu";
+  if (desc.includes("lemon") || desc.includes("lychee") || desc.includes("yuzu")) return "lemon-lychee";
   if (desc.includes("raspberry") || desc.includes("dragonfruit")) return "raspberry-dragonfruit";
   return null;
 }
@@ -247,7 +244,7 @@ export async function sendOrderConfirmationEmail(args: {
   const EMAIL_IMAGE_BASE = "https://kimoraco.com";
 
   function flavorImageUrl(slug: string): string | null {
-    const known = ["strawberry-guava", "lemon-yuzu", "raspberry-dragonfruit"];
+    const known = ["strawberry-guava", "lemon-lychee", "raspberry-dragonfruit"];
     const normalized = normalizeFlavorSlug(slug);
     return known.includes(normalized)
       ? `${EMAIL_IMAGE_BASE}/assets/products/${normalized}/pouch.png`

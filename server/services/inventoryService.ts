@@ -79,14 +79,14 @@ function normalizeFlavorSlug(value: string) {
 }
 
 // Resolve a wholesale product/flavor name to the CANONICAL inventory flavor slug,
-// mirroring emailService.mapPriceIdToItem's description fallback. Critical for
-// Lemon: the wholesale display name is "Lemon Lychee" but the inventory slug is
-// "lemon-yuzu" — a naive slug of the display name ("lemon-lychee") would never match.
+// mirroring emailService.mapPriceIdToItem's description fallback. The canonical
+// Lemon slug is "lemon-lychee"; we still accept legacy "yuzu" inbound as an
+// alias for backward-compat, but always return "lemon-lychee".
 function resolveFlavorSlug(raw: string): string {
   const slug = normalizeFlavorSlug(raw);
   if (!slug) return "";
   if (slug.includes("strawberry") || slug.includes("guava")) return "strawberry-guava";
-  if (slug.includes("lemon") || slug.includes("lychee") || slug.includes("yuzu")) return "lemon-yuzu";
+  if (slug.includes("lemon") || slug.includes("lychee") || slug.includes("yuzu")) return "lemon-lychee";
   if (slug.includes("raspberry") || slug.includes("dragonfruit")) return "raspberry-dragonfruit";
   return slug;
 }

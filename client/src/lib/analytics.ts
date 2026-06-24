@@ -28,7 +28,7 @@ export type CanonicalEventName =
   | "begin_checkout";
 
 export type AnalyticsItem = {
-  /** Stable SKU — e.g. "lemon-yuzu-sub-4" or "lemon-yuzu-onetime" */
+  /** Stable SKU — e.g. "lemon-lychee-sub-monthly" or "lemon-lychee-onetime" */
   sku: string;
   /** Display name — e.g. "Lemon Lychee" */
   flavor: string;

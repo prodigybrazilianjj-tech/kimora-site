@@ -47,7 +47,7 @@ export function EmailCapture() {
         </p>
 
         <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4 leading-[0.95]">
-          10% OFF YOUR FIRST ORDER
+          15% OFF YOUR FIRST ORDER
         </h2>
 
         <p className="text-muted-foreground text-lg mb-10 leading-relaxed">
@@ -61,12 +61,12 @@ export function EmailCapture() {
               className="text-primary text-5xl font-display font-bold tracking-widest mb-3"
               style={{ fontFamily: "ui-monospace, monospace" }}
             >
-              WELCOME10
+              MAT15
             </div>
             <p className="text-foreground text-lg font-medium mb-1">Check your inbox.</p>
             <p className="text-muted-foreground text-sm">
               We sent your code to <span className="text-foreground">{email}</span>. Apply it at
-              checkout for 10% off.
+              checkout for 15% off.
             </p>
           </div>
         ) : (

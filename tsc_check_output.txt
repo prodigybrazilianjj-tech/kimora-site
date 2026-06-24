@@ -1,0 +1,50 @@
+client/src/components/sections/Footer.tsx(105,1): error TS1127: Invalid character.
+client/src/components/sections/Footer.tsx(105,2): error TS1127: Invalid character.
+client/src/components/sections/Footer.tsx(105,3): error TS1127: Invalid character.
+client/src/components/sections/Footer.tsx(105,4): error TS1127: Invalid character.
+client/src/components/sections/Footer.tsx(105,5): error TS1127: Invalid character.
+client/src/components/sections/Footer.tsx(105,6): error TS1127: Invalid character.
+client/src/components/sections/ProductLineup.tsx(91,3): error TS1005: ')' expected.
+client/src/lib/analytics.ts(360,54): error TS1005: '}' expected.
+client/src/pages/Checkout.tsx(672,5): error TS1005: '}' expected.
+client/src/pages/ComingSoon.tsx(112,11): error TS17014: JSX fragment has no corresponding closing tag.
+client/src/pages/ComingSoon.tsx(114,8): error TS17008: JSX element 'div' has no corresponding closing tag.
+client/src/pages/ComingSoon.tsx(130,10): error TS17008: JSX element 'main' has no corresponding closing tag.
+client/src/pages/ComingSoon.tsx(754,12): error TS17008: JSX element 'section' has no corresponding closing tag.
+client/src/pages/ComingSoon.tsx(755,14): error TS17008: JSX element 'div' has no corresponding closing tag.
+client/src/pages/ComingSoon.tsx(777,16): error TS17008: JSX element 'div' has no corresponding closing tag.
+client/src/pages/ComingSoon.tsx(798,20): error TS17008: JSX element 'motion.div' has no corresponding closing tag.
+client/src/pages/ComingSoon.tsx(821,59): error TS1002: Unterminated string literal.
+client/src/pages/ComingSoon.tsx(821,59): error TS1005: '</' expected.
+client/src/pages/OrderSuccess.tsx(498,1): error TS1005: '}' expected.
+client/src/pages/Product.tsx(109,6): error TS17008: JSX element 'div' has no corresponding closing tag.
+client/src/pages/Product.tsx(111,8): error TS17008: JSX element 'main' has no corresponding closing tag.
+client/src/pages/Product.tsx(112,10): error TS17008: JSX element 'div' has no corresponding closing tag.
+client/src/pages/Product.tsx(334,16): error TS1005: '</' expected.
+client/src/pages/Product.tsx(334,16): error TS1005: '>' expected.
+client/src/pages/Shop.tsx(163,4): error TS1005: '}' expected.
+client/src/pages/Terms.tsx(427,1): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,2): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,3): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,4): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,5): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,6): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,7): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,8): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,9): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,10): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,11): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,12): error TS1127: Invalid character.
+client/src/pages/Terms.tsx(427,13): error TS1127: Invalid character.
+server/index.ts(100,82): error TS1005: '}' expected.
+server/routes/checkoutRoutes.ts(612,64): error TS1005: '}' expected.
+server/routes/subscriptionRoutes.ts(459,74): error TS1002: Unterminated string literal.
+server/routes/wholesaleRoutes.ts(681,9): error TS1109: Expression expected.
+server/routes/wholesaleRoutes.ts(681,10): error TS1005: '(' expected.
+server/routes/wholesaleRoutes.ts(681,10): error TS1005: ')' expected.
+server/routes/wholesaleRoutes.ts(681,10): error TS1005: '}' expected.
+server/services/emailService.ts(687,16): error TS1005: '}' expected.
+server/services/inventoryService.ts(634,14): error TS1005: '}' expected.
+server/services/stripeWebhookService.ts(579,52): error TS1005: ')' expected.
+server/services/wholesaleTokenService.ts(79,12): error TS1005: '}' expected.
+shared/schema.ts(419,64): error TS1003: Identifier expected.

@@ -16,7 +16,7 @@ import {
 } from "./server/services/emailService";
 
 const TO = process.env.TEST_EMAIL || "alex@kimoraco.com";
-const CODE = process.env.MARKETING_DISCOUNT_CODE || "WELCOME10";
+const CODE = process.env.MARKETING_DISCOUNT_CODE || "MAT15";
 const SITE_URL = process.env.PUBLIC_SITE_URL || "http://127.0.0.1:5000";
 
 const type = process.argv[2] || "all";

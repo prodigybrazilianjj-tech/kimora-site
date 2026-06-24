@@ -108,8 +108,8 @@ export default function Terms() {
               Subscriptions &amp; Auto-Renewal
             </h2>
             <p>
-              Kimora offers subscription products that automatically renew every
-              four (4) weeks until you cancel.
+              Kimora offers subscription products that automatically renew
+              monthly until you cancel.
             </p>
 
             <p>

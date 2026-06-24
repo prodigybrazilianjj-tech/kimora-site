@@ -14,7 +14,7 @@ type CheckoutSessionResponse = {
 };
 
 type CartItem = {
-  flavor: string; // e.g. "lemon-yuzu"
+  flavor: string; // e.g. "lemon-lychee"
   type: "onetime" | "subscribe";
   frequency?: "2" | "4" | "6";
   quantity: number;

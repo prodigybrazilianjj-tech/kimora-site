@@ -9,7 +9,7 @@
 // the flavor in a branded, on-site flow.
 //
 // Mechanism: a flavor swap = changing the subscription item's Stripe price from
-// STRIPE_PRICE_<OLD>_SUB_<freq>W to STRIPE_PRICE_<NEW>_SUB_<freq>W, keeping the
+// STRIPE_PRICE_<OLD>_SUB_MONTHLY to STRIPE_PRICE_<NEW>_SUB_MONTHLY, keeping the
 // same cadence. All flavors are the same price, so there is no proration; we set
 // proration_behavior: "none" and leave the billing anchor untouched so the
 // change takes effect on the NEXT shipment/renewal. The renewal invoice line
@@ -28,7 +28,7 @@ import { orders, inventoryItems } from "../../shared/schema";
 // Flavor catalog (mirror of the shop/ProductLineup definitions)
 // ---------------------------------------------------------------------------
 
-type FlavorSlug = "strawberry-guava" | "lemon-yuzu" | "raspberry-dragonfruit";
+type FlavorSlug = "strawberry-guava" | "lemon-lychee" | "raspberry-dragonfruit";
 
 const FLAVORS: Array<{
   slug: FlavorSlug;
@@ -43,10 +43,10 @@ const FLAVORS: Array<{
     image: "/assets/products/strawberry-guava/pouch.webp",
   },
   {
-    slug: "lemon-yuzu",
+    slug: "lemon-lychee",
     name: "Lemon Lychee",
     desc: "Bright lemon meets sweet, floral lychee — crisp, juicy, and refreshing.",
-    image: "/assets/products/lemon-yuzu/pouch.webp",
+    image: "/assets/products/lemon-lychee/pouch.webp",
   },
   {
     slug: "raspberry-dragonfruit",
@@ -57,8 +57,9 @@ const FLAVORS: Array<{
 ];
 
 const FLAVOR_SLUGS = FLAVORS.map((f) => f.slug) as FlavorSlug[];
-const SUB_FREQUENCIES = ["2", "4", "6"] as const;
-type SubFrequency = (typeof SUB_FREQUENCIES)[number];
+// Subscriptions are a single monthly cadence. We still surface frequencyWeeks
+// (4) downstream for display/DB, but there is only one sub price per flavor.
+const MONTHLY_FREQUENCY_WEEKS = 4;
 
 // ---------------------------------------------------------------------------
 // Small helpers (kept self-contained; mirror portalRoutes/checkoutRoutes)
@@ -94,21 +95,18 @@ function flavorMeta(slug: string) {
   return FLAVORS.find((f) => f.slug === slug) || null;
 }
 
-// price id <-> (flavor, frequency) using the same env scheme as checkout/webhook
-function subPriceIdFor(flavor: FlavorSlug, frequency: SubFrequency): string | null {
-  const envName = `STRIPE_PRICE_${slugToEnvKey(flavor)}_SUB_${frequency}W`;
+// price id <-> flavor using the same env scheme as checkout/webhook.
+// One monthly sub price per flavor: STRIPE_PRICE_<FLAVOR>_SUB_MONTHLY.
+function subPriceIdFor(flavor: FlavorSlug): string | null {
+  const envName = `STRIPE_PRICE_${slugToEnvKey(flavor)}_SUB_MONTHLY`;
   const priceId = process.env[envName];
   return priceId ? String(priceId) : null;
 }
 
-function mapSubPriceIdToFlavorFreq(
-  priceId: string,
-): { flavor: FlavorSlug; frequency: SubFrequency } | null {
+function mapSubPriceIdToFlavor(priceId: string): { flavor: FlavorSlug } | null {
   for (const flavor of FLAVOR_SLUGS) {
-    for (const frequency of SUB_FREQUENCIES) {
-      if (subPriceIdFor(flavor, frequency) === priceId) {
-        return { flavor, frequency };
-      }
+    if (subPriceIdFor(flavor) === priceId) {
+      return { flavor };
     }
   }
   return null;
@@ -210,20 +208,26 @@ function findFlavorItem(sub: any): {
   itemId: string;
   priceId: string;
   flavor: FlavorSlug;
-  frequency: SubFrequency;
+  frequencyWeeks: number;
   periodEnd: number | null;
 } | null {
   const items: any[] = sub?.items?.data ?? [];
   for (const item of items) {
     const priceId = String(item?.price?.id ?? "");
-    const mapped = priceId ? mapSubPriceIdToFlavorFreq(priceId) : null;
+    const mapped = priceId ? mapSubPriceIdToFlavor(priceId) : null;
     if (mapped) {
       // In recent Stripe API versions (2025-12-15.clover) the billing period
       // lives on the subscription ITEM, not the subscription. Prefer the
       // item's current_period_end; fall back to the (legacy) sub-level field.
       const periodEnd =
         Number(item?.current_period_end ?? sub?.current_period_end) || null;
-      return { itemId: String(item.id), priceId, periodEnd, ...mapped };
+      return {
+        itemId: String(item.id),
+        priceId,
+        periodEnd,
+        frequencyWeeks: MONTHLY_FREQUENCY_WEEKS,
+        ...mapped,
+      };
     }
   }
   return null;
@@ -238,7 +242,7 @@ function serializeSubscription(sub: any) {
     status: String(sub.status),
     cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
     currentPeriodEnd: flavorItem.periodEnd, // unix seconds (read from item in clover API)
-    frequencyWeeks: Number(flavorItem.frequency),
+    frequencyWeeks: flavorItem.frequencyWeeks,
     currentFlavor: {
       slug: flavorItem.flavor,
       name: meta?.name ?? flavorItem.flavor,
@@ -390,11 +394,11 @@ export function registerSubscriptionRoutes(app: Express) {
         });
       }
 
-      // Target price = same cadence, new flavor.
-      const targetPriceId = subPriceIdFor(flavor, flavorItem.frequency);
+      // Target price = monthly cadence, new flavor.
+      const targetPriceId = subPriceIdFor(flavor);
       if (!targetPriceId) {
         console.error(
-          `[subscription] Missing price env for ${flavor} @ ${flavorItem.frequency}W`,
+          `[subscription] Missing monthly price env for ${flavor}`,
         );
         return res.status(500).json({
           ok: false,

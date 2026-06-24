@@ -10,13 +10,13 @@ _The single checklist for go-live day. Work top to bottom; each section points t
 Do these together in one pass — details in `STRIPE_RENDER_PRICE_MAP.md` (Go-live checklist):
 - [ ] Create the 3 products + 6 prices in **Live** mode; copy the live price IDs.
 - [ ] In **Render → Environment**, swap: `STRIPE_SECRET_KEY` → `sk_live_…`, `STRIPE_WEBHOOK_SECRET` → the **live** webhook signing secret (new live webhook endpoint in Stripe), and all six `STRIPE_PRICE_*` → live IDs.
-- [ ] Confirm prices read **$49.99 one-time** and **$42.49/month** on each live product.
+- [ ] Confirm prices read **$49.99 one-time** and **$39.99/month** on each live product.
 - [ ] Confirm **Stripe Tax** is active in Live mode (registrations + origin address).
 
 ## 3. Code deployed
 - [ ] Latest commits pushed to `main` (wholesale $28.99, QBO `kimora_channel` tags, audit script). Render auto-builds.
 - [ ] `npm run check` clean locally before pushing.
-- [ ] (Recommended) Finish the Yuzu→Lychee display rename so the site and Stripe agree — task tracked.
+- [x] Yuzu→Lychee rename **done** (2026-06-24): full internal slug rename `lemon-yuzu` → `lemon-lychee` across code + assets; Stripe env vars are now `*_LEMON_LYCHEE_*`.
 
 ## 4. Bookkeeping live
 - [ ] Stripe→QBO connector connected and mapping the 3 channels to income accounts (`QBO_CONNECTOR_RUNBOOK.md`).
@@ -44,4 +44,4 @@ Do these together in one pass — details in `STRIPE_RENDER_PRICE_MAP.md` (Go-li
 ### Easy-to-forget items
 - The **live webhook secret** is separate from the test one and must be created fresh in Live mode — miss this and order confirmation emails / post-payment logic silently break.
 - **EasyPost** also has test vs live keys — swap it too.
-- The pre-launch gate is **client-side only**; going live before flipping the gate leaves `/api/checkout` reachable. Flip the gate (step 7) as the last thing, or add the server-side guard first.
+- The retail UI gate is client-side, but `/api/checkout` now also has a **server-side gate** (added 2026-06-24): it returns 403 unless `CHECKOUT_ENABLED=true`. Set `CHECKOUT_ENABLED=true` on Render as the last go-live step (it defaults off = safe).

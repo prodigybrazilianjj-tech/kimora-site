@@ -13,17 +13,17 @@ const products = [
     desc: "Tart, tropical, and refreshingly smooth.",
     image: "/assets/products/strawberry-guava/pouch.webp",
     priceOneTime: 49.99,
-    priceSub: 42.49,
+    priceSub: 39.99,
     accent: "from-orange-600/20 to-transparent",
     bgAccent: "from-orange-500/20",
   },
   {
-    id: "lemon-yuzu",
+    id: "lemon-lychee",
     name: "Lemon Lychee",
     desc: "Bright lemon meets sweet, floral lychee — crisp, juicy, and refreshing.",
-    image: "/assets/products/lemon-yuzu/pouch_lychee.webp",
+    image: "/assets/products/lemon-lychee/pouch_lychee.webp",
     priceOneTime: 49.99,
-    priceSub: 42.49,
+    priceSub: 39.99,
     accent: "from-yellow-500/20 to-transparent",
     bgAccent: "from-yellow-500/20",
   },
@@ -33,7 +33,7 @@ const products = [
     desc: "Bold, juicy, and perfectly balanced.",
     image: "/assets/products/raspberry-dragonfruit/pouch.webp",
     priceOneTime: 49.99,
-    priceSub: 42.49,
+    priceSub: 39.99,
     accent: "from-rose-600/25 to-transparent",
     bgAccent: "from-rose-500/20",
   },
@@ -75,7 +75,7 @@ export default function Shop() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Subscribe & Save 15%
+                Subscribe & Save 20%
               </button>
             </div>
           </div>

@@ -97,7 +97,7 @@ export default function ComingSoon() {
     },
     {
       name: "Lemon Lychee",
-      img: "/assets/products/lemon-yuzu/pouch_sticks_v6.webp",
+      img: "/assets/products/lemon-lychee/pouch_sticks_v6.webp",
       glow: "rgba(255,213,88,0.18)",
       desc: "Bright lemon with a sweet, floral lychee finish.",
     },

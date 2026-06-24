@@ -312,7 +312,9 @@ export function registerWholesaleRoutes(app: Express) {
       if (!removeFile && typeof b.fileData === "string" && b.fileData.length > 0) {
         // Accept either a raw base64 string or a data URL; normalize to raw base64.
         let raw = String(b.fileData);
-        const m = raw.match(/^data:([^;]+);base64,(.*)$/s);
+        // [\s\S] matches any char incl. newlines without the /s (dotAll) flag,
+        // which requires a TS target of es2018+. Behaviorally identical.
+        const m = raw.match(/^data:([^;]+);base64,([\s\S]*)$/);
         if (m) {
           fileMime = m[1];
           raw = m[2];

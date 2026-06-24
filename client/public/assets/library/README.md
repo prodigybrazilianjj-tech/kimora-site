@@ -13,7 +13,7 @@ Each flavor has a pouch and a single-serve stick, background removed (RGBA, tran
 |------|------|
 | `strawberry-guava-pouch.png` | Strawberry Guava stand-up pouch, front, upright |
 | `strawberry-guava-stick.png` | Strawberry Guava single-serve stick |
-| `lemon-lychee-pouch.png` | Lemon Lychee pouch (folder slug is `lemon-yuzu`) |
+| `lemon-lychee-pouch.png` | Lemon Lychee pouch (folder slug is `lemon-lychee`) |
 | `lemon-lychee-stick.png` | Lemon Lychee stick |
 | `raspberry-dragonfruit-pouch.png` | Raspberry Dragonfruit pouch |
 | `raspberry-dragonfruit-stick.png` | Raspberry Dragonfruit stick (complete octopus + bear) |

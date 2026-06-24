@@ -11,9 +11,9 @@ const products = [
   },
   {
     name: "Lemon Lychee",
-    slug: "lemon-yuzu",
+    slug: "lemon-lychee",
     desc: "Bright lemon meets sweet, floral lychee — crisp, juicy, and refreshing.",
-    image: "/assets/products/lemon-yuzu/pouch_lychee.webp",
+    image: "/assets/products/lemon-lychee/pouch_lychee.webp",
     accent: "from-yellow-500/20 to-transparent",
   },
   {

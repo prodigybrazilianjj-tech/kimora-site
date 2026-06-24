@@ -82,7 +82,8 @@ function getPriceId(item: CheckoutItem) {
   }
 
   if (!item.frequency) throw new Error("Missing frequency for subscription.");
-  const envName = `STRIPE_PRICE_${flavorKey}_SUB_${item.frequency}W`;
+  // Single monthly cadence — one sub price per flavor regardless of frequency.
+  const envName = `STRIPE_PRICE_${flavorKey}_SUB_MONTHLY`;
   const priceId = process.env[envName];
   if (!priceId) throw new Error(`Missing env var: ${envName}`);
   return priceId;
@@ -389,6 +390,14 @@ function buildShippingOptions(params: { currency: string; subtotalCents: number 
 export function registerCheckoutRoutes(app: Express) {
   app.post("/api/checkout", async (req, res) => {
     try {
+      // Server-side launch gate. The pre-launch UI redirects to coming-soon,
+      // but this endpoint is reachable directly — without this guard a direct
+      // POST could create a real charge once live keys are in. Default OFF:
+      // checkout only opens when CHECKOUT_ENABLED is explicitly "true".
+      if (process.env.CHECKOUT_ENABLED !== "true") {
+        return res.status(403).json({ error: "Checkout is not open yet." });
+      }
+
       const emailRaw = String(req.body?.email ?? "");
       const email = normalizeEmail(emailRaw);
 
@@ -484,7 +493,12 @@ export function registerCheckoutRoutes(app: Express) {
         line_items,
         success_url: successUrl,
         cancel_url: cancelUrl,
-        allow_promotion_codes: true,
+        // One-time orders accept the gated prelaunch code (MAT15) at checkout.
+        // Subscriptions take NO promo code: keeps the $39.99 sub at its standing
+        // price and removes the subscribe-with-discount-then-cancel ("dump")
+        // vector. A first-time, duration:once coupon on a sub would only
+        // discount the first invoice — exactly what we don't want.
+        allow_promotion_codes: mode === "payment",
         shipping_address_collection: { allowed_countries: ["US"] },
         phone_number_collection: { enabled: true },
         automatic_tax: { enabled: true },

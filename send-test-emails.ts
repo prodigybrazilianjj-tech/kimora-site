@@ -17,10 +17,10 @@ const SITE_URL = "https://kimoraco.com";
 
 // Stub price IDs so flavor → image mapping works even without Stripe env vars.
 // These only need to match what we pass in the test lineItems below.
-const SG_ONETIME  = "price_test_sg_onetime";
-const LY_SUB_4W   = "price_test_ly_sub_4w";
+const SG_ONETIME   = "price_test_sg_onetime";
+const LY_SUB_MONTHLY = "price_test_ly_sub_monthly";
 process.env.STRIPE_PRICE_STRAWBERRY_GUAVA_ONETIME = SG_ONETIME;
-process.env.STRIPE_PRICE_LEMON_YUZU_SUB_4W        = LY_SUB_4W;
+process.env.STRIPE_PRICE_LEMON_LYCHEE_SUB_MONTHLY = LY_SUB_MONTHLY;
 process.env.PUBLIC_SITE_URL = SITE_URL;
 
 async function run() {
@@ -85,7 +85,7 @@ async function run() {
     lineItems: [
       {
         quantity: 1,
-        price: { id: LY_SUB_4W, unit_amount: 1500 },
+        price: { id: LY_SUB_MONTHLY, unit_amount: 1500 },
       },
     ],
     isSubscription: true,

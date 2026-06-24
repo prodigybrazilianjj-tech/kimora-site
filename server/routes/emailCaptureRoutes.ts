@@ -44,7 +44,7 @@ export function registerEmailCaptureRoutes(app: Express) {
 
       const resendKey = String(process.env.RESEND_API_KEY || "").trim();
       const fromEmail = String(process.env.RESEND_FROM_EMAIL || "").trim();
-      const discountCode = String(process.env.MARKETING_DISCOUNT_CODE || "WELCOME10").trim();
+      const discountCode = String(process.env.MARKETING_DISCOUNT_CODE || "MAT15").trim();
 
       if (resendKey && fromEmail) {
         try {

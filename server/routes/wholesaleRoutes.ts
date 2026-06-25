@@ -656,6 +656,33 @@ export function registerWholesaleRoutes(app: Express) {
     }
   });
 
+  // ── Resale-cert status (read-only) ────────────────────────────────────────
+  // Lightweight lookup so the order tool can show whether a gym is tax-exempt
+  // BEFORE invoicing. Returns only exemption status + minimal descriptors —
+  // never license numbers, file bytes, or notes. Reuses the same source-of-truth
+  // gate as the invoice route (verified + active + unexpired + covers state).
+  app.get("/api/wholesale/cert-status", async (req, res) => {
+    try {
+      const email = normalizeEmail(String(req.query.email ?? ""));
+      const state = safeString(String(req.query.state ?? ""), 8) || undefined;
+      if (!email || !isValidEmail(email)) {
+        return res.status(400).json({ ok: false, exempt: false, message: "Valid email is required." });
+      }
+      const cert = await getActiveResaleCertForEmail(email, state);
+      if (!cert) return res.json({ ok: true, exempt: false });
+      return res.json({
+        ok: true,
+        exempt: true,
+        certType: cert.certType,
+        issuingState: cert.issuingState,
+        expiresAt: cert.expiresAt ?? null,
+      });
+    } catch {
+      // Fail conservative: treat as not-exempt (the invoice route still enforces).
+      return res.json({ ok: true, exempt: false });
+    }
+  });
+
   // ── Stripe Invoice ────────────────────────────────────────────────────────
   app.post("/api/wholesale/invoice", async (req, res) => {
     try {

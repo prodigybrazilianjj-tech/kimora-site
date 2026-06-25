@@ -296,6 +296,10 @@
         <span style="color:var(--dim)">%</span>
       </span>
     </div>
+    <div class="totals-row" id="cert-status-row" style="display:none;">
+      <span class="t-label" style="font-size:11px;">Resale cert</span>
+      <span class="t-val" id="cert-status" style="font-size:11px;text-align:right;max-width:60%;"></span>
+    </div>
     <div class="totals-row grand"><span class="t-label">Total Due</span><span class="t-val" id="t-total">$0.00</span></div>
   </div>
   <div class="qty-note" id="qty-note"></div>
@@ -470,13 +474,66 @@ const STATE_TAX = {
   SD:4.50, TN:7.00, TX:6.25, UT:4.85, VT:6.00, VA:5.30, WA:6.50, WV:6.00,
   WI:5.00, WY:4.00, DC:6.00
 };
-document.getElementById('f-state').addEventListener('blur', function() {
-  const st = this.value.trim().toUpperCase();
+// ── Resale-cert awareness ────────────────────────────────────────────────────
+// Drives the tax field from the verified-cert record on file: lock to 0 when a
+// valid cert exists, and warn (cert required) when it doesn't. The backend gate
+// is the real enforcement; this just keeps the staffer-facing total honest.
+let certExempt = false;
+const CERT_TYPE_LABEL = { az_5000a: 'AZ 5000A', state: 'State cert', mtc: 'MTC' };
+
+function applyStateTax() {
+  if (certExempt) return; // exempt accounts stay at 0%
+  const st = document.getElementById('f-state').value.trim().toUpperCase();
   if (Object.prototype.hasOwnProperty.call(STATE_TAX, st)) {
     document.getElementById('tax-rate').value = STATE_TAX[st];
     recalc();
   }
+}
+
+async function checkCertStatus() {
+  const email = document.getElementById('f-email').value.trim();
+  const state = document.getElementById('f-state').value.trim();
+  const row = document.getElementById('cert-status-row');
+  const el  = document.getElementById('cert-status');
+  const tax = document.getElementById('tax-rate');
+  const unlock = () => { tax.readOnly = false; tax.style.opacity = ''; tax.title = ''; };
+
+  // Wait for a plausible email before looking anything up.
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    certExempt = false; row.style.display = 'none'; unlock(); return;
+  }
+  try {
+    const params = new URLSearchParams({ email });
+    if (state) params.set('state', state);
+    const r = await fetch('/api/wholesale/cert-status?' + params.toString());
+    const d = await r.json().catch(() => ({}));
+    row.style.display = '';
+    if (d && d.exempt) {
+      certExempt = true;
+      tax.value = 0; tax.readOnly = true; tax.style.opacity = '0.6';
+      tax.title = 'Locked to 0% — verified resale cert on file';
+      const exp = d.expiresAt ? ' · exp ' + new Date(d.expiresAt).toLocaleDateString('en-US') : '';
+      el.textContent = '✓ Verified cert on file — tax-exempt (' +
+        (CERT_TYPE_LABEL[d.certType] || d.certType || 'cert') +
+        (d.issuingState ? ' · ' + d.issuingState : '') + exp + ')';
+      el.style.color = '#34c759';
+      recalc();
+    } else {
+      certExempt = false; unlock();
+      el.textContent = '⚠ No verified resale cert on file — a $0 (tax-exempt) invoice will be blocked. Set the sales-tax rate, or add + verify a cert in the cert tool first.';
+      el.style.color = '#e07070';
+      if ((parseFloat(tax.value) || 0) === 0) applyStateTax(); // don't leave them at 0
+    }
+  } catch (e) {
+    certExempt = false; row.style.display = 'none'; unlock();
+  }
+}
+
+document.getElementById('f-state').addEventListener('blur', function() {
+  applyStateTax();
+  checkCertStatus();
 });
+document.getElementById('f-email').addEventListener('blur', checkCertStatus);
 
 // Show "other" business type field
 document.getElementById('f-businessType').addEventListener('change', function() {

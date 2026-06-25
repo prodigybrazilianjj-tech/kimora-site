@@ -725,6 +725,21 @@ export function registerWholesaleRoutes(app: Express) {
           (cert.receivedAt ? ` on file ${new Date(cert.receivedAt as any).toLocaleDateString("en-US")}` : "");
         try { await stripe.customers.update(customer.id, { tax_exempt: "exempt" } as any); } catch {}
       } else {
+        // No valid resale cert on file → no exemption may be claimed.
+        // Enforce "no valid cert → no exemption": refuse to issue a $0
+        // (exempt-looking) invoice unless Stripe Tax will compute the rate
+        // automatically. Prevents a staffer from zeroing tax with no cert backing it.
+        const stripeTaxWillCompute = process.env.STRIPE_TAX_ENABLED === "true";
+        if (!stripeTaxWillCompute && requestedTaxRate <= 0) {
+          return res.status(422).json({
+            ok: false,
+            code: "resale_cert_required",
+            message:
+              `No verified resale certificate is on file for ${email}, so a $0 tax-exempt ` +
+              `invoice can't be issued. Add and verify the gym's resale cert in the cert admin ` +
+              `tool, or enter the applicable sales-tax rate before sending.`,
+          });
+        }
         taxStatus = requestedTaxRate > 0 ? "taxed" : "no_cert";
         try { await stripe.customers.update(customer.id, { tax_exempt: "none" } as any); } catch {}
       }
@@ -915,6 +930,20 @@ export function registerWholesaleRoutes(app: Express) {
         try { await stripe.customers.update(customerId, { tax_exempt: "exempt" } as any); } catch {}
       } else {
         // No verified cert for a self-serve reorder → do not claim exemption.
+        // Enforce "no valid cert → no exemption": refuse a $0 (exempt-looking)
+        // reorder unless Stripe Tax will compute the rate automatically. Covers
+        // the case where the account's cert lapsed/was revoked since the prior order.
+        const stripeTaxWillCompute = process.env.STRIPE_TAX_ENABLED === "true";
+        if (!stripeTaxWillCompute && effectiveTaxRate <= 0) {
+          return res.status(422).json({
+            ok: false,
+            code: "resale_cert_required",
+            message:
+              "We can't issue this reorder tax-free because there's no current resale " +
+              "certificate on file. Please contact support@kimoraco.com to update your " +
+              "resale certificate and we'll get this order out right away.",
+          });
+        }
         taxStatus = "no_cert";
         try { await stripe.customers.update(customerId, { tax_exempt: "none" } as any); } catch {}
       }

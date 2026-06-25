@@ -696,6 +696,14 @@ async function submitOrder() {
         (onSpot ? `<span style="color:var(--green)">✓ Marked as fulfilled (on the spot)</span><br>` : '') +
         `<a href="${invData.invoiceUrl}" target="_blank" style="color:var(--gold-lt);font-weight:700;">View invoice →</a>`;
       btn.textContent = onSpot ? 'Submitted + Fulfilled ✓' : 'Submitted + Invoice Sent ✓';
+    } else if (invData.code === 'resale_cert_required') {
+      // Intentional block (not an error): a $0 tax-exempt invoice needs a verified
+      // resale cert on file. Don't suggest creating it manually — that bypasses the gate.
+      msg.className = 'success';
+      msg.innerHTML =
+        `✓ Application logged for <strong>${businessName}</strong>.<br>` +
+        `<span style="color:#e07070">⚠ Tax-exempt invoice blocked — resale cert required. ${invData.message || 'Add &amp; verify the gym’s resale cert, or enter the sales-tax rate, then resubmit.'}</span>`;
+      btn.textContent = 'Cert Required — Invoice Not Sent';
     } else {
       // Application logged but invoice failed — don't block the user
       msg.className = 'success';

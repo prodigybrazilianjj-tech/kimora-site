@@ -78,14 +78,14 @@ export function EmailCapture() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={state === "loading"}
-              className="flex-1 bg-card border border-foreground/10 text-foreground placeholder:text-muted-foreground rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition disabled:opacity-50"
+              className="h-14 w-full flex-1 bg-card border border-foreground/10 text-foreground placeholder:text-muted-foreground rounded-xl px-4 text-base focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={state === "loading"}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-6 py-3 rounded-xl transition disabled:opacity-60 whitespace-nowrap"
+              className="h-14 shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base px-7 rounded-xl transition disabled:opacity-60 whitespace-nowrap"
             >
-              {state === "loading" ? "Sending…" : "Get 10% off"}
+              {state === "loading" ? "Sending…" : "Get 15% Off"}
             </button>
           </form>
         )}

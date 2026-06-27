@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { CartProvider } from "@/lib/cart";
+import { PRELAUNCH_GATE } from "@/lib/prelaunch";
 
 import ComingSoon from "@/pages/ComingSoon";
 import Home from "@/pages/Home";
@@ -43,15 +44,21 @@ function ScrollToTop() {
 }
 
 /**
- * Pre-launch redirect block. Default ON. Set VITE_PRELAUNCH_REDIRECTS=false
- * on the staging deploy to expose the consumer purchase routes for pixel QA.
+ * Pre-launch gate. Driven by PRELAUNCH_GATE in src/lib/prelaunch.ts.
  *
- * Treat anything other than the literal string "false" as "redirects on" so
- * a missing env var keeps prod safe.
+ * When gated:
+ *  - Home / Shop / Product are BROWSABLE (products + prices visible).
+ *  - The purchase flow (Cart / Checkout / Order Success / Manage Subscription)
+ *    redirects home — nothing is buyable.
+ *
+ * Staging override: set VITE_PRELAUNCH_REDIRECTS=false to open the purchase
+ * routes for pixel/QA even while gated. Anything other than the literal
+ * string "false" keeps the gate on, so a missing env var stays safe.
  */
-const PRELAUNCH_REDIRECTS_ENABLED =
+const PURCHASE_GATED =
+  PRELAUNCH_GATE &&
   String((import.meta as any).env?.VITE_PRELAUNCH_REDIRECTS ?? "true").toLowerCase() !==
-  "false";
+    "false";
 
 function Router() {
   return (
@@ -59,16 +66,18 @@ function Router() {
       <ScrollToTop />
 
       <Switch>
-        <Route path="/" component={ComingSoon} />
+        <Route path="/" component={Home} />
         <Route path="/coming-soon" component={ComingSoon} />
         <Route path="/faq" component={FAQ} />
 
-        {/* Pre-launch: consumer purchase routes redirect to coming soon
+        {/* Storefront is always browsable so visitors can see products + prices. */}
+        <Route path="/shop" component={Shop} />
+        <Route path="/product" component={Product} />
+
+        {/* Pre-launch: the purchase flow redirects home (nothing is buyable)
             unless VITE_PRELAUNCH_REDIRECTS=false (staging branch for QA). */}
-        {PRELAUNCH_REDIRECTS_ENABLED ? (
+        {PURCHASE_GATED ? (
           <>
-            <Route path="/shop">{() => <Redirect to="/" />}</Route>
-            <Route path="/product">{() => <Redirect to="/" />}</Route>
             <Route path="/cart">{() => <Redirect to="/" />}</Route>
             <Route path="/checkout">{() => <Redirect to="/" />}</Route>
             <Route path="/order-success">{() => <Redirect to="/" />}</Route>
@@ -76,8 +85,6 @@ function Router() {
           </>
         ) : (
           <>
-            <Route path="/shop" component={Shop} />
-            <Route path="/product" component={Product} />
             <Route path="/cart" component={Cart} />
             <Route path="/checkout" component={Checkout} />
             <Route path="/order-success" component={OrderSuccess} />

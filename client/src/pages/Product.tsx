@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { cn } from "@/lib/utils";
+import { PRELAUNCH_GATE } from "@/lib/prelaunch";
+import { NotifyMe } from "@/components/NotifyMe";
 
 const productData: Record<string, any> = {
   "strawberry-guava": {
@@ -283,32 +285,50 @@ export default function Product() {
             </div>
 
             {/* Quantity & CTA */}
-            <div className="flex gap-4 mb-6">
-              <div className="flex items-center border border-foreground/10 rounded-lg bg-foreground/5 h-14">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-4 text-foreground hover:text-primary transition-colors"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-                <span className="w-8 text-center font-bold text-foreground">
-                  {quantity}
-                </span>
-                <button
-                  onClick={() => setQuantity(Math.min(6, quantity + 1))}
-                  className="px-4 text-foreground hover:text-primary transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
+            {PRELAUNCH_GATE ? (
+              <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-5">
+                <div className="mb-2 flex items-center gap-3">
+                  <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
+                    Coming Soon
+                  </span>
+                  <span className="text-sm font-semibold text-foreground">
+                    {product.name} launches soon.
+                  </span>
+                </div>
+                <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+                  Drop your email and we'll let you know the moment it's available
+                  — plus 15% off your first order.
+                </p>
+                <NotifyMe buttonLabel="Notify Me" />
               </div>
+            ) : (
+              <div className="flex gap-4 mb-6">
+                <div className="flex items-center border border-foreground/10 rounded-lg bg-foreground/5 h-14">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="px-4 text-foreground hover:text-primary transition-colors"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="w-8 text-center font-bold text-foreground">
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => setQuantity(Math.min(6, quantity + 1))}
+                    className="px-4 text-foreground hover:text-primary transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
 
-              <Button
-                onClick={handleAddToCart}
-                className="flex-1 h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider text-lg"
-              >
-                Add to Cart - ${(currentUnitPrice * quantity).toFixed(2)}
-              </Button>
-            </div>
+                <Button
+                  onClick={handleAddToCart}
+                  className="flex-1 h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider text-lg"
+                >
+                  Add to Cart - ${(currentUnitPrice * quantity).toFixed(2)}
+                </Button>
+              </div>
+            )}
 
             {/* Trust Badges */}
             <div className="grid grid-cols-3 gap-4 border-t border-foreground/10 pt-6">

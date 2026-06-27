@@ -5,15 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
+import { PRELAUNCH_GATE } from "@/lib/prelaunch";
 
 /**
- * 🔒 PRELAUNCH MODE
- * When true:
- * - Removes Shop from nav
- * - Removes Shop button
- * - Still allows Wholesale access
+ * 🔒 PRELAUNCH GATE
+ * When PRELAUNCH_GATE is true the store is browsable but nothing is buyable:
+ * - Shop stays in the nav so people can browse products + prices
+ * - The cart icon and "Shop Now" buy CTA are hidden (no purchasing)
+ * - Wholesale access is unchanged
  */
-const PRELAUNCH = true;
+const PRELAUNCH = PRELAUNCH_GATE;
 
 function scrollToSelector(selector: string) {
   const el = document.querySelector(selector);
@@ -165,16 +166,15 @@ export function Navbar() {
       },
     ];
 
-    // 🚫 Remove Shop if prelaunch
-    if (!PRELAUNCH) {
-      baseLinks.splice(4, 0, {
-        name: "Shop",
-        action: () => {
-          closeMobile();
-          setLocation("/shop");
-        },
-      });
-    }
+    // Shop stays available so visitors can browse products + prices
+    // (purchasing itself is gated elsewhere while PRELAUNCH_GATE is on).
+    baseLinks.splice(4, 0, {
+      name: "Shop",
+      action: () => {
+        closeMobile();
+        setLocation("/shop");
+      },
+    });
 
     return baseLinks;
   }, [isHome, location]);
@@ -205,17 +205,19 @@ export function Navbar() {
             </button>
           ))}
 
-          <Link
-            href="/cart"
-            className="relative text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ShoppingBag className="w-5 h-5" />
-            {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                {cartCount}
-              </span>
-            )}
-          </Link>
+          {!PRELAUNCH && (
+            <Link
+              href="/cart"
+              className="relative text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ShoppingBag className="w-5 h-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+          )}
 
           {/* 🚫 Hide Shop CTA in prelaunch */}
           {!PRELAUNCH && (
@@ -230,18 +232,20 @@ export function Navbar() {
 
         {/* Mobile Nav */}
         <div className="md:hidden flex items-center gap-4">
-          <Link
-            href="/cart"
-            className="relative text-foreground"
-            onClick={() => closeMobile()}
-          >
-            <ShoppingBag className="w-6 h-6" />
-            {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                {cartCount}
-              </span>
-            )}
-          </Link>
+          {!PRELAUNCH && (
+            <Link
+              href="/cart"
+              className="relative text-foreground"
+              onClick={() => closeMobile()}
+            >
+              <ShoppingBag className="w-6 h-6" />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+          )}
 
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>

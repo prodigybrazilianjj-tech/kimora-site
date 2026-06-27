@@ -20,14 +20,6 @@ export function Hero() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="space-y-6"
         >
-          {/* Mobile-only product photo so the stick format is visible up top.
-              Hidden on desktop, where the hero stays typographic. */}
-          <img
-            src="/assets/products/strawberry-guava/pouch_sticks_studio.webp"
-            alt="Kimora pouch with single-serve creatine + electrolyte sticks"
-            className="md:hidden mx-auto w-full max-w-[320px] h-auto object-contain drop-shadow-2xl"
-          />
-
           <div className="inline-block border border-foreground/10 rounded-full px-4 py-1.5 bg-foreground/5 backdrop-blur-sm mb-4">
             <span className="text-xs font-medium tracking-[0.2em] text-primary uppercase">
               Creatine · Electrolytes · Daily
@@ -45,6 +37,16 @@ export function Hero() {
           <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase pt-4">
             Built for BJJ · MMA · Muay Thai · Lifters
           </p>
+
+          {/* Mobile-only floating stick — no background, gently floats.
+              Desktop keeps the clean typographic hero. */}
+          <motion.img
+            src="/assets/products/strawberry-guava/stick_float.png"
+            alt="Kimora single-serve creatine + electrolyte stick"
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 5, ease: "easeInOut", repeat: Infinity }}
+            className="md:hidden mx-auto w-full max-w-[280px] h-auto object-contain drop-shadow-[0_22px_30px_rgba(0,0,0,0.35)]"
+          />
 
           <div className="pt-8">
             <Button 

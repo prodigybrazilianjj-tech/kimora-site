@@ -36,7 +36,7 @@ export function Formula() {
                   </span>
                 </li>
                 <li className="flex justify-between items-baseline border-b border-foreground/5 pb-2">
-                  <span className="text-foreground font-medium">~500 mg Sodium</span>
+                  <span className="text-foreground font-medium">750 mg Sodium</span>
                   <span className="text-sm text-muted-foreground">
                     Hydration & Performance
                   </span>

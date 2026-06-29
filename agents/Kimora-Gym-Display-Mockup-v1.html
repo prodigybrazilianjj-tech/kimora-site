@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kimora · Gym Single-Stick Display — Concept v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --cream:#F4EFE3; --char:#16140F; --coral:#D8532E; --amber:#E9A23B; --pink:#D4537E;
+    --paper:#EFE9DC; --ink:#1d1a14; --muted:#7a7263; --line:#d8cfba;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#cfc6b2;font-family:'Inter',system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;padding:0 0 60px}
+  .toolbar{position:sticky;top:0;z-index:20;display:flex;gap:12px;align-items:center;justify-content:center;padding:12px;background:rgba(28,26,20,.92);backdrop-filter:blur(4px)}
+  .toolbar button{font-family:'Inter';font-weight:600;font-size:13px;letter-spacing:.03em;color:#1c1a14;background:var(--amber);border:0;border-radius:9px;padding:9px 16px;cursor:pointer}
+  .toolbar .hint{color:#bdb4a0;font-size:12px}
+  .board{max-width:980px;margin:28px auto;padding:0 22px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--char);padding-bottom:14px;margin-bottom:6px}
+  .head h1{font-family:'Bebas Neue';font-size:42px;letter-spacing:.04em;line-height:.95;color:var(--char)}
+  .head .sub{font-size:13px;color:var(--muted);margin-top:4px;letter-spacing:.02em}
+  .head .tag{font-family:'Bebas Neue';font-size:16px;letter-spacing:.18em;color:var(--coral)}
+  .note{background:#fbf7ee;border:1px solid var(--line);border-left:4px solid var(--coral);border-radius:0 10px 10px 0;padding:14px 18px;margin:22px 0 8px;font-size:14px;line-height:1.6;color:#3a342a}
+  .note b{color:var(--char)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:26px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .panel{background:#fbf7ee;border:1px solid var(--line);border-radius:14px;padding:18px 18px 22px;box-shadow:0 12px 30px rgba(0,0,0,.10)}
+  .panel.full{grid-column:1/-1}
+  .panel h2{font-family:'Bebas Neue';font-size:22px;letter-spacing:.06em;color:var(--char);margin-bottom:2px}
+  .panel .h-sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+  .scene{display:block;width:100%;height:auto;border-radius:10px;overflow:hidden}
+  /* print placard */
+  .placard-wrap{display:flex;justify-content:center}
+  .card{
+    width:4in;height:6in;background:
+      radial-gradient(120% 55% at 50% 0%, rgba(216,83,46,.16), transparent 55%),
+      linear-gradient(180deg,#16140F 0%, #0b0a07 100%);
+    border-radius:18px;color:var(--cream);display:flex;flex-direction:column;align-items:center;
+    padding:.4in .36in;text-align:center;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+  .wm{font-family:'Bebas Neue';font-size:50px;letter-spacing:.13em;line-height:1;color:#fff}
+  .eb{margin-top:5px;font-size:9px;font-weight:700;letter-spacing:.26em;color:var(--coral)}
+  .hl{font-family:'Bebas Neue';font-size:25px;letter-spacing:.03em;line-height:1.05;color:#fff;margin-top:16px}
+  .price{margin-top:10px;font-family:'Bebas Neue';font-size:40px;letter-spacing:.02em;color:var(--amber);line-height:1}
+  .price small{display:block;font-family:'Inter';font-size:10px;font-weight:600;letter-spacing:.14em;color:#ccbfa6;margin-top:3px}
+  .qrwrap{margin-top:16px;background:#fff;border-radius:14px;padding:12px}
+  .qrwrap img,.qrwrap canvas{display:block;width:138px;height:138px}
+  .scan{margin-top:12px;font-size:10px;font-weight:700;letter-spacing:.2em;color:#fff}
+  .url{margin-top:3px;font-size:11px;color:#bdb4a0;letter-spacing:.03em}
+  .foot{margin-top:auto;padding-top:12px;font-family:'Bebas Neue';font-size:14px;letter-spacing:.18em;color:rgba(255,255,255,.6)}
+  .legend{font-size:12.5px;line-height:1.7;color:#3a342a;margin-top:6px}
+  .legend b{color:var(--char)}
+  .legend span{display:inline-block;width:18px;height:18px;border-radius:4px;vertical-align:-4px;margin-right:7px}
+  @media print{
+    body{background:#fff}.toolbar,.board>.head,.note,.panel.scenepanel,.panel.specpanel{display:none}
+    .board{margin:0;padding:0}.grid{display:block}
+    .panel.placardpanel{border:0;box-shadow:none;background:#fff;padding:0}
+    .panel.placardpanel h2,.panel.placardpanel .h-sub{display:none}
+    @page{size:4in 6in;margin:0}
+    .card{margin:0;border-radius:0;width:4in;height:6in;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button onclick="window.print()">Print the 4×6 placard</button>
+  <span class="hint">Print dialog → margins “None”, enable “Background graphics”. Only the placard prints.</span>
+</div>
+
+<div class="board">
+  <div class="head">
+    <div>
+      <h1>Gym Single-Stick Display</h1>
+      <div class="sub">Concept v1 · countertop grab station · jiu jitsu front desk</div>
+    </div>
+    <div class="tag">GROW STRONGER.<br/>THINK SHARPER.</div>
+  </div>
+
+  <div class="note">
+    <b>Recommended format:</b> one integrated acrylic grab station. An angled <b>header placard</b> carries the $49.99 bag price and a QR to kimoraco.com; <b>tiered front rows</b> hold sticks standing face-out so the whole stick shows; an <b>integrated cash box</b> at the base sells singles at <b>$2, honor system</b>. No electronics, fits any counter, and the mixed flavors give the shelf a pop of color. Dimensions on the spec panel are a starting point for the fabricator.
+  </div>
+
+  <div class="grid">
+    <!-- CONCEPT SCENE -->
+    <div class="panel scenepanel">
+      <h2>On the counter</h2>
+      <div class="h-sub">How it reads at the front desk</div>
+      <svg class="scene" viewBox="0 0 680 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kimora grab station on a gym front desk">
+        <rect x="0" y="0" width="680" height="342" fill="#E7DEC9"/>
+        <rect x="36" y="34" width="120" height="4" rx="2" fill="#7d6f55"/>
+        <rect x="44" y="38" width="104" height="9" rx="3" fill="#F2EEE4"/>
+        <rect x="44" y="49" width="104" height="9" rx="3" fill="#2F6FB0"/>
+        <rect x="44" y="60" width="104" height="9" rx="3" fill="#6A4AA0"/>
+        <rect x="44" y="71" width="104" height="9" rx="3" fill="#6B4A2F"/>
+        <rect x="44" y="82" width="104" height="9" rx="3" fill="#161616"/>
+        <rect x="44" y="38" width="12" height="53" rx="3" fill="#000000" opacity="0.14"/>
+        <rect x="520" y="44" width="118" height="128" rx="6" fill="#3A2F26"/>
+        <rect x="528" y="52" width="102" height="112" rx="3" fill="#F1EAD8"/>
+        <circle cx="579" cy="92" r="22" fill="none" stroke="#D8532E" stroke-width="3"/>
+        <circle cx="579" cy="92" r="9" fill="#D8532E"/>
+        <text x="579" y="132" text-anchor="middle" font-family="'Bebas Neue',Arial" font-size="15" letter-spacing="2" fill="#1d1a14">OUTLAST</text>
+        <text x="579" y="148" text-anchor="middle" font-family="Arial" font-size="7.5" letter-spacing="1" fill="#6f6450">GROW STRONGER · THINK SHARPER</text>
+        <rect x="0" y="336" width="680" height="134" fill="#2A2018"/>
+        <rect x="0" y="330" width="680" height="10" fill="#3E2F22"/>
+        <rect x="0" y="330" width="680" height="2" fill="#56412e" opacity="0.8"/>
+        <ellipse cx="342" cy="332" rx="150" ry="9" fill="#000000" opacity="0.18"/>
+        <rect x="255" y="70" width="170" height="230" rx="10" fill="#16140F"/>
+        <text x="340" y="104" text-anchor="middle" font-family="'Bebas Neue',Arial" font-size="33" letter-spacing="3" fill="#F4EFE3">KIMORA</text>
+        <text x="340" y="119" text-anchor="middle" font-family="Arial" font-weight="700" font-size="8" letter-spacing="2" fill="#D8532E">CREATINE · ELECTROLYTES</text>
+        <rect x="307" y="128" width="66" height="66" rx="6" fill="#ffffff"/>
+        <rect x="311" y="132" width="15" height="15" fill="#15140f"/><rect x="314" y="135" width="9" height="9" fill="#ffffff"/><rect x="316" y="137" width="5" height="5" fill="#15140f"/>
+        <rect x="354" y="132" width="15" height="15" fill="#15140f"/><rect x="357" y="135" width="9" height="9" fill="#ffffff"/><rect x="359" y="137" width="5" height="5" fill="#15140f"/>
+        <rect x="311" y="175" width="15" height="15" fill="#15140f"/><rect x="314" y="178" width="9" height="9" fill="#ffffff"/><rect x="316" y="180" width="5" height="5" fill="#15140f"/>
+        <g fill="#15140f">
+          <rect x="332" y="133" width="5" height="5"/><rect x="342" y="133" width="5" height="5"/><rect x="337" y="139" width="5" height="5"/><rect x="347" y="145" width="5" height="5"/>
+          <rect x="332" y="151" width="5" height="5"/><rect x="343" y="152" width="5" height="5"/><rect x="354" y="156" width="5" height="5"/><rect x="364" y="152" width="5" height="5"/>
+          <rect x="333" y="162" width="5" height="5"/><rect x="348" y="164" width="5" height="5"/><rect x="359" y="166" width="5" height="5"/>
+          <rect x="338" y="175" width="5" height="5"/><rect x="349" y="176" width="5" height="5"/><rect x="360" y="178" width="5" height="5"/><rect x="354" y="185" width="5" height="5"/><rect x="364" y="183" width="5" height="5"/><rect x="333" y="184" width="5" height="5"/>
+        </g>
+        <text x="340" y="211" text-anchor="middle" font-family="'Bebas Neue',Arial" font-size="17" letter-spacing="1" fill="#E9A23B">$49.99 · 30-STICK BAG</text>
+        <text x="340" y="223" text-anchor="middle" font-family="Arial" font-size="8" letter-spacing="1" fill="#A79C88">scan → kimoraco.com</text>
+        <rect x="256" y="222" width="6" height="80" rx="2" fill="#BBD4DE" opacity="0.4"/>
+        <rect x="418" y="222" width="6" height="80" rx="2" fill="#BBD4DE" opacity="0.4"/>
+        <g>
+          <rect x="268" y="222" width="20" height="80" rx="4" fill="#D8532E"/><rect x="268" y="222" width="20" height="9" rx="3" fill="#EFE7D6"/><rect x="273" y="252" width="10" height="2.5" rx="1" fill="#F3ECDC" opacity="0.85"/><circle cx="278" cy="290" r="3" fill="#7d2c14"/>
+          <rect x="293" y="222" width="20" height="80" rx="4" fill="#D4537E"/><rect x="293" y="222" width="20" height="9" rx="3" fill="#EFE7D6"/><rect x="298" y="252" width="10" height="2.5" rx="1" fill="#F3ECDC" opacity="0.85"/><circle cx="303" cy="290" r="3" fill="#7a2845"/>
+          <rect x="318" y="222" width="20" height="80" rx="4" fill="#D6A93A"/><rect x="318" y="222" width="20" height="9" rx="3" fill="#EFE7D6"/><rect x="323" y="252" width="10" height="2.5" rx="1" fill="#F3ECDC" opacity="0.85"/><circle cx="328" cy="290" r="3" fill="#7d6014"/>
+          <rect x="343" y="222" width="20" height="80" rx="4" fill="#D8532E"/><rect x="343" y="222" width="20" height="9" rx="3" fill="#EFE7D6"/><rect x="348" y="252" width="10" height="2.5" rx="1" fill="#F3ECDC" opacity="0.85"/><circle cx="353" cy="290" r="3" fill="#7d2c14"/>
+          <rect x="368" y="222" width="20" height="80" rx="4" fill="#D4537E"/><rect x="368" y="222" width="20" height="9" rx="3" fill="#EFE7D6"/><rect x="373" y="252" width="10" height="2.5" rx="1" fill="#F3ECDC" opacity="0.85"/><circle cx="378" cy="290" r="3" fill="#7a2845"/>
+          <rect x="393" y="222" width="20" height="80" rx="4" fill="#D6A93A"/><rect x="393" y="222" width="20" height="9" rx="3" fill="#EFE7D6"/><rect x="398" y="252" width="10" height="2.5" rx="1" fill="#F3ECDC" opacity="0.85"/><circle cx="403" cy="290" r="3" fill="#7d6014"/>
+        </g>
+        <rect x="256" y="286" width="168" height="14" rx="3" fill="#BBD4DE" opacity="0.38"/>
+        <rect x="256" y="286" width="168" height="2" fill="#ffffff" opacity="0.55"/>
+        <rect x="250" y="300" width="180" height="34" rx="6" fill="#1c1a14"/>
+        <rect x="318" y="305" width="44" height="5" rx="2.5" fill="#000000"/>
+        <text x="262" y="320" font-family="'Bebas Neue',Arial" font-size="15" fill="#E9A23B">$2 EACH</text>
+        <text x="262" y="330" font-family="Arial" font-size="7.5" letter-spacing="0.5" fill="#B6AC97">single stick · honor system · cash in slot ↑</text>
+        <text x="412" y="328" text-anchor="end" font-family="'Bebas Neue',Arial" font-size="9" letter-spacing="1.5" fill="#6f6553">KIMORA</text>
+      </svg>
+    </div>
+
+    <!-- SPEC ELEVATION -->
+    <div class="panel specpanel">
+      <h2>Front elevation</h2>
+      <div class="h-sub">Suggested build · acrylic · for the fabricator</div>
+      <svg class="scene" viewBox="0 0 680 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Front elevation spec of the display">
+        <rect x="0" y="0" width="680" height="470" fill="#fbf7ee"/>
+        <!-- header card -->
+        <rect x="250" y="60" width="180" height="150" rx="8" fill="#16140F"/>
+        <text x="340" y="92" text-anchor="middle" font-family="'Bebas Neue',Arial" font-size="26" letter-spacing="3" fill="#F4EFE3">KIMORA</text>
+        <text x="340" y="106" text-anchor="middle" font-family="Arial" font-weight="700" font-size="7.5" letter-spacing="2" fill="#D8532E">CREATINE · ELECTROLYTES</text>
+        <rect x="306" y="116" width="50" height="50" rx="5" fill="#fff"/>
+        <rect x="310" y="120" width="11" height="11" fill="#15140f"/><rect x="341" y="120" width="11" height="11" fill="#15140f"/><rect x="310" y="151" width="11" height="11" fill="#15140f"/>
+        <rect x="328" y="134" width="6" height="6" fill="#15140f"/><rect x="340" y="146" width="6" height="6" fill="#15140f"/><rect x="346" y="136" width="5" height="5" fill="#15140f"/>
+        <text x="372" y="138" font-family="'Bebas Neue',Arial" font-size="15" fill="#E9A23B">$49.99</text>
+        <text x="372" y="150" font-family="Arial" font-size="7" letter-spacing=".5" fill="#bdb09a">30-STICK BAG</text>
+        <text x="340" y="184" text-anchor="middle" font-family="Arial" font-size="8" letter-spacing="1.5" fill="#A79C88">scan → kimoraco.com</text>
+        <!-- tier of sticks -->
+        <rect x="262" y="214" width="6" height="92" rx="2" fill="#cfe0e6"/>
+        <rect x="412" y="214" width="6" height="92" rx="2" fill="#cfe0e6"/>
+        <g>
+          <rect x="276" y="216" width="19" height="90" rx="3" fill="#D8532E"/><rect x="276" y="216" width="19" height="8" fill="#EFE7D6"/>
+          <rect x="300" y="216" width="19" height="90" rx="3" fill="#D4537E"/><rect x="300" y="216" width="19" height="8" fill="#EFE7D6"/>
+          <rect x="324" y="216" width="19" height="90" rx="3" fill="#D6A93A"/><rect x="324" y="216" width="19" height="8" fill="#EFE7D6"/>
+          <rect x="348" y="216" width="19" height="90" rx="3" fill="#D8532E"/><rect x="348" y="216" width="19" height="8" fill="#EFE7D6"/>
+          <rect x="372" y="216" width="19" height="90" rx="3" fill="#D4537E"/><rect x="372" y="216" width="19" height="8" fill="#EFE7D6"/>
+          <rect x="396" y="216" width="19" height="90" rx="3" fill="#D6A93A"/><rect x="396" y="216" width="19" height="8" fill="#EFE7D6"/>
+        </g>
+        <rect x="260" y="300" width="160" height="10" rx="2" fill="#cfe0e6"/>
+        <!-- cash base -->
+        <rect x="250" y="312" width="180" height="40" rx="6" fill="#1c1a14"/>
+        <rect x="318" y="318" width="44" height="5" rx="2.5" fill="#000"/>
+        <text x="262" y="335" font-family="'Bebas Neue',Arial" font-size="16" fill="#E9A23B">$2 EACH</text>
+        <text x="262" y="346" font-family="Arial" font-size="7.5" fill="#B6AC97">single stick · honor system</text>
+        <!-- dimension lines -->
+        <g stroke="#9a8f78" stroke-width="1" fill="none">
+          <line x1="455" y1="60" x2="455" y2="352"/><line x1="450" y1="60" x2="460" y2="60"/><line x1="450" y1="352" x2="460" y2="352"/>
+          <line x1="250" y1="372" x2="430" y2="372"/><line x1="250" y1="367" x2="250" y2="377"/><line x1="430" y1="367" x2="430" y2="377"/>
+          <line x1="216" y1="216" x2="216" y2="306"/><line x1="211" y1="216" x2="221" y2="216"/><line x1="211" y1="306" x2="221" y2="306"/>
+        </g>
+        <text x="468" y="210" font-family="Arial" font-size="11" fill="#5f5747">~10 in tall</text>
+        <text x="340" y="388" text-anchor="middle" font-family="Arial" font-size="11" fill="#5f5747">~6 in wide · ~4 in deep</text>
+        <text x="206" y="265" text-anchor="end" font-family="Arial" font-size="10" fill="#5f5747">full</text>
+        <text x="206" y="278" text-anchor="end" font-family="Arial" font-size="10" fill="#5f5747">stick</text>
+        <!-- callouts -->
+        <g stroke="#D8532E" stroke-width="1" stroke-dasharray="3 3" fill="none">
+          <line x1="430" y1="120" x2="540" y2="120"/>
+          <line x1="415" y1="260" x2="540" y2="260"/>
+          <line x1="430" y1="332" x2="540" y2="332"/>
+        </g>
+        <text x="546" y="116" font-family="'Bebas Neue',Arial" font-size="13" fill="#16140F">HEADER</text>
+        <text x="546" y="128" font-family="Arial" font-size="9" fill="#7a7263">price + QR card</text>
+        <text x="546" y="256" font-family="'Bebas Neue',Arial" font-size="13" fill="#16140F">STICK TIERS</text>
+        <text x="546" y="268" font-family="Arial" font-size="9" fill="#7a7263">~24 sticks, face-out</text>
+        <text x="546" y="328" font-family="'Bebas Neue',Arial" font-size="13" fill="#16140F">CASH BASE</text>
+        <text x="546" y="340" font-family="Arial" font-size="9" fill="#7a7263">$2 slot, locked</text>
+      </svg>
+      <div class="legend">
+        <b>Flavors shown:</b><br/>
+        <span style="background:#D8532E"></span>Strawberry Guava &nbsp;
+        <span style="background:#D4537E"></span>Raspberry Dragonfruit &nbsp;
+        <span style="background:#D6A93A"></span>Lemon Lychee
+      </div>
+    </div>
+
+    <!-- PRINT PLACARD -->
+    <div class="panel placardpanel full">
+      <h2>The header placard — print-ready (4×6)</h2>
+      <div class="h-sub">Live QR points to kimoraco.com (gym-tagged). Hit “Print the 4×6 placard” above to export.</div>
+      <div class="placard-wrap">
+        <div class="card">
+          <div class="wm">KIMORA</div>
+          <div class="eb">CREATINE · ELECTROLYTES · DAILY</div>
+          <div class="hl">CREATINE + ELECTROLYTES.<br/>BUILT FOR THE MAT.</div>
+          <div class="price">$49.99<small>30-STICK BAG · SINGLES $2</small></div>
+          <div class="qrwrap"><div id="qr"></div></div>
+          <div class="scan">SCAN TO ORDER / SUBSCRIBE</div>
+          <div class="url">kimoraco.com</div>
+          <div class="foot">GROW STRONGER. THINK SHARPER.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var GYM = "";
+  var base = "https://kimoraco.com/?utm_source=gym&utm_medium=placard&utm_campaign=singlestick";
+  var target = GYM ? (base + "&utm_content=" + encodeURIComponent(GYM)) : base;
+  function renderQR(){
+    var el = document.getElementById("qr"); el.innerHTML = "";
+    if (typeof QRCode !== "undefined"){
+      new QRCode(el, {text:target, width:138, height:138, colorDark:"#16140F", colorLight:"#ffffff", correctLevel:QRCode.CorrectLevel.M});
+    } else { el.textContent = "kimoraco.com"; el.style.cssText="font-size:12px;color:#16140F"; }
+  }
+  document.addEventListener("DOMContentLoaded", renderQR);
+</script>
+</body>
+</html>

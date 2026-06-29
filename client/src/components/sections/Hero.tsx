@@ -41,11 +41,11 @@ export function Hero() {
           {/* Mobile-only floating stick — no background, gently floats.
               Desktop keeps the clean typographic hero. */}
           <motion.img
-            src="/assets/products/strawberry-guava/stick_float.png"
+            src="/assets/products/strawberry-guava/stick_render.png"
             alt="Kimora single-serve creatine + electrolyte stick"
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 5, ease: "easeInOut", repeat: Infinity }}
-            className="md:hidden mx-auto w-full max-w-[280px] h-auto object-contain drop-shadow-[0_22px_30px_rgba(0,0,0,0.35)]"
+            className="md:hidden mx-auto w-full max-w-[440px] h-auto object-contain"
           />
 
           <div className="pt-8">

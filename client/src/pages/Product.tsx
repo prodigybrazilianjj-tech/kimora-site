@@ -24,8 +24,8 @@ const productData: Record<string, any> = {
     // ✅ matches the pouch (warm orange / terracotta)
     color: "text-orange-400",
     gradient: "from-orange-500/20",
-    pouch: "/assets/products/strawberry-guava/pouch.webp",
-    stick: "/assets/products/strawberry-guava/stick.png",
+    pouch: "/assets/products/strawberry-guava/pouch_sticks_v1.webp",
+    stick: "/assets/products/strawberry-guava/stick_render.png",
   },
   "lemon-lychee": {
     name: "Lemon Lychee",
@@ -33,8 +33,8 @@ const productData: Record<string, any> = {
     // ✅ already correct
     color: "text-yellow-400",
     gradient: "from-yellow-500/20",
-    pouch: "/assets/products/lemon-lychee/pouch_lychee.webp",
-    stick: "/assets/products/lemon-lychee/stick_lychee.png",
+    pouch: "/assets/products/lemon-lychee/pouch_sticks_v6.webp",
+    stick: "/assets/products/lemon-lychee/stick_render.png",
   },
   "raspberry-dragonfruit": {
     name: "Raspberry Dragonfruit",
@@ -42,8 +42,8 @@ const productData: Record<string, any> = {
     // ✅ matches the pouch (raspberry/red)
     color: "text-rose-400",
     gradient: "from-pink-500/20",
-    pouch: "/assets/products/raspberry-dragonfruit/pouch.webp",
-    stick: "/assets/products/raspberry-dragonfruit/stick.png",
+    pouch: "/assets/products/raspberry-dragonfruit/pouch_sticks_v8.webp",
+    stick: "/assets/products/raspberry-dragonfruit/stick_render.png",
   },
 };
 

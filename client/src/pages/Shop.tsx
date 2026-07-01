@@ -5,6 +5,8 @@ import { Footer } from "@/components/sections/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { isFlavorAvailable } from "@/lib/product";
 
 const products = [
   {
@@ -52,8 +54,12 @@ export default function Shop() {
             <h1 className="text-5xl md:text-7xl font-display font-bold text-foreground mb-6">
               SHOP KIMORA
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-3">
               Daily electrolytes + creatine. Choose your fuel.
+            </p>
+            <p className="text-sm font-semibold text-primary max-w-2xl mx-auto mb-8">
+              Launching with Strawberry Guava — Lemon Lychee &amp; Raspberry
+              Dragonfruit drop soon.
             </p>
 
             <div className="flex items-center justify-center gap-4 bg-secondary/30 w-fit mx-auto p-1.5 rounded-full border border-foreground/5">
@@ -84,6 +90,7 @@ export default function Shop() {
             {products.map((product, index) => {
               const href = `/product?flavor=${product.id}`;
               const displayPrice = isSubscribe ? product.priceSub : product.priceOneTime;
+              const available = isFlavorAvailable(product.id);
 
               return (
                 <motion.div
@@ -101,6 +108,16 @@ export default function Shop() {
                         <CardContent className="p-0 flex flex-col h-full">
                           {/* Image Area */}
                           <div className="relative aspect-[4/5] bg-secondary/20 p-8 flex items-center justify-center overflow-hidden">
+                            <span
+                              className={cn(
+                                "absolute top-3 left-3 z-20 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider",
+                                available
+                                  ? "bg-primary/15 text-primary"
+                                  : "border border-foreground/15 bg-background/70 text-muted-foreground backdrop-blur-sm"
+                              )}
+                            >
+                              {available ? "Launch Flavor" : "Coming Soon"}
+                            </span>
                             <div
                               className={`absolute inset-0 bg-gradient-to-t ${product.bgAccent} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
                             />
@@ -144,7 +161,7 @@ export default function Shop() {
                               type="button"
                               className="w-full bg-foreground/10 hover:bg-foreground text-foreground hover:text-background font-bold uppercase tracking-wider border border-foreground/10 hover:border-foreground transition-all"
                             >
-                              Select
+                              {available ? "Select" : "Notify Me"}
                             </Button>
                           </div>
                         </CardContent>

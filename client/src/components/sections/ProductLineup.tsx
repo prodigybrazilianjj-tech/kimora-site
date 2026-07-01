@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { isFlavorAvailable } from "@/lib/product";
 
 const products = [
   {
@@ -60,6 +62,16 @@ export function ProductLineup() {
               >
                 <Card className="bg-card/50 border-foreground/5 hover:border-foreground/10 transition-colors duration-300 overflow-hidden group cursor-pointer">
                   <CardContent className="p-0 relative">
+                    <span
+                      className={cn(
+                        "absolute top-3 left-3 z-20 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider",
+                        isFlavorAvailable(product.slug)
+                          ? "bg-primary/15 text-primary"
+                          : "border border-foreground/15 bg-background/70 text-muted-foreground backdrop-blur-sm"
+                      )}
+                    >
+                      {isFlavorAvailable(product.slug) ? "Launch Flavor" : "Coming Soon"}
+                    </span>
                     <div
                       className={`pointer-events-none absolute inset-0 bg-gradient-to-t ${product.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
                     />

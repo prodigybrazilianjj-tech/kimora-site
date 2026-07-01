@@ -6,6 +6,7 @@ import { Benefits } from "@/components/sections/Benefits";
 import { Formula } from "@/components/sections/Formula";
 import { Comparison } from "@/components/sections/Comparison";
 import { About } from "@/components/sections/About";
+import { FutureProducts } from "@/components/sections/FutureProducts";
 import { Testimonials } from "@/components/sections/Testimonials";
 import { EmailCapture } from "@/components/sections/EmailCapture";
 import { FAQPreview } from "@/components/sections/FAQPreview";
@@ -61,6 +62,7 @@ export default function Home() {
         <Comparison />
         <Testimonials />
         <About />
+        <FutureProducts />
         <EmailCapture />
         <FAQPreview />
       </main>

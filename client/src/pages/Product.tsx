@@ -16,6 +16,11 @@ import { useCart } from "@/lib/cart";
 import { cn } from "@/lib/utils";
 import { PRELAUNCH_GATE } from "@/lib/prelaunch";
 import { NotifyMe } from "@/components/NotifyMe";
+import {
+  NUTRITION_PER_STICK,
+  NUTRITION_SERVING_NOTE,
+  isFlavorAvailable,
+} from "@/lib/product";
 
 const productData: Record<string, any> = {
   "strawberry-guava": {
@@ -53,6 +58,11 @@ export default function Product() {
   const flavor = searchParams.get("flavor") || "strawberry-guava";
 
   const product = productData[flavor] || productData["strawberry-guava"];
+
+  // Strawberry Guava is the launch flavor; the others are "coming soon" until
+  // their drop. Sourced from lib/product so every surface stays in sync.
+  const available = isFlavorAvailable(flavor);
+  const canBuy = !PRELAUNCH_GATE && available;
 
   const [purchaseType, setPurchaseType] = useState<"onetime" | "subscribe">(
     "subscribe"
@@ -162,6 +172,17 @@ export default function Product() {
 
           {/* Right Column: Details & Purchase */}
           <div className="flex flex-col">
+            <div className="mb-4">
+              {available ? (
+                <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-3 py-1 text-xs font-bold uppercase tracking-wider">
+                  Launch Flavor
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full border border-foreground/15 bg-foreground/5 text-muted-foreground px-3 py-1 text-xs font-bold uppercase tracking-wider">
+                  Coming Soon
+                </span>
+              )}
+            </div>
             <h1 className="text-5xl md:text-6xl font-display font-bold text-foreground mb-4">
               {product.name}
             </h1>
@@ -171,12 +192,31 @@ export default function Product() {
 
             <div className="mb-8">
               <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4">
-                What's Inside
+                What's in Every Stick
               </h3>
-              <ul className="grid grid-cols-2 gap-y-2 gap-x-4">
+
+              {/* Explicit dosing — no proprietary blends, no guessing. */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {NUTRITION_PER_STICK.map((n) => (
+                  <div
+                    key={n.label}
+                    className="rounded-xl border border-foreground/10 bg-foreground/5 p-4 text-center"
+                  >
+                    <div className={`text-2xl font-bold ${product.color}`}>
+                      {n.amount}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground leading-tight">
+                      {n.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                {NUTRITION_SERVING_NOTE}
+              </p>
+
+              <ul className="mt-6 grid grid-cols-2 gap-y-2 gap-x-4">
                 {[
-                  "5g Creatine Monohydrate",
-                  "Balanced Electrolytes",
                   "Zero Sugar",
                   "Naturally Sweetened",
                   "Micronized for Solubility",
@@ -285,19 +325,22 @@ export default function Product() {
             </div>
 
             {/* Quantity & CTA */}
-            {PRELAUNCH_GATE ? (
+            {!canBuy ? (
               <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-5">
                 <div className="mb-2 flex items-center gap-3">
                   <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
                     Coming Soon
                   </span>
                   <span className="text-sm font-semibold text-foreground">
-                    {product.name} launches soon.
+                    {available
+                      ? `${product.name} launches soon.`
+                      : `${product.name} is coming after our Strawberry Guava launch.`}
                   </span>
                 </div>
                 <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                  Drop your email and we'll let you know the moment it's available
-                  — plus 15% off your first order.
+                  {available
+                    ? "Drop your email and we'll let you know the moment it's available — plus 15% off your first order."
+                    : "Strawberry Guava is our launch flavor and ships first. Drop your email and we'll tell you the moment this flavor drops — plus 15% off your first order."}
                 </p>
                 <NotifyMe buttonLabel="Notify Me" />
               </div>

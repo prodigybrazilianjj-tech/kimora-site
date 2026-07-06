@@ -1,67 +1,180 @@
-import { motion } from "framer-motion";
+import { useRef, type MouseEvent } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 
+/**
+ * Hero — "dynamic refresh" build (approved mockup 2026-07-05):
+ * - Kinetic word-by-word headline reveal (Gabarito 900)
+ * - Real product hero photo (mat-side still life) as a floating editorial card
+ *   with subtle mouse-parallax tilt on desktop
+ * - Abner's octopus-vs-bear illustration ghosted full-bleed behind the section
+ * - Pulsing eyebrow pill + dual CTA
+ */
+
+const HEADLINE_WORDS = ["Train", "With", "Purpose."];
+
 export function Hero() {
-  const scrollToShop = () => {
+  const prefersReducedMotion = useReducedMotion();
+  const cardRef = useRef<HTMLImageElement | null>(null);
+  const sectionRef = useRef<HTMLElement | null>(null);
+
+  const goToShop = () => {
     window.location.href = "/shop";
   };
 
+  const goToFormula = () => {
+    const el = document.querySelector("#formula");
+    if (el instanceof HTMLElement) el.scrollIntoView({ behavior: "smooth" });
+  };
+
+  function handleMouseMove(e: MouseEvent) {
+    if (prefersReducedMotion) return;
+    const section = sectionRef.current;
+    const card = cardRef.current;
+    if (!section || !card) return;
+    const r = section.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    card.style.transform = `rotateY(${x * 7}deg) rotateX(${-y * 5}deg)`;
+  }
+
+  function handleMouseLeave() {
+    const card = cardRef.current;
+    if (card) card.style.transform = "";
+  }
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-      {/* Background Elements */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background z-0" />
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 z-0 mix-blend-overlay" />
-      
-      <div className="container relative z-10 px-4 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="space-y-6"
-        >
-          <div className="inline-block border border-foreground/10 rounded-full px-4 py-1.5 bg-foreground/5 backdrop-blur-sm mb-4">
+    <section
+      ref={sectionRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="relative min-h-screen flex items-center overflow-hidden pt-24 pb-16"
+    >
+      {/* Abner's octopus-vs-bear, full-bleed ghost watermark */}
+      <img
+        src="/assets/products/transparentlogo.png"
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 m-auto w-[min(88vw,1000px)] max-h-[72%] object-contain opacity-[0.06] brightness-0 pointer-events-none select-none"
+      />
+
+      {/* Warm brass glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(1100px_560px_at_72%_38%,hsl(var(--primary)/0.16),transparent_62%)] pointer-events-none" />
+
+      <div className="container relative z-10 px-4 md:px-6 mx-auto grid md:grid-cols-2 items-center gap-10 md:gap-8">
+        {/* Copy column */}
+        <div className="text-center md:text-left">
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="inline-flex items-center gap-2.5 border border-foreground/10 rounded-full px-4 py-1.5 bg-foreground/5 backdrop-blur-sm mb-6"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
             <span className="text-xs font-medium tracking-[0.2em] text-primary uppercase">
               Creatine · Electrolytes · Daily
             </span>
-          </div>
+          </motion.div>
 
-          <h1 className="font-wordmark text-7xl md:text-9xl font-bold tracking-[0.04em] text-foreground leading-[0.9]">
-            KIM<span className="text-accent">O</span>RA
+          <h1 className="font-display font-black uppercase leading-[0.94] text-[clamp(3rem,7vw,6.5rem)] tracking-wide text-foreground">
+            {HEADLINE_WORDS.map((word, i) => (
+              <span key={word} className="inline-block overflow-hidden align-top">
+                <motion.span
+                  className={`inline-block ${
+                    i === HEADLINE_WORDS.length - 1 ? "text-accent" : ""
+                  }`}
+                  initial={prefersReducedMotion ? false : { y: "110%" }}
+                  animate={{ y: 0 }}
+                  transition={{
+                    duration: 0.9,
+                    delay: i * 0.12,
+                    ease: [0.2, 0.7, 0.2, 1],
+                  }}
+                >
+                  {word}
+                  {i < HEADLINE_WORDS.length - 1 ? " " : ""}
+                </motion.span>
+              </span>
+            ))}
           </h1>
 
-          <p className="text-xl md:text-3xl font-light tracking-widest text-foreground/80 uppercase">
-            Grow Stronger. Think Sharper.
-          </p>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.35 }}
+            className="mt-6 text-base md:text-lg leading-relaxed text-muted-foreground max-w-md mx-auto md:mx-0"
+          >
+            5g creatine + full electrolytes in one single-serve stick. Built for
+            the mats — BJJ, MMA, and the lifters who back it up.
+          </motion.p>
 
-          <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase pt-4">
-            Built for BJJ · MMA · Muay Thai · Lifters
-          </p>
-
-          {/* Mobile-only floating stick — no background, gently floats.
-              Desktop keeps the clean typographic hero. */}
-          <motion.img
-            src="/assets/products/strawberry-guava/stick_render.png"
-            alt="Kimora single-serve creatine + electrolyte stick"
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 5, ease: "easeInOut", repeat: Infinity }}
-            className="md:hidden mx-auto w-full max-w-[440px] h-auto object-contain"
-          />
-
-          <div className="pt-8">
-            <Button 
-              size="lg" 
-              onClick={scrollToShop}
-              className="h-14 px-8 bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(168,72,31,0.35)] hover:shadow-[0_0_30px_rgba(168,72,31,0.55)] transition-all duration-300"
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.5 }}
+            className="mt-8 flex flex-wrap justify-center md:justify-start items-center gap-4"
+          >
+            <Button
+              size="lg"
+              onClick={goToShop}
+              className="h-14 px-8 bg-primary hover:bg-primary/90 text-primary-foreground text-base font-bold uppercase tracking-wider shadow-[0_8px_24px_hsl(var(--primary)/0.35)] hover:shadow-[0_14px_32px_hsl(var(--primary)/0.45)] hover:-translate-y-0.5 transition-all duration-300"
             >
-              Shop Now <ChevronRight className="ml-2 h-5 w-5" />
+              Shop Strawberry Guava <ChevronRight className="ml-2 h-5 w-5" />
             </Button>
-          </div>
-        </motion.div>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={goToFormula}
+              className="h-14 px-8 border-accent text-foreground hover:bg-accent/10 text-base font-bold uppercase tracking-wider"
+            >
+              See the Formula
+            </Button>
+          </motion.div>
+        </div>
+
+        {/* Visual column — real mat-side product photo as floating editorial card.
+            NOTE: float (outer motion.div) and mouse tilt (inner img) live on
+            separate elements — putting both on one element makes the two
+            transform writers fight and flicker. */}
+        <div className="relative [perspective:1000px]">
+          <motion.div
+            initial={{ opacity: 0, y: 26 }}
+            animate={
+              prefersReducedMotion
+                ? { opacity: 1, y: 0 }
+                : { opacity: 1, y: [0, -12, 0] }
+            }
+            transition={
+              prefersReducedMotion
+                ? { duration: 0.8 }
+                : {
+                    opacity: { duration: 0.8, delay: 0.25 },
+                    y: {
+                      duration: 7,
+                      ease: "easeInOut",
+                      repeat: Infinity,
+                      delay: 0.8,
+                    },
+                  }
+            }
+            className="w-full max-w-[520px] mx-auto"
+          >
+            <img
+              ref={cardRef}
+              src="/assets/products/hero_matside_v1.png"
+              alt="Kimora Strawberry Guava — pouch, single-serve sticks and shaker at the edge of the mats"
+              className="w-full rounded-3xl shadow-[0_36px_70px_rgba(28,19,11,0.32),0_0_0_1px_hsl(var(--foreground)/0.08)] transition-transform duration-200 ease-out will-change-transform"
+            />
+          </motion.div>
+        </div>
       </div>
 
-      {/* Faint Vignette */}
-      <div className="absolute inset-0 bg-background/30 pointer-events-none z-0 bg-[radial-gradient(circle_at_center,transparent_0%,var(--background)_100%)]" />
+      {/* Scroll cue */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-muted-foreground pointer-events-none">
+        <span className="text-[10px] tracking-[0.3em] uppercase">Scroll</span>
+        <span className="w-px h-9 bg-gradient-to-b from-primary to-transparent" />
+      </div>
     </section>
   );
 }

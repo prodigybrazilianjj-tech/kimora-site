@@ -1,15 +1,21 @@
 import { useEffect } from "react";
 import { Navbar } from "@/components/sections/Navbar";
 import { Hero } from "@/components/sections/Hero";
+import { Marquee } from "@/components/sections/Marquee";
 import { ProductLineup } from "@/components/sections/ProductLineup";
+import { StatsBand } from "@/components/sections/StatsBand";
 import { Benefits } from "@/components/sections/Benefits";
 import { Formula } from "@/components/sections/Formula";
+import { CinematicBand } from "@/components/sections/CinematicBand";
+import { Ritual } from "@/components/sections/Ritual";
 import { Comparison } from "@/components/sections/Comparison";
+import { SavingsSlider } from "@/components/sections/SavingsSlider";
 import { About } from "@/components/sections/About";
 import { FutureProducts } from "@/components/sections/FutureProducts";
 import { Testimonials } from "@/components/sections/Testimonials";
 import { EmailCapture } from "@/components/sections/EmailCapture";
 import { FAQPreview } from "@/components/sections/FAQPreview";
+import { StickyNotifyBar } from "@/components/sections/StickyNotifyBar";
 import { Footer } from "@/components/sections/Footer";
 
 function getNavHeight() {
@@ -56,16 +62,22 @@ export default function Home() {
       <Navbar />
       <main>
         <Hero />
+        <Marquee />
         <ProductLineup />
+        <StatsBand />
         <Benefits />
         <Formula />
+        <CinematicBand />
+        <Ritual />
         <Comparison />
+        <SavingsSlider />
         <Testimonials />
         <About />
         <FutureProducts />
         <EmailCapture />
         <FAQPreview />
       </main>
+      <StickyNotifyBar />
       <Footer />
     </div>
   );

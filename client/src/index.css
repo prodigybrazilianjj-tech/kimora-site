@@ -76,6 +76,21 @@ h1, h2, h3, h4, h5, h6 {
   @apply font-display tracking-wide;
 }
 
+/* Marquee strip (Marquee.tsx) */
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@utility animate-marquee {
+  animation: marquee 26s linear infinite;
+}
+
+/* Testimonial lane (Testimonials.tsx) */
+@utility animate-marquee-slow {
+  animation: marquee 40s linear infinite;
+}
+
 /* Custom scrollbar for that premium feel */
 ::-webkit-scrollbar {
   width: 8px;

@@ -36,8 +36,8 @@ const products = [
     image: "/assets/products/raspberry-dragonfruit/pouch_sticks_v8.webp",
     priceOneTime: 49.99,
     priceSub: 39.99,
-    accent: "from-rose-600/25 to-transparent",
-    bgAccent: "from-rose-500/20",
+    accent: "from-red-600/25 to-transparent",
+    bgAccent: "from-red-500/20",
   },
 ];
 

@@ -26,8 +26,8 @@ const productData: Record<string, any> = {
   "strawberry-guava": {
     name: "Strawberry Guava",
     desc: "Tart, tropical, and refreshingly smooth. A perfect balance of island sweetness and punchy tartness.",
-    // ✅ matches the pouch (warm orange / terracotta)
-    color: "text-orange-400",
+    // Darker terracotta — orange-400 was too bright/light on cream (Alex 7/6)
+    color: "text-orange-700",
     gradient: "from-orange-500/20",
     pouch: "/assets/products/strawberry-guava/pouch_sticks_v1.webp",
     stick: "/assets/products/strawberry-guava/stick_render.png",
@@ -35,8 +35,8 @@ const productData: Record<string, any> = {
   "lemon-lychee": {
     name: "Lemon Lychee",
     desc: "Bright lemon balanced by sweet, floral lychee. Light, juicy, and endlessly refreshing over ice.",
-    // ✅ already correct
-    color: "text-yellow-400",
+    // Darker gold — yellow-400 was too light/washed on cream (Alex 7/6)
+    color: "text-yellow-600",
     gradient: "from-yellow-500/20",
     pouch: "/assets/products/lemon-lychee/pouch_sticks_v6.webp",
     stick: "/assets/products/lemon-lychee/stick_render.png",
@@ -44,9 +44,9 @@ const productData: Record<string, any> = {
   "raspberry-dragonfruit": {
     name: "Raspberry Dragonfruit",
     desc: "Bold, juicy, and perfectly balanced. Deep berry notes with a smooth, exotic finish.",
-    // ✅ matches the pouch (raspberry/red)
-    color: "text-rose-400",
-    gradient: "from-pink-500/20",
+    // Bright true red — rose-400 read pink on cream (Alex 7/6)
+    color: "text-red-600",
+    gradient: "from-red-500/20",
     pouch: "/assets/products/raspberry-dragonfruit/pouch_sticks_v8.webp",
     stick: "/assets/products/raspberry-dragonfruit/stick_render.png",
   },

@@ -81,8 +81,8 @@ bullets([
 # Specs
 doc.add_heading("4.  Specifications (approximate — please confirm / optimize)",level=1)
 kv([
- ("Module A footprint","~8 in W × ~6 in H (tray) with header rising to ~11 in overall · ~4–5 in D"),
- ("Header panel","~8 in W × ~4.5 in H, full-color"),
+ ("Module A footprint","~10 in W × ~6 in H (tray) with header rising to ~9 in overall · ~4–5 in D"),
+ ("Header panel","~10 in W × ~3 in H (≈3.3:1 wide banner, measured from render) · cream left / charcoal price panel right · full-color"),
  ("Stick facings / capacity","6 facings, face-out; ~24–36 sticks total (multiple deep per channel)"),
  ("Single stick size","~120 × 30 × 10 mm (≈4.7 × 1.2 × 0.4 in) — flat stick packet, not a bottle"),
  ("Module B (cash box)","~5 in W × ~6 in H × ~5 in D · coin/bill slot + keyed cam lock + 2 keys"),

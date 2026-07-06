@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
 import { PRELAUNCH_GATE } from "@/lib/prelaunch";
+import { OMark } from "@/components/OMark";
 
 /**
  * 🔒 PRELAUNCH GATE
@@ -190,7 +191,7 @@ export function Navbar() {
           }}
           className="font-wordmark text-3xl font-bold tracking-[0.14em] text-foreground hover:text-foreground transition-colors"
         >
-          KIM<span className="text-accent">O</span>RA
+          KIM<OMark />RA
         </Link>
 
         {/* Desktop Nav */}

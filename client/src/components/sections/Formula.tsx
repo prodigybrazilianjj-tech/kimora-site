@@ -83,9 +83,9 @@ export function Formula() {
                   </span>
                 </li>
                 <li className="flex justify-between items-baseline border-b border-foreground/5 pb-2">
-                  <span className="text-foreground font-medium">Rice Hull Flow Agent</span>
+                  <span className="text-foreground font-medium">0g Sugar</span>
                   <span className="text-sm text-muted-foreground">
-                    No Silicon Dioxide
+                    Sweet Without It
                   </span>
                 </li>
               </ul>

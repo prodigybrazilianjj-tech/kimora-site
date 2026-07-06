@@ -40,7 +40,10 @@ export function EmailCapture() {
   }
 
   return (
-    <section className="py-24 bg-background border-t border-foreground/5">
+    <section
+      id="email-capture"
+      className="py-24 bg-background border-t border-foreground/5 scroll-mt-[92px]"
+    >
       <div className="container px-4 mx-auto max-w-2xl text-center">
         <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary mb-5">
           Limited launch offer

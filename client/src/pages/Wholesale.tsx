@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
 import { Button } from "@/components/ui/button";
+import { WholesaleCalculator } from "@/components/WholesaleCalculator";
 
 export default function Wholesale() {
   return (
@@ -79,6 +80,9 @@ export default function Wholesale() {
               </p>
             </div>
           </div>
+
+          {/* Gated margin calculator — no wholesale numbers in client code */}
+          <WholesaleCalculator />
 
           {/* Program Overview */}
           <div className="rounded-2xl border border-foreground/10 bg-muted p-8 mb-10">

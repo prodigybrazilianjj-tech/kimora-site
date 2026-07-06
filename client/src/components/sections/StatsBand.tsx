@@ -1,0 +1,72 @@
+import { useEffect, useRef, useState } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+
+/**
+ * StatsBand — animated formula counters that tick up on scroll-into-view
+ * (approved mockup 2026-07-05). Values mirror FORMULA_VALUES_LOCKED_2026-06-17.
+ */
+
+const STATS = [
+  { value: 5, suffix: "g", label: "Creatine" },
+  { value: 750, suffix: "mg", label: "Sodium" },
+  { value: 250, suffix: "mg", label: "Potassium" },
+  { value: 60, suffix: "mg", label: "Magnesium" },
+  { value: 0, suffix: "g", label: "Sugar" },
+];
+
+function Counter({ target }: { target: number }) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const inView = useInView(ref, { once: true, amount: 0.6 });
+  const prefersReducedMotion = useReducedMotion();
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    if (prefersReducedMotion || target === 0) {
+      setValue(target);
+      return;
+    }
+    const start = performance.now();
+    let raf: number;
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / 1200, 1);
+      setValue(Math.round(target * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [inView, target, prefersReducedMotion]);
+
+  return <span ref={ref}>{value}</span>;
+}
+
+export function StatsBand() {
+  return (
+    <section className="bg-secondary border-y border-border py-14 md:py-16">
+      <div className="container px-4 mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-4 text-center">
+          {STATS.map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ delay: i * 0.08, duration: 0.6 }}
+              className={i === 4 ? "col-span-2 md:col-span-1" : ""}
+            >
+              <div className="font-display font-black text-4xl md:text-5xl text-foreground">
+                <Counter target={stat.value} />
+                <span className="text-accent text-[0.55em] align-baseline ml-0.5">
+                  {stat.suffix}
+                </span>
+              </div>
+              <div className="mt-1.5 text-[10px] md:text-[11px] font-semibold tracking-[0.22em] uppercase text-muted-foreground">
+                {stat.label}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

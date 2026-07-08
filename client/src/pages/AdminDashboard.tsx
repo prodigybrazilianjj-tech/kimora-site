@@ -394,6 +394,8 @@ export default function AdminDashboard() {
   const [inventoryAdjustReservedDelta, setInventoryAdjustReservedDelta] = useState("0");
   const [inventoryAdjustReorderPoint, setInventoryAdjustReorderPoint] = useState("");
   const [inventoryAdjustNote, setInventoryAdjustNote] = useState("");
+  const [inPersonQty, setInPersonQty] = useState("1");
+  const [inPersonLoading, setInPersonLoading] = useState(false);
 
   const [orderQ, setOrderQ] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
@@ -677,6 +679,7 @@ export default function AdminDashboard() {
     setInventoryAdjustReservedDelta("0");
     setInventoryAdjustReorderPoint("");
     setInventoryAdjustNote("");
+    setInPersonQty("1");
 
     try {
       const data = await api<InventoryDetailResponse>(`/api/admin/inventory/${id}`, savedToken);
@@ -703,6 +706,7 @@ export default function AdminDashboard() {
     setInventoryAdjustReservedDelta("0");
     setInventoryAdjustReorderPoint("");
     setInventoryAdjustNote("");
+    setInPersonQty("1");
   }
 
   async function saveInventoryAdjustment() {
@@ -746,6 +750,38 @@ export default function AdminDashboard() {
       toast({ title: "Save failed", description: msg });
     } finally {
       setInventoryAdjustmentLoading(false);
+    }
+  }
+
+  async function recordInPersonSale() {
+    if (!savedToken || !selectedInventoryId || !selectedInventoryRow) return;
+
+    const quantity = Math.max(1, Math.trunc(safeNum(inPersonQty, 1)));
+
+    try {
+      setInPersonLoading(true);
+
+      await api<{ ok: true }>(
+        `/api/admin/inventory/${selectedInventoryId}/in-person-sale`,
+        savedToken,
+        {
+          method: "POST",
+          body: JSON.stringify({ quantity }),
+        }
+      );
+
+      toast({
+        title: "Sale recorded",
+        description: `${quantity} pouch${quantity === 1 ? "" : "es"} sold in person.`,
+      });
+
+      await loadInventory();
+      await openInventory(selectedInventoryId);
+    } catch (e: any) {
+      const msg = String(e?.message || "Failed to record in-person sale.");
+      toast({ title: "Sale failed", description: msg });
+    } finally {
+      setInPersonLoading(false);
     }
   }
 
@@ -2603,6 +2639,46 @@ export default function AdminDashboard() {
                             <div className="text-xs text-muted-foreground mt-1">
                               Critical ≤ {selectedInventoryRow.reorderPoint} • Low ≤{" "}
                               {inventoryLowThreshold(selectedInventoryRow)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-md border border-border p-4">
+                          <div className="font-semibold">Record in-person sale</div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            Homie / mat-side sale. Draws down on-hand for this flavor and logs an
+                            in-person sale. Collect the money separately via Stripe Tap to Pay and
+                            tag that charge{" "}
+                            <span className="font-mono">kimora_channel=in-person</span> for
+                            QuickBooks.
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap items-end gap-3">
+                            <div className="w-28">
+                              <div className="text-xs text-muted-foreground mb-1">Quantity</div>
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={inPersonQty}
+                                onChange={(e) => setInPersonQty(e.target.value)}
+                                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                              />
+                            </div>
+
+                            <Button
+                              type="button"
+                              className="h-10"
+                              onClick={recordInPersonSale}
+                              disabled={
+                                inPersonLoading || inventoryAvailable(selectedInventoryRow) <= 0
+                              }
+                            >
+                              {inPersonLoading ? "Recording…" : "Record sale (−stock)"}
+                            </Button>
+
+                            <div className="text-xs text-muted-foreground">
+                              {inventoryAvailable(selectedInventoryRow)} available
                             </div>
                           </div>
                         </div>

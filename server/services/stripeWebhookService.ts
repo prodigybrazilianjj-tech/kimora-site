@@ -341,6 +341,49 @@ export async function processStripeWebhook(rawBody: Buffer, signature: string) {
       };
     }
 
+    case "charge.succeeded": {
+      // Auto-tag in-person (Tap to Pay) sales for QuickBooks.
+      //
+      // Card-present is our ONLY in-person channel — every DTC, subscription,
+      // and wholesale charge is card-not-present — so any card_present charge is
+      // a homie / mat-side sale. The Stripe mobile app only exposes a free-text
+      // description (no metadata), so we stamp kimora_channel=in-person here on
+      // both the charge and its PaymentIntent so the Stripe→QBO connector books
+      // it to the in-person income channel like retail/subscription/wholesale.
+      const charge = event.data.object as any;
+      try {
+        const pmType = String(charge?.payment_method_details?.type || "");
+        const already = String(charge?.metadata?.kimora_channel || "");
+
+        if (pmType === "card_present" && already !== "in-person") {
+          await stripe.charges.update(charge.id, {
+            metadata: { ...(charge.metadata || {}), kimora_channel: "in-person" },
+          });
+
+          const piId =
+            typeof charge.payment_intent === "string" ? charge.payment_intent : null;
+          if (piId) {
+            try {
+              await stripe.paymentIntents.update(piId, {
+                metadata: { kimora_channel: "in-person" },
+              });
+            } catch (piErr) {
+              console.warn("[webhook] in-person PI tag failed:", safeErrSummary(piErr));
+            }
+          }
+        }
+      } catch (tagErr: any) {
+        console.warn("[webhook] in-person charge tag failed:", safeErrSummary(tagErr));
+      }
+
+      return {
+        received: true as const,
+        eventId: event.id,
+        eventType: event.type,
+        handled: "charge.succeeded" as const,
+      };
+    }
+
     case "invoice.paid": {
       const invoice = event.data.object as any;
 

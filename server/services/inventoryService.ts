@@ -776,3 +776,113 @@ export async function adjustAdminInventoryHandler(req: Request, res: Response) {
     return res.status(500).json({ ok: false, message: "Failed to adjust inventory." });
   }
 }
+
+// ── In-person (point-of-sale) sale ──────────────────────────────────────────
+// Homie / mat-side sale: the money is collected out-of-band via Stripe Tap to
+// Pay (tag that charge kimora_channel=in-person for QuickBooks). This endpoint
+// only moves inventory: it draws down on-hand for the flavor and logs an
+// `in_person_sale` transaction. No reservation is involved (point of sale), and
+// the atomic guard sells only from AVAILABLE (unreserved) stock so units already
+// reserved for paid online/wholesale orders are never oversold.
+export async function recordInPersonSaleHandler(req: Request, res: Response) {
+  const denied = requireAdmin(req, res);
+  if (denied) return;
+
+  try {
+    const id = String(req.params.id || "").trim();
+    if (!id) return res.status(400).json({ ok: false, message: "Missing id." });
+
+    const quantity = parseInteger(req.body?.quantity) ?? 1;
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return res
+        .status(400)
+        .json({ ok: false, message: "Quantity must be a positive whole number." });
+    }
+
+    const note = safeString(req.body?.note, 5000) || null;
+
+    const existingRows = await db
+      .select({
+        id: inventoryItems.id,
+        flavor: inventoryItems.flavor,
+        onHandQuantity: inventoryItems.onHandQuantity,
+        reservedQuantity: inventoryItems.reservedQuantity,
+      })
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, id))
+      .limit(1);
+
+    const existing = existingRows?.[0];
+    if (!existing) {
+      return res.status(404).json({ ok: false, message: "Inventory item not found." });
+    }
+
+    const currentOnHand = Number(existing.onHandQuantity ?? 0) || 0;
+    const currentReserved = Number(existing.reservedQuantity ?? 0) || 0;
+    const available = Math.max(0, currentOnHand - currentReserved);
+
+    if (available < quantity) {
+      return res.status(400).json({
+        ok: false,
+        message: `Not enough available stock. Available: ${available}, requested: ${quantity}.`,
+      });
+    }
+
+    const updatedRows = await db
+      .update(inventoryItems)
+      .set({
+        onHandQuantity: sql`${inventoryItems.onHandQuantity} - ${quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(inventoryItems.id, id),
+          gte(sql`${inventoryItems.onHandQuantity} - ${inventoryItems.reservedQuantity}`, quantity)
+        )!
+      )
+      .returning({
+        id: inventoryItems.id,
+        sku: inventoryItems.sku,
+        flavor: inventoryItems.flavor,
+        productName: inventoryItems.productName,
+        isActive: inventoryItems.isActive,
+        onHandQuantity: inventoryItems.onHandQuantity,
+        reservedQuantity: inventoryItems.reservedQuantity,
+        reorderPoint: inventoryItems.reorderPoint,
+        createdAt: inventoryItems.createdAt,
+        updatedAt: inventoryItems.updatedAt,
+      });
+
+    const updated = updatedRows?.[0];
+    if (!updated) {
+      // Lost a race against a concurrent reserve/sale — available dropped below qty.
+      return res.status(409).json({
+        ok: false,
+        message: "Stock changed before the sale could be recorded. Reload and try again.",
+      });
+    }
+
+    await db.insert(inventoryTransactions).values({
+      inventoryItemId: id,
+      orderId: null,
+      orderItemId: null,
+      transactionType: "in_person_sale",
+      quantityDelta: -quantity,
+      reservedDelta: 0,
+      note: note || `In-person sale: ${quantity} × ${existing.flavor} (collected via Tap to Pay)`,
+      metadata: {
+        source: "in_person_pos",
+        reason: "in_person_sale",
+        actor: "admin",
+        quantityFrom: currentOnHand,
+        quantityTo: currentOnHand - quantity,
+      },
+    });
+
+    return res.json({ ok: true, item: updated });
+  } catch (err: any) {
+    const s = safeErrSummary(err);
+    console.error("POST /api/admin/inventory/:id/in-person-sale error:", s);
+    return res.status(500).json({ ok: false, message: "Failed to record in-person sale." });
+  }
+}

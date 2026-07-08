@@ -10,6 +10,7 @@ import {
   getAdminInventoryHandler,
   getAdminInventoryItemHandler,
   adjustAdminInventoryHandler,
+  recordInPersonSaleHandler,
 } from "../services/inventoryService";
 
 import {
@@ -215,6 +216,7 @@ export function registerAdminRoutes(app: Express) {
   app.get("/api/admin/inventory", getAdminInventoryHandler);
   app.get("/api/admin/inventory/:id", getAdminInventoryItemHandler);
   app.post("/api/admin/inventory/:id/adjust", adjustAdminInventoryHandler);
+  app.post("/api/admin/inventory/:id/in-person-sale", recordInPersonSaleHandler);
 
   /*
   SUMMARY

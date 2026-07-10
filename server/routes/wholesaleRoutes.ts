@@ -6,6 +6,7 @@ import { Resend } from "resend";
 import { db } from "../db";
 import { wholesaleApplications, wholesaleOrders } from "../../shared/schema";
 import { stripe } from "../stripe";
+import { safeTokenEqual } from "../security";
 import {
   generateReorderToken,
   validateReorderToken,
@@ -121,7 +122,7 @@ function requireAdmin(req: any, res: any) {
   }
 
   const got = adminTokenFromReq(req);
-  if (!got || got !== expected) {
+  if (!safeTokenEqual(got, expected)) {
     return res.status(401).json({ ok: false, message: "Unauthorized" });
   }
 
@@ -145,8 +146,7 @@ function requireCertAccess(req: any, res: any) {
 
   const got = adminTokenFromReq(req);
   const ok =
-    !!got &&
-    ((adminToken && got === adminToken) || (certPassword && got === certPassword));
+    safeTokenEqual(got, adminToken) || safeTokenEqual(got, certPassword);
   if (!ok) {
     return res.status(401).json({ ok: false, message: "Unauthorized" });
   }

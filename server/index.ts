@@ -9,6 +9,10 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 
 const app = express();
+
+// Don't advertise the framework/version (minor info-disclosure hardening).
+app.disable("x-powered-by");
+
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -30,6 +34,51 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+/**
+ * Security headers.
+ *
+ * Applied to every response (API, static files, and the SPA) since this runs
+ * before route/static registration. These are the low-risk, always-safe headers.
+ *
+ * The Content-Security-Policy is intentionally shipped in REPORT-ONLY mode: it
+ * does not block anything yet, it only logs violations to the browser console.
+ * This lets us confirm the allow-list below covers everything the site actually
+ * loads (Google Fonts, GTM/GA, TikTok pixel, Facebook pixel, Stripe checkout)
+ * before promoting it to an enforcing `Content-Security-Policy` header.
+ */
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  // GTM/GA + TikTok + Facebook pixels. 'unsafe-inline' kept for now because GTM
+  // injects inline snippets; tighten to nonces when we enforce.
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://analytics.tiktok.com https://connect.facebook.net",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  // Pixels and product imagery; https: kept broad for analytics beacons.
+  "img-src 'self' data: https:",
+  "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://analytics.tiktok.com https://connect.facebook.net https://www.facebook.com",
+  // Stripe checkout is a full-page redirect, so form-action allows it.
+  "form-action 'self' https://checkout.stripe.com",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "object-src 'none'",
+].join("; ");
+
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains",
+  );
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+  );
+  res.setHeader("Content-Security-Policy-Report-Only", CSP_REPORT_ONLY);
+  next();
+});
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

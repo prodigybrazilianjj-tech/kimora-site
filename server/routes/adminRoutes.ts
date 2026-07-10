@@ -4,6 +4,7 @@ import { eq, desc, inArray, sql } from "drizzle-orm";
 
 import { db } from "../db";
 import { orders, orderItems, waitlistEmails } from "../../shared/schema";
+import { safeTokenEqual } from "../security";
 
 import {
   reconcileInventoryReservationForOrderItem,
@@ -82,7 +83,7 @@ function requireAdmin(req: any, res: any) {
 
   const got = adminTokenFromReq(req);
 
-  if (!got || got !== expected) {
+  if (!safeTokenEqual(got, expected)) {
     return res.status(401).json({ ok: false, message: "Unauthorized" });
   }
 

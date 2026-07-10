@@ -9,6 +9,7 @@ import {
   inventoryTransactions,
   restockAlerts,
 } from "../../shared/schema";
+import { safeTokenEqual } from "../security";
 
 const resendApiKey = String(process.env.RESEND_API_KEY || "").trim();
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -56,7 +57,7 @@ function requireAdmin(req: Request, res: Response) {
   }
 
   const got = adminTokenFromReq(req);
-  if (!got || got !== expected) {
+  if (!safeTokenEqual(got, expected)) {
     return res.status(401).json({ ok: false, message: "Unauthorized" });
   }
 

@@ -191,7 +191,7 @@ export function Navbar() {
           }}
           className="font-wordmark text-3xl font-bold tracking-[0.14em] text-foreground hover:text-foreground transition-colors"
         >
-          KIM<OMark />RA
+          KIM<OMark className="bg-foreground" />RA
         </Link>
 
         {/* Desktop Nav */}

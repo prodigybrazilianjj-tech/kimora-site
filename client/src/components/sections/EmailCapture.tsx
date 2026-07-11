@@ -81,7 +81,7 @@ export function EmailCapture() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={state === "loading"}
-              className="h-20 sm:h-14 w-full flex-1 bg-card border border-foreground/10 text-foreground placeholder:text-muted-foreground rounded-xl px-4 text-base focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition disabled:opacity-50"
+              className="h-20 sm:h-14 w-full sm:flex-1 bg-card border border-foreground/10 text-foreground placeholder:text-muted-foreground rounded-xl px-4 text-base focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition disabled:opacity-50"
             />
             <button
               type="submit"

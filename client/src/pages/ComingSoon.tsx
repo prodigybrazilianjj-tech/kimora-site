@@ -302,7 +302,7 @@ export default function ComingSoon() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         disabled={submitting}
-                        className="h-16 flex-1 rounded-2xl border border-border bg-muted px-5 text-base text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none disabled:opacity-60 transition-colors duration-200"
+                        className="h-16 w-full sm:flex-1 rounded-2xl border border-border bg-muted px-5 text-base text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none disabled:opacity-60 transition-colors duration-200"
                       />
 
                       <motion.button

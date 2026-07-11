@@ -70,7 +70,7 @@ export function NotifyMe({
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         disabled={state === "loading"}
-        className="h-14 w-full flex-1 rounded-xl border border-foreground/10 bg-card px-4 text-base text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition disabled:opacity-50"
+        className="h-14 w-full sm:flex-1 rounded-xl border border-foreground/10 bg-card px-4 text-base text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition disabled:opacity-50"
       />
       <button
         type="submit"

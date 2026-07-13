@@ -3,6 +3,7 @@ import { db } from "../db";
 import { waitlistEmails } from "../../shared/schema";
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
+import { publicEmailLimiter } from "../rateLimit";
 
 function normalizeEmail(email: string) {
   return String(email || "").trim().toLowerCase();
@@ -13,7 +14,9 @@ function isValidEmail(email: string) {
 }
 
 export function registerWaitlistRoutes(app: Express) {
-  app.post("/api/waitlist", async (req, res) => {
+  // Rate limited: this endpoint triggers an outbound Resend email on every new
+  // address, so it's an email-bombing / signup-flood vector without a brake.
+  app.post("/api/waitlist", publicEmailLimiter, async (req, res) => {
     try {
       const emailRaw = normalizeEmail(req.body?.email);
 

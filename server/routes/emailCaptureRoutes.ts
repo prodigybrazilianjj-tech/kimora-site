@@ -3,6 +3,7 @@ import type { Express } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { waitlistEmails } from "../../shared/schema";
+import { publicEmailLimiter } from "../rateLimit";
 
 function normalizeEmail(email: string) {
   return String(email || "").trim().toLowerCase();
@@ -13,7 +14,8 @@ function isValidEmail(email: string) {
 }
 
 export function registerEmailCaptureRoutes(app: Express) {
-  app.post("/api/email-capture", async (req, res) => {
+  // Rate limited — same email-flood reasoning as /api/waitlist.
+  app.post("/api/email-capture", publicEmailLimiter, async (req, res) => {
     try {
       const emailRaw = normalizeEmail(req.body?.email);
 

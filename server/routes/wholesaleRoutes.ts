@@ -6,7 +6,14 @@ import { Resend } from "resend";
 import { db } from "../db";
 import { wholesaleApplications, wholesaleOrders } from "../../shared/schema";
 import { stripe } from "../stripe";
-import { safeTokenEqual } from "../security";
+import {
+  adminToken,
+  bearerTokenFromRequest,
+  certToolPassword,
+  matchesAny,
+  wholesaleRepToken,
+} from "../security";
+import { publicEmailLimiter, stripeWriteLimiter } from "../rateLimit";
 import {
   generateReorderToken,
   validateReorderToken,
@@ -99,21 +106,10 @@ function getSiteUrl() {
   );
 }
 
-function adminTokenFromReq(req: any) {
-  const header =
-    String(req.headers["x-admin-token"] ?? "").trim() ||
-    String(req.headers["authorization"] ?? "").trim();
-
-  if (!header) return "";
-
-  if (header.toLowerCase().startsWith("bearer ")) {
-    return header.slice(7).trim();
-  }
-  return header;
-}
+const adminTokenFromReq = bearerTokenFromRequest;
 
 function requireAdmin(req: any, res: any) {
-  const expected = String(process.env.ADMIN_DASHBOARD_TOKEN ?? "").trim();
+  const expected = adminToken();
   if (!expected) {
     return res.status(500).json({
       ok: false,
@@ -121,8 +117,39 @@ function requireAdmin(req: any, res: any) {
     });
   }
 
-  const got = adminTokenFromReq(req);
-  if (!safeTokenEqual(got, expected)) {
+  if (!matchesAny(adminTokenFromReq(req), expected)) {
+    return res.status(401).json({ ok: false, message: "Unauthorized" });
+  }
+
+  return null;
+}
+
+/**
+ * Access gate for the in-person wholesale rep tool (kimora-wholesale.html).
+ *
+ * SECURITY (2026-07-13): /api/wholesale/invoice previously had NO gate at all.
+ * Anyone who knew the path could make our Stripe account create, finalize and
+ * SEND an invoice to any email address, with the unit price and tax rate taken
+ * straight from the request body. That's an unauthenticated write path with
+ * outbound side effects (Stripe objects + email sent under the Kimora brand).
+ *
+ * Accepts the full ADMIN_DASHBOARD_TOKEN or the scoped WHOLESALE_REP_TOKEN, so a
+ * rep working the mat can invoice without holding the token that also unlocks
+ * orders, inventory, waitlist and shipping labels.
+ */
+function requireWholesaleRep(req: any, res: any) {
+  const admin = adminToken();
+  const rep = wholesaleRepToken();
+
+  if (!admin && !rep) {
+    return res.status(500).json({
+      ok: false,
+      message:
+        "No wholesale credential is configured (set WHOLESALE_REP_TOKEN or ADMIN_DASHBOARD_TOKEN).",
+    });
+  }
+
+  if (!matchesAny(adminTokenFromReq(req), admin, rep)) {
     return res.status(401).json({ ok: false, message: "Unauthorized" });
   }
 
@@ -134,20 +161,17 @@ function requireAdmin(req: any, res: any) {
 // is scoped to the cert endpoints below — it does NOT unlock the other admin tools
 // (applications/orders), which stay on requireAdmin.
 function requireCertAccess(req: any, res: any) {
-  const adminToken = String(process.env.ADMIN_DASHBOARD_TOKEN ?? "").trim();
-  const certPassword = String(process.env.CERT_TOOL_PASSWORD ?? "").trim();
+  const admin = adminToken();
+  const certPassword = certToolPassword();
 
-  if (!adminToken && !certPassword) {
+  if (!admin && !certPassword) {
     return res.status(500).json({
       ok: false,
       message: "No cert-tool credential is configured (set CERT_TOOL_PASSWORD or ADMIN_DASHBOARD_TOKEN).",
     });
   }
 
-  const got = adminTokenFromReq(req);
-  const ok =
-    safeTokenEqual(got, adminToken) || safeTokenEqual(got, certPassword);
-  if (!ok) {
+  if (!matchesAny(adminTokenFromReq(req), admin, certPassword)) {
     return res.status(401).json({ ok: false, message: "Unauthorized" });
   }
 
@@ -404,10 +428,21 @@ export function registerWholesaleRoutes(app: Express) {
       if (!file) return res.status(404).json({ ok: false, message: "No file on file for this certificate." });
 
       const buf = Buffer.from(file.fileData, "base64");
-      const mime = file.fileMime || "application/octet-stream";
+
+      // SECURITY (2026-07-13): re-validate the stored MIME against the upload
+      // allow-list on the way OUT, not just on the way in, and never serve it
+      // `inline`. Belt-and-braces: if a stored record ever ends up with an
+      // HTML/SVG mime (bad legacy row, direct DB write), it downloads as an
+      // opaque file instead of executing as a page on our origin.
+      const storedMime = String(file.fileMime || "");
+      const mime = ALLOWED_CERT_FILE_MIMES.has(storedMime)
+        ? storedMime
+        : "application/octet-stream";
+
       const safeName = (file.fileName || "cert").replace(/[^\w.\-]+/g, "_");
       res.setHeader("Content-Type", mime);
-      res.setHeader("Content-Disposition", `inline; filename="${safeName}"`);
+      res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+      res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("Cache-Control", "private, no-store");
       return res.send(buf);
     } catch (err: any) {
@@ -416,7 +451,7 @@ export function registerWholesaleRoutes(app: Express) {
     }
   });
 
-  app.post("/api/wholesale/apply", async (req, res) => {
+  app.post("/api/wholesale/apply", publicEmailLimiter, async (req, res) => {
     try {
       const body: any = req.body ?? {};
 
@@ -661,7 +696,14 @@ export function registerWholesaleRoutes(app: Express) {
   // BEFORE invoicing. Returns only exemption status + minimal descriptors —
   // never license numbers, file bytes, or notes. Reuses the same source-of-truth
   // gate as the invoice route (verified + active + unexpired + covers state).
+  //
+  // SECURITY (2026-07-13): now rep-gated. It was public, which let anyone probe
+  // "does this email have a resale cert on file?" — account enumeration against
+  // our wholesale customer list. Only the rep tool ever calls it.
   app.get("/api/wholesale/cert-status", async (req, res) => {
+    const denied = requireWholesaleRep(req, res);
+    if (denied) return;
+
     try {
       const email = normalizeEmail(String(req.query.email ?? ""));
       const state = safeString(String(req.query.state ?? ""), 8) || undefined;
@@ -684,7 +726,11 @@ export function registerWholesaleRoutes(app: Express) {
   });
 
   // ── Stripe Invoice ────────────────────────────────────────────────────────
-  app.post("/api/wholesale/invoice", async (req, res) => {
+  // Rep-gated + rate limited. See requireWholesaleRep above for why.
+  app.post("/api/wholesale/invoice", stripeWriteLimiter, async (req, res) => {
+    const denied = requireWholesaleRep(req, res);
+    if (denied) return;
+
     try {
       const body: any = req.body ?? {};
 
@@ -898,7 +944,10 @@ export function registerWholesaleRoutes(app: Express) {
   });
 
   // ── Reorder: submit re-order and fire Stripe invoice ─────────────────────
-  app.post("/api/wholesale/reorder", async (req, res) => {
+  // Auth here is the HMAC-signed reorder token in the body (validateReorderToken),
+  // not a rep credential — this is the gym's own self-serve magic link. Rate
+  // limited so a leaked/replayed link can't be used to blast invoices.
+  app.post("/api/wholesale/reorder", stripeWriteLimiter, async (req, res) => {
     try {
       const body: any = req.body ?? {};
       const token = String(body.token ?? "").trim();

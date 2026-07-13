@@ -1,6 +1,6 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile } from "fs/promises";
+import { rm, readFile, cp } from "fs/promises";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -59,6 +59,15 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  // Internal tool pages (wholesale order sheet, cert admin, DTC sheet).
+  //
+  // These are deliberately NOT in client/public — that would put them in
+  // dist/public, which Express serves to the whole internet, and the wholesale
+  // sheet embeds gated pricing. They're copied next to the server bundle and
+  // served only through the token gate in server/routes/toolRoutes.ts.
+  console.log("copying internal tool pages...");
+  await cp("server/tools", "dist/tools", { recursive: true });
 }
 
 buildAll().catch((err) => {

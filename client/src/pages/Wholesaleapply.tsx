@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
@@ -47,6 +47,41 @@ function onlyDigits(s: string) {
   return s.replace(/[^\d]/g, "");
 }
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ""));
+    r.onerror = () => reject(new Error("read failed"));
+    r.readAsDataURL(file);
+  });
+}
+
+// Downscale big phone photos before upload so we stay under the ~6MB cert cap.
+async function compressImage(file: File): Promise<string> {
+  const dataUrl = await fileToDataUrl(file);
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("image load failed"));
+    img.src = dataUrl;
+  });
+  const maxDim = 1600;
+  let width = img.width;
+  let height = img.height;
+  if (width > maxDim || height > maxDim) {
+    const s = Math.min(maxDim / width, maxDim / height);
+    width = Math.round(width * s);
+    height = Math.round(height * s);
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
+
 export default function WholesaleApply() {
   const [, setLocation] = useLocation();
 
@@ -80,6 +115,97 @@ export default function WholesaleApply() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  // ── Resale certificate (optional) ──────────────────────────────────────────
+  const [certMode, setCertMode] = useState<"none" | "upload" | "form">("none");
+  const [cert, setCert] = useState({
+    licenseNumber: "",
+    issuingState: "AZ",
+    certType: "az_5000a" as "az_5000a" | "mtc",
+    purchaserAddress: "",
+    signerTitle: "Owner",
+    expiresAt: "",
+    fileData: "",
+    fileName: "",
+    fileMime: "",
+  });
+  const [sigEmpty, setSigEmpty] = useState(true);
+  const [certError, setCertError] = useState<string | null>(null);
+  const [certWarn, setCertWarn] = useState(false);
+  const sigCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawingRef = useRef(false);
+  const lastPtRef = useRef<{ x: number; y: number } | null>(null);
+
+  function updateCert<K extends keyof typeof cert>(key: K, value: (typeof cert)[K]) {
+    setCert((c) => ({ ...c, [key]: value }));
+  }
+
+  function sigPos(e: any) {
+    const c = sigCanvasRef.current!;
+    const r = c.getBoundingClientRect();
+    return {
+      x: (e.clientX - r.left) * (c.width / r.width),
+      y: (e.clientY - r.top) * (c.height / r.height),
+    };
+  }
+  function sigStart(e: any) {
+    e.preventDefault();
+    drawingRef.current = true;
+    lastPtRef.current = sigPos(e);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+  }
+  function sigMove(e: any) {
+    if (!drawingRef.current) return;
+    e.preventDefault();
+    const c = sigCanvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    const p = sigPos(e);
+    const last = lastPtRef.current || p;
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#12100e";
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lastPtRef.current = p;
+    if (sigEmpty) setSigEmpty(false);
+  }
+  function sigEnd() {
+    drawingRef.current = false;
+    lastPtRef.current = null;
+  }
+  function sigClear() {
+    const c = sigCanvasRef.current;
+    if (c) {
+      const ctx = c.getContext("2d");
+      ctx?.clearRect(0, 0, c.width, c.height);
+    }
+    setSigEmpty(true);
+  }
+
+  async function onCertFile(file: File | null) {
+    setCertError(null);
+    if (!file) return;
+    try {
+      if (file.type === "application/pdf") {
+        const dataUrl = await fileToDataUrl(file);
+        setCert((c) => ({ ...c, fileData: dataUrl, fileName: file.name, fileMime: "application/pdf" }));
+      } else if (file.type.startsWith("image/")) {
+        const dataUrl = await compressImage(file);
+        setCert((c) => ({ ...c, fileData: dataUrl, fileName: file.name, fileMime: "image/jpeg" }));
+      } else {
+        setCertError("Use a JPG, PNG, or PDF.");
+      }
+    } catch {
+      setCertError("Couldn't read that file — try another.");
+    }
+  }
 
   const emailNormalized = useMemo(() => normalizeEmail(form.email), [form.email]);
   const phoneDigits = useMemo(() => onlyDigits(form.phone), [form.phone]);
@@ -138,6 +264,23 @@ export default function WholesaleApply() {
 
     if (!requiredOk || submitting) return;
 
+    // Resale cert is optional; if a mode is chosen it must be complete.
+    setCertError(null);
+    if (certMode === "upload" && !cert.fileData) {
+      setCertError("Attach your certificate file, or choose “Skip for now.”");
+      return;
+    }
+    if (certMode === "form") {
+      if (!cert.licenseNumber.trim()) {
+        setCertError("Enter your resale / TPT license number, or choose “Skip for now.”");
+        return;
+      }
+      if (sigEmpty) {
+        setCertError("Add your signature, or choose “Skip for now.”");
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
@@ -166,6 +309,41 @@ export default function WholesaleApply() {
           text ||
           "Something went wrong submitting your application.";
         throw new Error(msg);
+      }
+
+      // Application saved — attach the resale cert if one was provided.
+      if (certMode !== "none") {
+        try {
+          const certBody: any = {
+            email: emailNormalized,
+            businessName: form.businessName.trim(),
+            mode: certMode,
+            certType: cert.certType,
+            licenseNumber: cert.licenseNumber.trim() || undefined,
+            issuingState: (cert.issuingState || "AZ").trim().toUpperCase(),
+            expiresAt: cert.expiresAt || undefined,
+          };
+          if (certMode === "upload") {
+            certBody.fileData = cert.fileData;
+            certBody.fileMime = cert.fileMime || undefined;
+            certBody.fileName = cert.fileName || undefined;
+          } else {
+            certBody.signatureDataUrl =
+              sigCanvasRef.current?.toDataURL("image/png") || "";
+            certBody.purchaserAddress = cert.purchaserAddress || undefined;
+            certBody.purchaserPhone = phoneDigits || undefined;
+            certBody.signerName = form.contactName.trim() || undefined;
+            certBody.signerTitle = cert.signerTitle || "Owner";
+          }
+          const cres = await fetch("/api/wholesale/cert-submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(certBody),
+          });
+          if (!cres.ok) setCertWarn(true);
+        } catch {
+          setCertWarn(true);
+        }
       }
 
       setSubmitted(true);
@@ -201,6 +379,12 @@ export default function WholesaleApply() {
               </a>
               .
             </p>
+
+            {certWarn ? (
+              <p className="text-xs text-amber-300/80 mb-6">
+                Heads up — your application saved, but we couldn’t attach your certificate. No worries: we’ll collect it before your first order.
+              </p>
+            ) : null}
 
             <div className="flex flex-col sm:flex-row justify-center gap-3">
               <Link href="/wholesale">
@@ -589,6 +773,185 @@ export default function WholesaleApply() {
                 className="w-full min-h-[120px] rounded-xl bg-background border border-foreground/10 text-foreground p-4 placeholder:text-foreground/40"
                 placeholder="Tell us about your gym, your members, and how you plan to sell Kimora…"
               />
+            </div>
+
+            {/* Divider */}
+            <div className="h-px w-full bg-foreground/10 my-8" />
+
+            {/* Resale certificate (optional) */}
+            <div>
+              <div className="flex items-baseline justify-between">
+                <div className="text-sm text-foreground font-semibold">Resale certificate</div>
+                <div className="text-xs text-foreground/45">Optional</div>
+              </div>
+              <p className="mt-1 text-sm text-foreground/60">
+                Add your Arizona resale / TPT certificate to buy wholesale tax-free. No cert yet?
+                Skip it — we’ll collect it before your first order.
+              </p>
+
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  ["none", "Skip for now"],
+                  ["upload", "Upload my cert"],
+                  ["form", "Fill & sign a 5000A"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setCertError(null);
+                      setCertMode(value as "none" | "upload" | "form");
+                    }}
+                    className={[
+                      "rounded-xl border px-3 py-3 text-sm transition-colors",
+                      certMode === value
+                        ? "border-primary bg-primary/15 text-primary-foreground"
+                        : "border-foreground/10 bg-muted text-foreground/70 hover:text-foreground hover:bg-foreground/5",
+                    ].join(" ")}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {certMode === "upload" ? (
+                <div className="mt-4">
+                  <Label className="text-sm text-foreground mb-2 block" htmlFor="certFile">
+                    Certificate file (JPG, PNG, or PDF)
+                  </Label>
+                  <input
+                    id="certFile"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => onCertFile(e.target.files?.[0] ?? null)}
+                    className="block w-full text-sm text-foreground/70 file:mr-4 file:rounded-lg file:border-0 file:bg-foreground/10 file:px-4 file:py-2 file:text-foreground hover:file:bg-foreground/20"
+                  />
+                  {cert.fileName ? (
+                    <p className="mt-2 text-xs text-foreground/60">Attached: {cert.fileName}</p>
+                  ) : null}
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-foreground/70 mb-1 block" htmlFor="certLicU">
+                        License / TPT # (optional)
+                      </Label>
+                      <Input
+                        id="certLicU"
+                        value={cert.licenseNumber}
+                        onChange={(e) => updateCert("licenseNumber", e.target.value)}
+                        className="h-11 bg-background border-foreground/10 text-foreground"
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-foreground/70 mb-1 block" htmlFor="certStU">
+                        Issuing state
+                      </Label>
+                      <Input
+                        id="certStU"
+                        value={cert.issuingState}
+                        onChange={(e) => updateCert("issuingState", e.target.value)}
+                        className="h-11 bg-background border-foreground/10 text-foreground"
+                        placeholder="AZ"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {certMode === "form" ? (
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-foreground/70 mb-1 block" htmlFor="certLic">
+                        Resale / TPT license # <span className="text-foreground/40">*</span>
+                      </Label>
+                      <Input
+                        id="certLic"
+                        value={cert.licenseNumber}
+                        onChange={(e) => updateCert("licenseNumber", e.target.value)}
+                        className="h-11 bg-background border-foreground/10 text-foreground"
+                        placeholder="AZ TPT license number"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-foreground/70 mb-1 block" htmlFor="certSt">
+                        Issuing state
+                      </Label>
+                      <Input
+                        id="certSt"
+                        value={cert.issuingState}
+                        onChange={(e) => updateCert("issuingState", e.target.value)}
+                        className="h-11 bg-background border-foreground/10 text-foreground"
+                        placeholder="AZ"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label className="text-xs text-foreground/70 mb-1 block" htmlFor="certAddr">
+                        Business address
+                      </Label>
+                      <Input
+                        id="certAddr"
+                        value={cert.purchaserAddress}
+                        onChange={(e) => updateCert("purchaserAddress", e.target.value)}
+                        className="h-11 bg-background border-foreground/10 text-foreground"
+                        placeholder="Street, City, State ZIP"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      ["az_5000a", "Arizona (single state)"],
+                      ["mtc", "Multistate (MTC)"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => updateCert("certType", value as "az_5000a" | "mtc")}
+                        className={[
+                          "rounded-xl border px-3 py-2.5 text-sm transition-colors",
+                          cert.certType === value
+                            ? "border-primary bg-primary/15 text-primary-foreground"
+                            : "border-foreground/10 bg-muted text-foreground/70 hover:text-foreground hover:bg-foreground/5",
+                        ].join(" ")}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-xs text-foreground/70">
+                        Signature <span className="text-foreground/40">*</span>
+                      </Label>
+                      <button
+                        type="button"
+                        onClick={sigClear}
+                        className="text-xs text-foreground/50 underline underline-offset-4 hover:text-foreground"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <canvas
+                      ref={sigCanvasRef}
+                      width={600}
+                      height={180}
+                      onPointerDown={sigStart}
+                      onPointerMove={sigMove}
+                      onPointerUp={sigEnd}
+                      onPointerLeave={sigEnd}
+                      className="w-full h-[160px] rounded-xl border border-foreground/15 bg-background touch-none"
+                    />
+                    <p className="mt-1 text-xs text-foreground/45">
+                      Sign with your finger or mouse. By signing you certify the information above is
+                      accurate and the products are purchased for resale.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {certError ? <p className="mt-3 text-xs text-red-200">{certError}</p> : null}
             </div>
 
             {/* Submit */}

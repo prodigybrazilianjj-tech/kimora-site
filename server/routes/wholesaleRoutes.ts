@@ -28,6 +28,7 @@ import {
   verifyResaleCert,
   setResaleCertStatus,
 } from "../services/resaleCertService";
+import { generateForm5000APdf } from "../services/form5000aService";
 
 // Allowed upload types + size cap for an attached resale-cert image/PDF.
 const ALLOWED_CERT_FILE_MIMES = new Set([
@@ -688,6 +689,119 @@ export function registerWholesaleRoutes(app: Express) {
       return res
         .status(500)
         .json({ ok: false, message: "Failed to submit wholesale application." });
+    }
+  });
+
+  // ── Self-serve resale-cert submission (PUBLIC) ────────────────────────────
+  // Gym-facing onboarding: an applicant either uploads an existing resale cert
+  // OR fills + signs an AZ 5000A in the browser. We store it as a PENDING cert.
+  //
+  // SAFETY: upsertResaleCert always writes verified=false, and the invoice/
+  // reorder tax gate requires verified+active+unexpired+covers-state before it
+  // will zero out tax. So a self-submitted cert can NEVER auto-exempt an order —
+  // a human still verifies the TPT license in the cert tool. Rate-limited, and
+  // the response never echoes stored cert data (no account enumeration).
+  app.post("/api/wholesale/cert-submit", publicEmailLimiter, async (req, res) => {
+    try {
+      const b: any = req.body ?? {};
+      const email = normalizeEmail(String(b.email ?? ""));
+      const businessName = safeString(b.businessName, 300);
+      const mode = safeString(b.mode, 16) === "form" ? "form" : "upload";
+
+      if (!email || !isValidEmail(email))
+        return res.status(400).json({ ok: false, message: "Valid email is required." });
+      if (!businessName)
+        return res.status(400).json({ ok: false, message: "Business name is required." });
+
+      const parseDate = (v: any) => {
+        const s = String(v ?? "").trim();
+        if (!s) return null;
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      const certType = safeString(b.certType, 32) || "az_5000a";
+      const licenseNumber = safeString(b.licenseNumber, 100) || null;
+      const issuingState = safeString(b.issuingState, 8) || "AZ";
+      const expiresAt = parseDate(b.expiresAt);
+      const resaleDescription = safeString(b.description, 500) || null;
+
+      let fileData: string | null = null;
+      let fileMime: string | null = null;
+      let fileName: string | null = null;
+      let signed = false;
+
+      if (mode === "form") {
+        // Generate the filled 5000A from fields + captured signature.
+        const sig = String(b.signatureDataUrl ?? "");
+        if (!/^data:image\/(png|jpeg);base64,/.test(sig)) {
+          return res
+            .status(400)
+            .json({ ok: false, message: "A signature is required to generate the certificate." });
+        }
+        const pdfBytes = await generateForm5000APdf({
+          purchaserName: businessName,
+          purchaserAddress: safeString(b.purchaserAddress, 300),
+          purchaserPhone: safeString(b.purchaserPhone, 64),
+          licenseNumber: licenseNumber || "",
+          issuingState,
+          certType,
+          description: safeString(b.description, 300),
+          signerName: safeString(b.signerName, 200) || businessName,
+          signerTitle: safeString(b.signerTitle, 120) || "Owner",
+          signatureDataUrl: sig,
+          signedDate: new Date().toLocaleDateString("en-US"),
+        });
+        fileData = Buffer.from(pdfBytes).toString("base64");
+        fileMime = "application/pdf";
+        fileName = "kimora-5000a-resale-certificate.pdf";
+        signed = true;
+      } else {
+        // Upload path: same validation as the admin cert endpoint.
+        let raw = String(b.fileData ?? "");
+        if (!raw)
+          return res.status(400).json({ ok: false, message: "Attach your resale certificate file." });
+        const m = raw.match(/^data:([^;]+);base64,([\s\S]*)$/);
+        if (m) {
+          fileMime = m[1];
+          raw = m[2];
+        }
+        if (typeof b.fileMime === "string" && b.fileMime) fileMime = String(b.fileMime);
+        if (!fileMime || !ALLOWED_CERT_FILE_MIMES.has(fileMime)) {
+          return res
+            .status(400)
+            .json({ ok: false, message: "Unsupported file type. Use JPG, PNG, WebP, GIF, or PDF." });
+        }
+        if (raw.length > MAX_CERT_FILE_B64_LEN) {
+          return res
+            .status(400)
+            .json({ ok: false, message: "File too large. Max ~6MB — try a smaller photo." });
+        }
+        fileData = raw;
+        fileName = safeString(b.fileName, 300) || "cert";
+      }
+
+      // verified stays FALSE inside upsertResaleCert → pending until a human verifies.
+      await upsertResaleCert({
+        email,
+        businessName,
+        certType,
+        licenseNumber,
+        issuingState,
+        resaleDescription,
+        signed,
+        receivedAt: new Date(),
+        expiresAt,
+        notes: "Self-submitted via wholesale onboarding (pending verification).",
+        fileData,
+        fileMime,
+        fileName,
+      });
+
+      return res.json({ ok: true, message: "Certificate received — pending verification." });
+    } catch (err: any) {
+      console.error("POST /api/wholesale/cert-submit error:", safeErrSummary(err));
+      return res.status(500).json({ ok: false, message: "Failed to submit certificate." });
     }
   });
 

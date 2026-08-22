@@ -37,7 +37,7 @@ export function Hero() {
       </motion.p>
 
       <h1
-        className={`mt-5 text-5xl font-display font-bold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl ${INK_HEAD}`}
+        className={`mt-5 text-5xl font-display font-extrabold uppercase leading-[0.92] tracking-tight sm:text-6xl lg:text-7xl ${INK_HEAD}`}
       >
         {HEADLINE.map((line, i) => (
           <motion.span
@@ -51,14 +51,6 @@ export function Hero() {
           </motion.span>
         ))}
       </h1>
-
-      <motion.div
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.75, ease: EASE, delay: 0.62 }}
-        style={{ transformOrigin: "left" }}
-        className="mt-8 h-px w-40 bg-gradient-to-r from-primary via-primary/40 to-transparent"
-      />
 
       <motion.p
         initial={{ opacity: 0, y: 16 }}

@@ -44,7 +44,7 @@ export function SavingsSlider() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.7, delay: 0.12 }}
-          className="rounded-2xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.05)] p-8 md:p-9"
+          className="rounded-xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.05)] p-8 md:p-9"
         >
           <label
             htmlFor="savings-months"

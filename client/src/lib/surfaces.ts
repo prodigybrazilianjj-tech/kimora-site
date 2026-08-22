@@ -28,10 +28,10 @@ export const INK_BORDER = "border-[rgba(247,240,222,0.16)]";
 
 /** A raised panel on ink. */
 export const INK_CARD =
-  "rounded-2xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.03)]";
+  "rounded-xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.03)]";
 
 /** A raised panel on cream or sand. */
-export const LIGHT_CARD = "rounded-2xl border border-border bg-card";
+export const LIGHT_CARD = "rounded-xl border border-border bg-card";
 
 /** Eyebrow label — gold that stays readable on its band. */
 export const EYEBROW_INK = "text-primary";

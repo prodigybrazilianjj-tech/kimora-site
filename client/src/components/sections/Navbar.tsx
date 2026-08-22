@@ -1,27 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "wouter";
-import { Menu, ShoppingBag } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useCart } from "@/lib/cart";
+import { useEffect, useMemo, useRef } from "react";
+import { useLocation } from "wouter";
 import { PRELAUNCH_GATE, HOME_PATH } from "@/lib/prelaunch";
-import { SiteHeader } from "@/components/sections/SiteHeader";
+import { SiteHeader, type NavLink } from "@/components/sections/SiteHeader";
 
 /**
  * 🔒 PRELAUNCH GATE
- * When PRELAUNCH_GATE is true the store is browsable but nothing is buyable:
- * - Shop stays in the nav so people can browse products + prices
- * - The cart icon and "Shop Now" buy CTA are hidden (no purchasing)
- * - Wholesale access is unchanged
+ * When PRELAUNCH_GATE is true the store is browsable but nothing is buyable, so
+ * the header's call to action points at the storefront rather than the cart.
+ *
+ * This component is now just the homepage's nav data plus its hash-scrolling —
+ * the bar itself lives in SiteHeader, shared with the pre-launch page.
+ *
+ * Wholesale is deliberately not in the nav; the design carries four links and
+ * the footer already links it.
  */
-const PRELAUNCH = PRELAUNCH_GATE;
 
 function scrollToSelector(selector: string) {
   const el = document.querySelector(selector);
   if (!(el instanceof HTMLElement)) return false;
 
   el.scrollIntoView({ behavior: "auto", block: "start" });
-
   requestAnimationFrame(() => {
     el.scrollIntoView({ behavior: "auto", block: "start" });
   });
@@ -33,12 +31,9 @@ function scrollToSelectorWithRetry(selector: string, attempts = 36) {
   let tries = 0;
 
   const tick = () => {
-    const ok = scrollToSelector(selector);
-    if (ok) return;
-
+    if (scrollToSelector(selector)) return;
     tries += 1;
     if (tries >= attempts) return;
-
     requestAnimationFrame(tick);
   };
 
@@ -47,27 +42,20 @@ function scrollToSelectorWithRetry(selector: string, attempts = 36) {
 
 function setHashNoJump(hash: string) {
   const normalized = hash.startsWith("#") ? hash : `#${hash}`;
-  const url = window.location.pathname + window.location.search + normalized;
-  history.pushState(null, "", url);
+  history.pushState(null, "", window.location.pathname + window.location.search + normalized);
 }
 
 function clearHashNoJump() {
-  const url = window.location.pathname + window.location.search;
-  history.replaceState(null, "", url);
+  history.replaceState(null, "", window.location.pathname + window.location.search);
 }
 
 function scrollToTop() {
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  requestAnimationFrame(() =>
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" })
-  );
+  requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
 }
 
 export function Navbar() {
   const [location, setLocation] = useLocation();
-  const { cartCount } = useCart();
-  const [mobileOpen, setMobileOpen] = useState(false);
-
   const isHome = location === HOME_PATH;
   const pendingSelectorRef = useRef<string | null>(null);
 
@@ -81,18 +69,24 @@ export function Navbar() {
     scrollToSelectorWithRetry(selector);
   }, [isHome]);
 
-  function closeMobile() {
-    setMobileOpen(false);
-  }
+  useEffect(() => {
+    if (!isHome) return;
+
+    const onPopState = () => {
+      const hash = window.location.hash;
+      if (hash) scrollToSelectorWithRetry(hash);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [isHome]);
 
   function goHomeTop() {
-    closeMobile();
-
     if (window.location.hash) clearHashNoJump();
 
     if (!isHome) {
       setLocation(HOME_PATH);
-      window.setTimeout(() => scrollToTop(), 0);
+      window.setTimeout(scrollToTop, 0);
       return;
     }
 
@@ -100,171 +94,38 @@ export function Navbar() {
   }
 
   function goToSection(hash: string) {
-    closeMobile();
-
-    const normalizedHash = hash.startsWith("#") ? hash : `#${hash}`;
-    const selector = normalizedHash;
+    const normalized = hash.startsWith("#") ? hash : `#${hash}`;
 
     if (!isHome) {
-      setHashNoJump(normalizedHash);
-      pendingSelectorRef.current = selector;
+      setHashNoJump(normalized);
+      pendingSelectorRef.current = normalized;
       setLocation(HOME_PATH);
       return;
     }
 
-    setHashNoJump(normalizedHash);
-    scrollToSelectorWithRetry(selector);
+    setHashNoJump(normalized);
+    scrollToSelectorWithRetry(normalized);
   }
 
-  useEffect(() => {
-    if (!isHome) return;
-
-    const onPopState = () => {
-      const hash = window.location.hash;
-      if (!hash) return;
-      scrollToSelectorWithRetry(hash);
-    };
-
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [isHome]);
-
-  const navLinks = useMemo(() => {
-    const baseLinks = [
-      { name: "Flavors", action: () => goToSection("#flavors") },
-      { name: "Formula", action: () => goToSection("#formula") },
-      { name: "Why Not a Tub?", action: () => goToSection("#comparison") },
-      { name: "About", action: () => goToSection("#about") },
-      {
-        name: "Wholesale",
-        action: () => {
-          closeMobile();
-          setLocation("/wholesale");
-        },
-      },
-    ];
-
-    // Shop stays available so visitors can browse products + prices
-    // (purchasing itself is gated elsewhere while PRELAUNCH_GATE is on).
-    baseLinks.splice(4, 0, {
-      name: "Shop",
-      action: () => {
-        closeMobile();
-        setLocation("/shop");
-      },
-    });
-
-    return baseLinks;
-  }, [isHome, location]);
+  const links: NavLink[] = useMemo(
+    () => [
+      { label: "Home", active: isHome, onClick: goHomeTop },
+      { label: "Flavors", onClick: () => goToSection("#flavors") },
+      { label: "Formula", onClick: () => goToSection("#formula") },
+      { label: "About", onClick: () => goToSection("#about") },
+    ],
+    [isHome, location]
+  );
 
   return (
     <SiteHeader
       position="fixed"
+      links={links}
+      cta={{ label: PRELAUNCH_GATE ? "Shop" : "Shop Now", href: "/shop" }}
       onWordmarkClick={(e) => {
         e.preventDefault();
         goHomeTop();
       }}
-    >
-
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <button
-              key={link.name}
-              onClick={link.action}
-              className="text-sm font-medium transition-colors uppercase tracking-wide text-muted-foreground hover:text-foreground"
-            >
-              {link.name}
-            </button>
-          ))}
-
-          {!PRELAUNCH && (
-            <Link
-              href="/cart"
-              className="relative text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ShoppingBag className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-          )}
-
-          {/* 🚫 Hide Shop CTA in prelaunch */}
-          {!PRELAUNCH && (
-            <Button
-              onClick={() => setLocation("/shop")}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider"
-            >
-              Shop Now
-            </Button>
-          )}
-        </div>
-
-        {/* Mobile Nav */}
-        <div className="md:hidden flex items-center gap-4">
-          {!PRELAUNCH && (
-            <Link
-              href="/cart"
-              className="relative text-foreground"
-              onClick={() => closeMobile()}
-            >
-              <ShoppingBag className="w-6 h-6" />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-          )}
-
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-foreground">
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-
-            <SheetContent
-              side="right"
-              className="bg-background border-l border-border"
-            >
-              <div className="flex flex-col gap-6 mt-10">
-                <button
-                  onClick={goHomeTop}
-                  className="text-lg font-display text-left text-foreground/90 hover:text-foreground transition-colors"
-                >
-                  Home
-                </button>
-
-                {navLinks.map((link) => (
-                  <button
-                    key={link.name}
-                    onClick={link.action}
-                    className="text-lg font-display text-left text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.name}
-                  </button>
-                ))}
-
-                {/* 🚫 Hide Shop CTA mobile */}
-                {!PRELAUNCH && (
-                  <Button
-                    onClick={() => {
-                      closeMobile();
-                      setLocation("/shop");
-                    }}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wider mt-4"
-                  >
-                    Shop Now
-                  </Button>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-    </SiteHeader>
+    />
   );
 }

@@ -32,7 +32,7 @@ function TestimonialCard({
   detail,
 }: (typeof testimonials)[number]) {
   return (
-    <div className="w-[320px] md:w-[360px] shrink-0 rounded-2xl border border-foreground/8 bg-card p-7 flex flex-col gap-5">
+    <div className="w-[320px] md:w-[360px] shrink-0 rounded-xl border border-foreground/8 bg-card p-7 flex flex-col gap-5">
       <div className="flex gap-1">
         {Array.from({ length: 5 }).map((_, i) => (
           <svg key={i} className="w-4 h-4 fill-primary" viewBox="0 0 20 20">

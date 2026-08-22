@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
+import { scrollToId, scrollToPageTop } from "@/lib/scroll";
 import { Footer } from "@/components/sections/Footer";
 import { StatsBand } from "@/components/sections/StatsBand";
 import { FlavorLineup } from "@/components/sections/FlavorLineup";
@@ -17,6 +18,22 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 const WRAP = "mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20";
 const EYEBROW = "text-sm font-medium uppercase tracking-[0.26em]";
+
+function scrollToWaitlist() {
+  scrollToId("waitlist");
+}
+
+// HOME is the active link because this page is the front door.
+const NAV_LINKS = [
+  {
+    label: "Home",
+    active: true,
+    onClick: scrollToPageTop,
+  },
+  { label: "Flavors", onClick: () => scrollToId("flavors") },
+  { label: "Formula", onClick: () => scrollToId("formula") },
+  { label: "About", onClick: () => scrollToId("about") },
+];
 
 export default function ComingSoon() {
   const [email, setEmail] = useState("");
@@ -115,26 +132,14 @@ export default function ComingSoon() {
 
         <main className="relative z-10">
           {/* ── Header ── */}
-          <SiteHeader>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/shop"
-                className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-              >
-                See the flavors
-              </Link>
-
-              {/* Decorative, so this is what drops on small screens — not the link. */}
-              <motion.span
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.55, ease: EASE, delay: 0.25 }}
-                className="hidden rounded-full border border-foreground/10 bg-foreground/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary-strong backdrop-blur-sm sm:inline-block"
-              >
-                Creatine · Electrolytes · Daily
-              </motion.span>
-            </div>
-          </SiteHeader>
+          <SiteHeader
+            links={NAV_LINKS}
+            cta={{ label: "Join Waitlist", onClick: scrollToWaitlist }}
+            onWordmarkClick={(ev) => {
+              ev.preventDefault();
+              scrollToPageTop();
+            }}
+          />
 
           {/* ── 1. Hero — ink ── */}
           <section className={`relative overflow-hidden ${INK}`}>
@@ -165,7 +170,7 @@ export default function ComingSoon() {
                 </motion.p>
 
                 <h1
-                  className={`mt-5 text-5xl font-display font-bold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl ${INK_HEAD}`}
+                  className={`mt-5 text-5xl font-display font-extrabold uppercase leading-[0.92] tracking-tight sm:text-6xl lg:text-7xl ${INK_HEAD}`}
                 >
                   {["TRAIN WITH", "PURPOSE."].map((line, i) => (
                     <motion.span
@@ -179,14 +184,6 @@ export default function ComingSoon() {
                     </motion.span>
                   ))}
                 </h1>
-
-                <motion.div
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ duration: 0.75, ease: EASE, delay: 0.62 }}
-                  style={{ transformOrigin: "left" }}
-                  className="mt-8 h-px w-40 bg-gradient-to-r from-primary via-primary/40 to-transparent"
-                />
 
                 <motion.p
                   initial={{ opacity: 0, y: 14 }}
@@ -228,10 +225,11 @@ export default function ComingSoon() {
 
                 {/* Waitlist card */}
                 <motion.div
+                  id="waitlist"
                   initial={{ opacity: 0, y: 40 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.75, ease: EASE, delay: 1.08 }}
-                  className="mt-10 rounded-2xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.04)] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.35)] backdrop-blur-md sm:p-6"
+                  className="mt-10 rounded-xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.04)] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.35)] backdrop-blur-md sm:p-6"
                 >
                   <div className="flex flex-col gap-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -260,7 +258,7 @@ export default function ComingSoon() {
                       ].map(({ value, label }) => (
                         <div
                           key={label}
-                          className="rounded-2xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.05)] px-3 py-4 text-center"
+                          className="rounded-xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.05)] px-3 py-4 text-center"
                         >
                           <div
                             className={`text-3xl font-bold tracking-tight md:text-4xl ${INK_HEAD}`}
@@ -274,7 +272,7 @@ export default function ComingSoon() {
                       ))}
 
                       {/* Seconds — subtle pulse on each tick */}
-                      <div className="rounded-2xl border border-accent/40 bg-accent/20 px-3 py-4 text-center shadow-[0_0_28px_rgba(168,71,42,0.28)]">
+                      <div className="rounded-xl border border-accent/40 bg-accent/20 px-3 py-4 text-center shadow-[0_0_28px_rgba(168,71,42,0.28)]">
                         <motion.div
                           key={countdown.seconds}
                           initial={{ opacity: 0.4, scale: 0.78 }}
@@ -302,7 +300,7 @@ export default function ComingSoon() {
                         onChange={(e) => setEmail(e.target.value)}
                         disabled={submitting}
                         aria-label="Email address"
-                        className="h-16 w-full sm:flex-1 rounded-2xl border border-[rgba(247,240,222,0.18)] bg-[rgba(247,240,222,0.06)] px-5 text-base text-[#F7F0DE] placeholder:text-[rgba(247,240,222,0.45)] focus:border-primary/60 focus:outline-none disabled:opacity-60 transition-colors duration-200"
+                        className="h-16 w-full sm:flex-1 rounded-lg border border-[rgba(247,240,222,0.18)] bg-[rgba(247,240,222,0.06)] px-5 text-base text-[#F7F0DE] placeholder:text-[rgba(247,240,222,0.45)] focus:border-primary/60 focus:outline-none disabled:opacity-60 transition-colors duration-200"
                       />
 
                       <motion.button
@@ -311,7 +309,7 @@ export default function ComingSoon() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.97 }}
                         transition={{ duration: 0.15 }}
-                        className="h-16 rounded-2xl bg-[linear-gradient(180deg,#E3C88E_0%,#C9A86A_55%,#A6864B_100%)] px-7 text-sm font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-[0_12px_26px_rgba(201,168,106,0.34),inset_0_1px_0_rgba(255,255,255,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(201,168,106,0.45)] disabled:opacity-60"
+                        className="h-16 rounded-lg bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:opacity-60"
                       >
                         {submitting ? "Submitting..." : "Join the Waitlist"}
                       </motion.button>
@@ -358,7 +356,7 @@ export default function ComingSoon() {
           <WhyNotATub tone="ink" />
 
           {/* ── 6. Why Kimora exists + Built for combat sports — cream ── */}
-          <section className="bg-background">
+          <section id="about" className="bg-background">
             <div className={WRAP}>
               <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
                 <motion.div

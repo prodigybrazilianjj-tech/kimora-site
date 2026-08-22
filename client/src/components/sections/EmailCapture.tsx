@@ -59,7 +59,7 @@ export function EmailCapture() {
         </p>
 
         {state === "success" ? (
-          <div className="bg-card border border-primary/40 rounded-2xl px-8 py-10">
+          <div className="bg-card border border-primary/40 rounded-xl px-8 py-10">
             <div
               className="text-primary-strong text-5xl font-display font-bold tracking-widest mb-3"
               style={{ fontFamily: "ui-monospace, monospace" }}

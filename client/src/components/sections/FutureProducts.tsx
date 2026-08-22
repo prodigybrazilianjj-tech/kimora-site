@@ -50,7 +50,7 @@ export function FutureProducts({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.6, ease: EASE, delay: i * 0.1 }}
-            className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-surface-ink"
+            className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface-ink"
           >
             <div className="absolute inset-0" style={{ background: tile.glow }} />
             <img

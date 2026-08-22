@@ -45,16 +45,11 @@ export const NUTRITION_SERVING_NOTE =
 // The one description of each flavor. The homepage lineup, the pre-launch
 // page and the Shop grid all read from here, so a copy or price change lands
 // everywhere at once instead of drifting between three hardcoded arrays.
-//
-// `well` is the low-alpha tint behind the product shot on the lineup cards —
-// it is the flavor's colour, pulled back far enough that the packaging still
-// reads as the brightest thing in the frame.
 export interface Flavor {
   slug: string;
   name: string;
   desc: string;
   image: string;
-  well: string;
   /** The flavour's solid colour — the dot beside its name on the lineup card. */
   hex: string;
   priceOneTime: number;
@@ -67,7 +62,6 @@ export const FLAVORS: readonly Flavor[] = [
     name: "Strawberry Guava",
     desc: "Tropical, richer, and fruit-forward with a fuller flavor profile.",
     image: "/assets/products/strawberry-guava/pouch_sticks_v1.webp",
-    well: "rgba(210,88,67,0.16)",
     hex: "#D25843",
     priceOneTime: 49.99,
     priceSub: 39.99,
@@ -77,7 +71,6 @@ export const FLAVORS: readonly Flavor[] = [
     name: "Lemon Lychee",
     desc: "Bright lemon with a sweet, floral lychee finish.",
     image: "/assets/products/lemon-lychee/pouch_sticks_v6.webp",
-    well: "rgba(229,209,78,0.13)",
     hex: "#E5D14E",
     priceOneTime: 49.99,
     priceSub: 39.99,
@@ -87,7 +80,6 @@ export const FLAVORS: readonly Flavor[] = [
     name: "Raspberry Dragonfruit",
     desc: "Smooth, balanced, and built to be the daily driver.",
     image: "/assets/products/raspberry-dragonfruit/pouch_sticks_v8.webp",
-    well: "rgba(214,40,57,0.14)",
     hex: "#D62839",
     priceOneTime: 49.99,
     priceSub: 39.99,

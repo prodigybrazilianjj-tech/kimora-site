@@ -32,11 +32,13 @@ export function HeroShell({
       <img
         src="/assets/brand/octopus-bear-display-red.png"
         alt="Kimora octopus and bear"
-        className="pointer-events-none absolute -right-24 top-28 z-[1] w-[560px] max-w-none opacity-25 lg:-right-16 lg:top-16 lg:w-[820px] lg:opacity-90"
+        className="pointer-events-none absolute -right-20 top-24 z-[1] w-[680px] max-w-none opacity-30 lg:-right-8 lg:top-10 lg:w-[1020px] lg:opacity-95"
       />
 
-      {/* Ink scrim so the copy stays legible where it crosses the artwork. */}
-      <div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(90deg,#211E1A_0%,rgba(33,30,26,0.92)_38%,rgba(33,30,26,0)_72%)]" />
+      {/* Ink scrim. Solid under the headline, then thinning early so the
+          tentacles stay visible behind the lower copy rather than being
+          painted over — the artwork is meant to reach into the text column. */}
+      <div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(90deg,#211E1A_0%,#211E1A_10%,rgba(33,30,26,0.62)_26%,rgba(33,30,26,0.32)_44%,rgba(33,30,26,0.08)_64%,rgba(33,30,26,0)_80%)]" />
 
       <div
         className={cn(

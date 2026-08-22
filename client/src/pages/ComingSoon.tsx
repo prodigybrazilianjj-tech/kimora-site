@@ -5,6 +5,7 @@ import { Footer } from "@/components/sections/Footer";
 import { StatsBand } from "@/components/sections/StatsBand";
 import { FlavorLineup } from "@/components/sections/FlavorLineup";
 import { SiteHeader } from "@/components/sections/SiteHeader";
+import { HeroShell } from "@/components/sections/HeroShell";
 import { WhyKimora } from "@/components/sections/WhyKimora";
 import { WhyNotATub } from "@/components/sections/WhyNotATub";
 import { Formula } from "@/components/sections/Formula";
@@ -143,24 +144,7 @@ export default function ComingSoon() {
           />
 
           {/* ── 1. Hero — ink ── */}
-          <section className={`relative overflow-hidden ${INK}`}>
-            {/* warm aurora glows */}
-            <div className="pointer-events-none absolute -left-32 -top-40 h-[34rem] w-[44rem] rounded-full bg-[radial-gradient(circle,rgba(201,168,106,0.22),transparent_70%)] blur-[120px]" />
-            <div className="pointer-events-none absolute -right-40 top-24 h-[36rem] w-[42rem] rounded-full bg-[radial-gradient(circle,rgba(168,71,42,0.28),transparent_70%)] blur-[130px]" />
-
-            {/* Gym-display illustration bleeds off the right edge — a layer, not a
-                grid column, so there's no dead space to balance around it. */}
-            <img
-              src="/assets/brand/octopus-bear-display-red.png"
-              alt="Kimora octopus and bear"
-              className="pointer-events-none absolute -right-24 top-28 z-[1] w-[560px] max-w-none opacity-25 lg:-right-16 lg:top-16 lg:w-[820px] lg:opacity-90"
-            />
-
-            {/* Ink scrim so the copy stays legible where it crosses the artwork. */}
-            <div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(90deg,#211E1A_0%,rgba(33,30,26,0.92)_38%,rgba(33,30,26,0)_72%)]" />
-
-            <div className="relative z-[2] mx-auto w-full max-w-7xl px-6 pb-20 pt-12 md:px-8 lg:px-10 lg:pb-28 lg:pt-16">
-              <div className="max-w-[600px]">
+          <HeroShell>
                 <motion.p
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -343,9 +327,7 @@ export default function ComingSoon() {
                     </AnimatePresence>
                   </div>
                 </motion.div>
-              </div>
-            </div>
-          </section>
+          </HeroShell>
 
           {/* ── 2. The numbers — cream, gold rules top + bottom ── */}
           <StatsBand tone="cream" rules />

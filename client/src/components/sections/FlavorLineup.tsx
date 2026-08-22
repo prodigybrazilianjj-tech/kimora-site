@@ -2,8 +2,25 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Band, SectionHead, EASE, bodyOn, headOn, type Tone } from "./Band";
 import { FLAVORS, isFlavorAvailable } from "@/lib/product";
-import { INK_CARD, LIGHT_CARD } from "@/lib/surfaces";
+import { INK_CARD } from "@/lib/surfaces";
 import { cn } from "@/lib/utils";
+
+/** Flat colour from the flavour hex, for the well behind the product shot. */
+function rgba(hex: string, a: number) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+}
+
+/**
+ * The card sits one step lighter than its band. On sand that is cream, which
+ * is what the mockup shows; on a cream band cream would vanish, so it takes
+ * the raised card surface instead.
+ */
+const CARD_FILL: Record<Tone, string> = {
+  ink: INK_CARD,
+  cream: "rounded-xl border border-border bg-card",
+  sand: "rounded-xl border border-border bg-background",
+};
 
 /**
  * The three flavors, as equal cards.
@@ -13,10 +30,14 @@ import { cn } from "@/lib/utils";
  * shows it. `mode` only decides whether a price and a link to the product page
  * appear, since a price with no checkout behind it is just friction.
  *
- * The product well is a wash of the flavour's colour fading down into the card
- * rather than a flat block, and the photo sits inset with its own margin — the
- * studio shots have their own backdrop, so bleeding them edge to edge fought
- * with the tint instead of sitting inside it.
+ * The product well is its own panel — a flat wash of the flavour's colour with
+ * a glow behind the pouch, ending on a hard edge where the card body starts.
+ * It used to fade into the card, which read as one white box with a coloured
+ * haze over it rather than two distinct parts.
+ *
+ * The photo sits inset rather than bleeding edge to edge: the studio shots
+ * carry their own backdrop, which fought with the tint instead of sitting in
+ * it.
  */
 
 export function FlavorLineup({
@@ -48,9 +69,13 @@ export function FlavorLineup({
           const card = (
             <>
               <div
-                className="relative px-6 pb-2 pt-6"
+                className="relative px-6 pb-6 pt-6"
                 style={{
-                  backgroundImage: `linear-gradient(180deg, ${flavor.well} 0%, rgba(0,0,0,0) 88%)`,
+                  backgroundColor: rgba(flavor.hex, 0.10),
+                  backgroundImage: `radial-gradient(78% 58% at 50% 46%, ${rgba(
+                    flavor.hex,
+                    0.3
+                  )} 0%, rgba(0,0,0,0) 72%)`,
                 }}
               >
                 {/* Opaque, not a tint: a translucent pill washes out against
@@ -77,7 +102,7 @@ export function FlavorLineup({
                 />
               </div>
 
-              <div className="px-6 pb-7 pt-3">
+              <div className="px-6 pb-7 pt-5">
                 <span
                   aria-hidden="true"
                   className="mb-3 block h-2.5 w-2.5 rounded-full"
@@ -113,7 +138,7 @@ export function FlavorLineup({
 
           const shell = cn(
             "overflow-hidden transition-colors duration-300",
-            ink ? INK_CARD : LIGHT_CARD,
+            CARD_FILL[tone],
             ink ? "hover:border-[rgba(247,240,222,0.28)]" : "hover:border-foreground/15"
           );
 

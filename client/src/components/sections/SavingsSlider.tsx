@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { INK, INK_BODY } from "@/lib/surfaces";
+import { INK_BODY } from "@/lib/surfaces";
+import { Band, SectionHead } from "./Band";
 
 /**
  * SavingsSlider — subscription value widget (approved mockup 2026-07-05,
@@ -17,27 +18,21 @@ export function SavingsSlider() {
   const sticks = months * 30;
 
   return (
-    <section className={`relative overflow-hidden py-16 md:py-24 ${INK}`}>
-      <div className="container px-4 mx-auto grid md:grid-cols-2 gap-10 md:gap-16 items-center">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.7 }}
-        >
-          <p className="text-[11px] font-bold tracking-[0.28em] uppercase text-primary mb-3">
-            Subscribe &amp; Save 20%
-          </p>
-          <h2 className="text-4xl md:text-5xl font-display font-extrabold uppercase leading-tight text-surface-ink-foreground">
-            The Habit
-            <br />
-            Pays You Back.
-          </h2>
-          <p className={`mt-5 max-w-md leading-relaxed ${INK_BODY}`}>
-            Creatine only works if you take it every day. Subscription keeps the
-            sticks coming — and keeps $10 in your pocket every bag.
-          </p>
-        </motion.div>
+    <Band tone="ink" className="relative overflow-hidden">
+      <div className="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+        <SectionHead
+          tone="ink"
+          className="mb-0"
+          eyebrow="Subscribe & Save 20%"
+          title={
+            <>
+              The Habit
+              <br />
+              Pays You Back.
+            </>
+          }
+          lead="Creatine only works if you take it every day. Subscription keeps the sticks coming — and keeps $10 in your pocket every bag."
+        />
 
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -89,6 +84,6 @@ export function SavingsSlider() {
           </p>
         </motion.div>
       </div>
-    </section>
+    </Band>
   );
 }

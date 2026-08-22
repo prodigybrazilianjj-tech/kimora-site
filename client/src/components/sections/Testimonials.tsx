@@ -1,9 +1,17 @@
+import { Band, SectionHead, bodyOn, headOn, type Tone } from "./Band";
+import { INK_CARD, LIGHT_CARD } from "@/lib/surfaces";
+import { cn } from "@/lib/utils";
+
 /**
- * Testimonials — auto-scrolling lane (approved mockup 2026-07-05).
- * Same beta-user quotes as before, now in a continuously drifting marquee
- * lane that pauses on hover. Respects prefers-reduced-motion (falls back to
- * a static row via motion-reduce:animate-none + overflow scroll).
+ * Auto-scrolling quote lane (approved mockup 2026-07-05). Pauses on hover and
+ * respects prefers-reduced-motion, falling back to a scrollable row.
+ *
+ * The lane runs edge to edge, so this uses Band's `bleed` mode and applies the
+ * gutter to the header and footnote itself — the lane needs the full width to
+ * drift through.
  */
+
+const GUTTER = "mx-auto w-full max-w-7xl px-6 md:px-8 lg:px-10";
 
 const testimonials = [
   {
@@ -30,52 +38,66 @@ function TestimonialCard({
   quote,
   name,
   detail,
-}: (typeof testimonials)[number]) {
+  tone,
+}: (typeof testimonials)[number] & { tone: Tone }) {
+  const ink = tone === "ink";
+
   return (
-    <div className="w-[320px] md:w-[360px] shrink-0 rounded-xl border border-foreground/8 bg-card p-7 flex flex-col gap-5">
+    <div
+      className={cn(
+        "flex w-[320px] shrink-0 flex-col gap-5 p-7 md:w-[360px]",
+        ink ? INK_CARD : LIGHT_CARD
+      )}
+    >
       <div className="flex gap-1">
         {Array.from({ length: 5 }).map((_, i) => (
-          <svg key={i} className="w-4 h-4 fill-primary" viewBox="0 0 20 20">
+          <svg key={i} className="h-4 w-4 fill-primary" viewBox="0 0 20 20">
             <path d="M10 1l2.39 4.84 5.34.78-3.86 3.76.91 5.32L10 13.27l-4.78 2.51.91-5.32L2.27 6.62l5.34-.78z" />
           </svg>
         ))}
       </div>
-      <p className="text-foreground/80 leading-relaxed text-sm flex-1">
+
+      <p
+        className={cn(
+          "flex-1 text-sm leading-relaxed",
+          ink ? "text-[rgba(247,240,222,0.80)]" : "text-foreground/80"
+        )}
+      >
         "{quote}"
       </p>
+
       <div>
-        <p className="text-foreground font-semibold text-sm">{name}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{detail}</p>
+        <p className={cn("text-sm font-semibold", headOn(tone))}>{name}</p>
+        <p className={cn("mt-0.5 text-xs", bodyOn(tone))}>{detail}</p>
       </div>
     </div>
   );
 }
 
-export function Testimonials() {
+export function Testimonials({ tone = "sand" }: { tone?: Tone }) {
   return (
-    <section className="py-16 md:py-24 bg-secondary overflow-hidden">
-      <div className="container px-4 mx-auto max-w-6xl">
-        <div className="mb-10 md:mb-12">
-          <p className="text-[11px] font-bold tracking-[0.28em] uppercase text-accent mb-3">
-            From the Community
-          </p>
-          <h2 className="text-3xl md:text-4xl font-display font-extrabold uppercase tracking-wide text-foreground">
-            Real Athletes. Real Consistency.
-          </h2>
-        </div>
+    <Band tone={tone} bleed className="overflow-hidden py-16 lg:py-20">
+      <div className={GUTTER}>
+        <SectionHead
+          tone={tone}
+          eyebrow="From the community"
+          title="Real athletes. Real consistency."
+        />
       </div>
 
       <div className="group overflow-hidden motion-reduce:overflow-x-auto">
-        <div className="flex w-max gap-6 px-4 animate-marquee-slow group-hover:[animation-play-state:paused] motion-reduce:animate-none">
+        <div className="flex w-max animate-marquee-slow gap-6 px-4 group-hover:[animation-play-state:paused] motion-reduce:animate-none">
           {[...testimonials, ...testimonials].map((t, i) => (
-            <TestimonialCard key={`${t.name}-${i}`} {...t} />
+            <TestimonialCard key={`${t.name}-${i}`} tone={tone} {...t} />
           ))}
         </div>
       </div>
 
-      <p className="text-center text-xs text-muted-foreground mt-10 tracking-wide">
-        Early access community · Testimonials are from beta users
-      </p>
-    </section>
+      <div className={GUTTER}>
+        <p className={cn("mt-10 text-center text-xs tracking-wide", bodyOn(tone))}>
+          Early access community · Testimonials are from beta users
+        </p>
+      </div>
+    </Band>
   );
 }

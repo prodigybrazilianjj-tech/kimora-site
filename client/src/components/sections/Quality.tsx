@@ -26,7 +26,7 @@ export function Quality({ tone = "ink" }: { tone?: Tone }) {
         </p>
         <h2
           className={cn(
-            "mt-4 text-3xl font-display font-bold tracking-wide sm:text-4xl",
+            "mt-4 text-3xl font-display font-extrabold uppercase leading-[1.05] tracking-wide sm:text-4xl",
             headOn(tone)
           )}
         >

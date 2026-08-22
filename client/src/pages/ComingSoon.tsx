@@ -5,6 +5,7 @@ import { Footer } from "@/components/sections/Footer";
 import { StatsBand } from "@/components/sections/StatsBand";
 import { FlavorLineup } from "@/components/sections/FlavorLineup";
 import { SiteHeader } from "@/components/sections/SiteHeader";
+import { WhyKimora } from "@/components/sections/WhyKimora";
 import { WhyNotATub } from "@/components/sections/WhyNotATub";
 import { Formula } from "@/components/sections/Formula";
 import { Quality } from "@/components/sections/Quality";
@@ -355,60 +356,7 @@ export default function ComingSoon() {
 
           <WhyNotATub tone="ink" />
 
-          {/* ── 6. Why Kimora exists + Built for combat sports — cream ── */}
-          <section id="about" className="bg-background">
-            <div className={WRAP}>
-              <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
-                <motion.div
-                  initial={{ opacity: 0, y: 32 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-80px" }}
-                  transition={{ duration: 0.7, ease: EASE }}
-                >
-                  <p className={`${EYEBROW} text-primary-strong`}>Why Kimora exists</p>
-
-                  <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
-                    Consistency wins.
-                  </h2>
-
-                  <p className="mt-6 leading-8 text-muted-foreground">
-                    You do not get stronger from one lift. You do not get better
-                    from one roll. And you do not get results from taking creatine
-                    only when you remember.
-                  </p>
-
-                  <p className="mt-4 leading-8 text-foreground/80">
-                    Kimora was built to remove the friction so daily use becomes the
-                    default.
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 28 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-80px" }}
-                  transition={{ duration: 0.7, ease: EASE, delay: 0.1 }}
-                >
-                  <p className={`${EYEBROW} text-primary-strong`}>
-                    Built for combat sports
-                  </p>
-                  <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
-                    Made for the mat, not the supplement aisle.
-                  </h2>
-                  <p className="mt-6 leading-8 text-muted-foreground">
-                    Combat sports athletes train differently — the rounds are long,
-                    the cuts are real, and the recovery window between sessions is
-                    short. Kimora is built for that reality: a stick that survives a
-                    gym bag and works mid-session, not a tub that sits on a counter.
-                    For the people who roll, spar, drill, cut, and compete.
-                  </p>
-                  <p className="mt-6 text-sm font-medium uppercase tracking-[0.22em] text-foreground/70">
-                    BJJ · MMA · Muay Thai · Boxing · Grappling · Serious Lifters
-                  </p>
-                </motion.div>
-              </div>
-            </div>
-          </section>
+          <WhyKimora tone="cream" id="about" />
 
           {/* ── 7-10. Shared with the homepage — see components/sections. ── */}
           <Quality tone="ink" />

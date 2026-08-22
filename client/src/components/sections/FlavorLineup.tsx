@@ -8,11 +8,15 @@ import { cn } from "@/lib/utils";
 /**
  * The three flavors, as equal cards.
  *
- * `mode` is the only difference between the pre-launch page and the homepage:
- * before launch every card reads "Coming Soon" and shows no price, because
- * nothing is buyable and a price with no checkout is just friction. After
- * launch the card carries the price and links through to the product page,
- * and availability comes from AVAILABLE_FLAVORS rather than being restated.
+ * The badge follows AVAILABLE_FLAVORS, not the launch state — the launch flavor
+ * is worth calling out before the store opens too, which is how the mockup
+ * shows it. `mode` only decides whether a price and a link to the product page
+ * appear, since a price with no checkout behind it is just friction.
+ *
+ * The product well is a wash of the flavour's colour fading down into the card
+ * rather than a flat block, and the photo sits inset with its own margin — the
+ * studio shots have their own backdrop, so bleeding them edge to edge fought
+ * with the tint instead of sitting inside it.
  */
 
 export function FlavorLineup({
@@ -39,57 +43,54 @@ export function FlavorLineup({
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
         {FLAVORS.map((flavor, i) => {
-          const available = launched && isFlavorAvailable(flavor.slug);
-          const badge = launched
-            ? available
-              ? "Launch Flavor"
-              : "Coming Soon"
-            : "Coming Soon";
+          const available = isFlavorAvailable(flavor.slug);
 
           const card = (
             <>
-              {/* Product well — the flavor's colour at low alpha. */}
               <div
-                className="relative aspect-[4/5] overflow-hidden"
-                style={{ backgroundColor: flavor.well }}
+                className="relative px-6 pb-2 pt-6"
+                style={{
+                  backgroundImage: `linear-gradient(180deg, ${flavor.well} 0%, rgba(0,0,0,0) 88%)`,
+                }}
               >
                 {/* Opaque, not a tint: a translucent pill washes out against
                     the packaging behind it. */}
                 <span
                   className={cn(
-                    "absolute left-4 top-4 z-[5] rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]",
+                    "absolute left-5 top-5 z-[5] rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em]",
                     available
-                      ? "border border-primary/50 bg-background text-primary-strong"
-                      : "border border-accent/40 bg-background text-accent"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-foreground/80 ring-1 ring-border"
                   )}
                 >
-                  {badge}
+                  {available ? "Launch Flavor" : "Coming Soon"}
                 </span>
+
                 <motion.img
                   src={flavor.image}
                   alt={flavor.name}
-                  whileHover={{ scale: 1.05 }}
+                  loading="lazy"
+                  whileHover={{ scale: 1.04 }}
                   transition={{ duration: 0.4, ease: EASE }}
-                  className="absolute inset-0 z-[1] h-full w-full object-cover"
+                  className="relative z-[1] mx-auto block h-auto w-full max-w-[280px] object-contain"
                   style={{ willChange: "transform" }}
                 />
               </div>
 
-              <div
-                className={cn(
-                  "border-t p-6 text-center",
-                  ink ? "border-[rgba(247,240,222,0.16)]" : "border-border"
-                )}
-              >
+              <div className="px-6 pb-7 pt-3">
+                <span
+                  aria-hidden="true"
+                  className="mb-3 block h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: flavor.hex }}
+                />
+
                 <h3
-                  className={cn(
-                    "text-2xl font-display font-bold",
-                    headOn(tone)
-                  )}
+                  className={cn("text-xl font-display font-bold", headOn(tone))}
                 >
                   {flavor.name}
                 </h3>
-                <p className={cn("mt-3 text-sm leading-7", bodyOn(tone))}>
+
+                <p className={cn("mt-2 text-sm leading-7", bodyOn(tone))}>
                   {flavor.desc}
                 </p>
 

@@ -43,9 +43,12 @@ export const bodyOn = (tone: Tone) =>
 /** Headings that read correctly on the given tone. */
 export const headOn = (tone: Tone) => (isInk(tone) ? INK_HEAD : "text-foreground");
 
-/** Gold that keeps its contrast on the given tone. */
+/**
+ * Eyebrow colour. Light bands use Red Rock, per the mockup; ink bands cannot —
+ * it measures 2.85:1 there — so they keep gold.
+ */
 export const eyebrowOn = (tone: Tone) =>
-  isInk(tone) ? EYEBROW_INK : EYEBROW_LIGHT;
+  isInk(tone) ? EYEBROW_INK : "text-accent";
 
 export function Band({
   tone,
@@ -130,7 +133,7 @@ export function SectionHead({
 
       <h2
         className={cn(
-          "mt-4 text-3xl font-display font-bold tracking-wide sm:text-4xl",
+          "mt-4 text-3xl font-display font-extrabold uppercase leading-[1.05] tracking-wide sm:text-4xl",
           headOn(tone)
         )}
       >

@@ -45,11 +45,11 @@ export function EmailCapture() {
       className="py-24 bg-secondary scroll-mt-[92px]"
     >
       <div className="container px-4 mx-auto max-w-2xl text-center">
-        <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary-strong mb-5">
+        <p className="text-sm font-medium uppercase tracking-[0.26em] text-accent mb-5">
           Limited launch offer
         </p>
 
-        <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4 leading-[0.95]">
+        <h2 className="text-4xl md:text-5xl font-display font-extrabold uppercase text-foreground mb-4 leading-[0.95]">
           15% OFF YOUR FIRST ORDER
         </h2>
 

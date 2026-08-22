@@ -1,77 +1,64 @@
-export function About() {
+import { motion } from "framer-motion";
+import { Band, SectionHead, EASE, bodyOn, type Tone } from "./Band";
+import { cn } from "@/lib/utils";
+
+/**
+ * The founder story. Homepage-only, and the one section on the page written in
+ * first person — it is the thing no competitor can copy, so it gets room to
+ * breathe rather than being compressed into cards.
+ *
+ * The three value pillars that used to sit alongside it are gone: WhyKimora
+ * makes the consistency and built-for-combat-sports arguments, and Quality
+ * makes the formulated-with-intent one, so they were saying it twice.
+ */
+
+const STORY = [
+  "I've been training jiu-jitsu since 2020. I have a degree in biochemistry. And I spent years watching people in the gym overlook one of the most well-researched supplements in existence — not because they didn't care, but because every option on the market made it too easy to skip.",
+  "Plain creatine out of a tub. Chalky scoops. Gummies that tasted like a multivitamin. Nothing that actually made you want to take it every single day.",
+  "Kimora is what I wanted to exist: a single-serve stick that pairs 5g of creatine with real electrolytes, tastes good enough that you look forward to it, and fits in your gym bag without a second thought.",
+];
+
+const CLOSER =
+  "The name is a nod to the kimura — a submission that rewards patience, leverage, and persistence. That's the philosophy here too. Show up every day. The results compound.";
+
+export function About({
+  tone = "sand",
+  anchor,
+}: {
+  tone?: Tone;
+  /** Pass "about-anchor" on pages with a sticky navbar. */
+  anchor?: string;
+}) {
   return (
-    <>
-      {/* ✅ OFFSET ANCHOR */}
-      <div id="about-anchor" className="h-[140px] md:h-[160px]" />
+    <Band tone={tone} id="about" anchor={anchor}>
+      <SectionHead
+        tone={tone}
+        eyebrow="The founder"
+        title="Built on the mats."
+      />
 
-      <section id="about" className="py-24 bg-background">
-        <div className="container px-4 mx-auto max-w-5xl">
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
-
-            {/* Left: Founder story */}
-            <div>
-              <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary-strong mb-5">
-                Why Kimora exists
-              </p>
-
-              <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-8 leading-[0.95]">
-                BUILT ON THE MATS.
-              </h2>
-
-              <div className="space-y-5 text-muted-foreground leading-relaxed">
-                <p>
-                  I've been training jiu-jitsu since 2020. I have a degree in
-                  biochemistry. And I spent years watching people in the gym
-                  overlook one of the most well-researched supplements in
-                  existence — not because they didn't care, but because every
-                  option on the market made it too easy to skip.
-                </p>
-                <p>
-                  Plain creatine out of a tub. Chalky scoops. Gummies that
-                  tasted like a multivitamin. Nothing that actually made you
-                  want to take it every single day.
-                </p>
-                <p>
-                  Kimora is what I wanted to exist: a single-serve stick that
-                  pairs 5g of creatine with real electrolytes, tastes good
-                  enough that you look forward to it, and fits in your gym bag
-                  without a second thought.
-                </p>
-                <p className="text-foreground/80">
-                  The name is a nod to the kimura — a submission that rewards
-                  patience, leverage, and persistence. That's the philosophy
-                  here too. Show up every day. The results compound.
-                </p>
-              </div>
-            </div>
-
-            {/* Right: Values / pillars */}
-            <div className="space-y-6 md:pt-16">
-              {[
-                {
-                  label: "Consistency over intensity",
-                  body: "You don't get better from one roll. Creatine doesn't work from one dose. Both require daily commitment — Kimora is designed to make that easier.",
-                },
-                {
-                  label: "Formulated with intent",
-                  body: "Every ingredient has a reason to be there. Nothing is in the formula to fill space or cut cost. Micronized creatine, real electrolytes, naturally sweetened. That's it.",
-                },
-                {
-                  label: "Built for this community",
-                  body: "Not a mass-market supplement dressed up for combat sports. Kimora was built by someone on the mats, for people on the mats — and everyone else who trains with that same level of intention.",
-                },
-              ].map((item) => (
-                <div key={item.label} className="border-l-2 border-primary/40 pl-5">
-                  <p className="text-foreground font-semibold mb-1">{item.label}</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>
-                </div>
-              ))}
-            </div>
-
-          </div>
+      <motion.div
+        initial={{ opacity: 0, y: 28 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.7, ease: EASE }}
+        className="max-w-3xl"
+      >
+        <div className={cn("space-y-5 leading-8", bodyOn(tone))}>
+          {STORY.map((para) => (
+            <p key={para.slice(0, 32)}>{para}</p>
+          ))}
         </div>
-      </section>
-    </>
+
+        <p
+          className={cn(
+            "mt-6 border-l-2 border-primary/50 pl-5 leading-8",
+            tone === "ink" ? "text-[rgba(247,240,222,0.85)]" : "text-foreground/85"
+          )}
+        >
+          {CLOSER}
+        </p>
+      </motion.div>
+    </Band>
   );
 }

@@ -59,7 +59,7 @@ export function Testimonials() {
           <p className="text-[11px] font-bold tracking-[0.28em] uppercase text-accent mb-3">
             From the Community
           </p>
-          <h2 className="text-3xl md:text-4xl font-display font-extrabold uppercase text-foreground">
+          <h2 className="text-3xl md:text-4xl font-display font-extrabold uppercase tracking-wide text-foreground">
             Real Athletes. Real Consistency.
           </h2>
         </div>

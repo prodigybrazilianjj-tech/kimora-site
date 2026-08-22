@@ -10,6 +10,7 @@ import { Manifesto } from "@/components/sections/Manifesto";
 import { Ritual } from "@/components/sections/Ritual";
 import { WhyNotATub } from "@/components/sections/WhyNotATub";
 import { SavingsSlider } from "@/components/sections/SavingsSlider";
+import { WhyKimora } from "@/components/sections/WhyKimora";
 import { About } from "@/components/sections/About";
 import { FutureProducts } from "@/components/sections/FutureProducts";
 import { Testimonials } from "@/components/sections/Testimonials";
@@ -72,7 +73,8 @@ export default function Home() {
         <WhyNotATub tone="cream" anchor="comparison-anchor" />
         <SavingsSlider />
         <Testimonials />
-        <About />
+        <WhyKimora tone="cream" />
+        <About tone="sand" anchor="about-anchor" />
         <FutureProducts
           tone="ink"
           footnote="Rash guards, shorts, and training gear are in development. Join below and you'll hear first."

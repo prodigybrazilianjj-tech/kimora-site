@@ -24,3 +24,17 @@ export const PRELAUNCH_GATE_WHOLESALE = false;
 // takes "/" back. App.tsx routes from this and the navbar resolves its section
 // links against it, so the two cannot drift.
 export const HOME_PATH = PRELAUNCH_GATE ? "/preview-home" : "/";
+
+// ── The waitlist offer ───────────────────────────────────────────────────
+// The discount is quoted in three places — the hero's pricing line, the
+// waitlist section, and the success message that hands over the code — so it
+// lives here rather than as a "15%" typed into each of them.
+export const WAITLIST_DISCOUNT = 0.15;
+export const WAITLIST_CODE = "MAT15";
+
+export const WAITLIST_DISCOUNT_LABEL = `${Math.round(WAITLIST_DISCOUNT * 100)}%`;
+
+/** A pouch price with the waitlist discount applied, e.g. 49.99 -> "42.49". */
+export function waitlistPrice(pouchPrice: number): string {
+  return (pouchPrice * (1 - WAITLIST_DISCOUNT)).toFixed(2);
+}

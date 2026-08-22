@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
 
 const POINTS = [
   {
-    title: "Fits the bag",
-    body: "A single-serve stick fits a gi pocket. No tub, no scoop, no shaker on the mat.",
+    title: "Packs flat",
+    body: "A stick slides into a shorts pocket. The tub and the scoop stay home.",
   },
   {
     title: "One stick, one day",

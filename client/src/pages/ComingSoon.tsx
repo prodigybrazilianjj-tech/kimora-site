@@ -1,5 +1,3 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
 import { scrollToId, scrollToPageTop } from "@/lib/scroll";
 import { Footer } from "@/components/sections/Footer";
 import { StatsBand } from "@/components/sections/StatsBand";
@@ -13,13 +11,16 @@ import { Quality } from "@/components/sections/Quality";
 import { FaqSection } from "@/components/sections/FaqSection";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { FutureProducts } from "@/components/sections/FutureProducts";
-import { motion, AnimatePresence } from "framer-motion";
-import { INK, INK_HEAD, INK_LEAD, INK_BODY, INK_CARD, LIGHT_CARD } from "@/lib/surfaces";
+import { Waitlist } from "@/components/sections/Waitlist";
+import { motion } from "framer-motion";
+import { INK_HEAD, INK_LEAD, INK_BODY } from "@/lib/surfaces";
+import { FLAVORS, LAUNCH_FLAVOR, STICKS_PER_POUCH } from "@/lib/product";
+import { WAITLIST_DISCOUNT_LABEL } from "@/lib/prelaunch";
+
+const LAUNCH = FLAVORS.find((f) => f.slug === LAUNCH_FLAVOR) ?? FLAVORS[0];
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-const WRAP = "mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20";
-const EYEBROW = "text-sm font-medium uppercase tracking-[0.26em]";
 
 function scrollToWaitlist() {
   scrollToId("waitlist");
@@ -33,92 +34,12 @@ const NAV_LINKS = [
     onClick: scrollToPageTop,
   },
   { label: "Flavors", onClick: () => scrollToId("flavors") },
+  { label: "Pricing", href: "/shop" },
   { label: "Formula", onClick: () => scrollToId("formula") },
   { label: "About", onClick: () => scrollToId("about") },
 ];
 
 export default function ComingSoon() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const launchAt = useMemo(() => {
-    const configured =
-      (typeof import.meta !== "undefined" &&
-        (import.meta as any)?.env?.VITE_LAUNCH_AT) ||
-      "";
-    const parsed = configured ? new Date(configured) : null;
-
-    if (parsed && !Number.isNaN(parsed.getTime())) return parsed;
-
-    const fallback = new Date();
-    fallback.setDate(fallback.getDate() + 14);
-    fallback.setHours(9, 0, 0, 0);
-    return fallback;
-  }, []);
-
-  const [timeLeftMs, setTimeLeftMs] = useState(
-    Math.max(0, launchAt.getTime() - Date.now())
-  );
-
-  useEffect(() => {
-    const tick = () => {
-      setTimeLeftMs(Math.max(0, launchAt.getTime() - Date.now()));
-    };
-
-    tick();
-    const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
-  }, [launchAt]);
-
-  const countdown = useMemo(() => {
-    const totalSeconds = Math.floor(timeLeftMs / 1000);
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    const pad = (n: number) => String(n).padStart(2, "0");
-
-    return {
-      days: pad(days),
-      hours: pad(hours),
-      minutes: pad(minutes),
-      seconds: pad(seconds),
-    };
-  }, [timeLeftMs]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
-
-    try {
-      setSubmitting(true);
-
-      const res = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.message || "Something went wrong");
-      }
-
-      setSubmitted(true);
-      setEmail("");
-    } catch (err: any) {
-      console.error("Waitlist submit failed:", err);
-      alert(err?.message || "Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   return (
     <>
       <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -208,124 +129,40 @@ export default function ComingSoon() {
                   ))}
                 </div>
 
-                {/* Waitlist card */}
+                {/* Pricing first, then the ask. The waitlist card used to sit
+                    here, which pitched a discount before the page had shown a
+                    price or a pack size. */}
                 <motion.div
-                  id="waitlist"
-                  initial={{ opacity: 0, y: 40 }}
+                  initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.75, ease: EASE, delay: 1.08 }}
-                  className="mt-10 rounded-xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.04)] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.35)] backdrop-blur-md sm:p-6"
+                  transition={{ duration: 0.6, ease: EASE, delay: 1.08 }}
+                  className="mt-10"
                 >
-                  <div className="flex flex-col gap-6">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                      <div>
-                        <p className={`text-[11px] uppercase tracking-[0.24em] ${INK_BODY}`}>
-                          Pre-Launch Exclusive
-                        </p>
-                        <h2
-                          className={`mt-2 text-3xl font-display font-bold tracking-tight ${INK_HEAD}`}
-                        >
-                          Get 15% off — and first access.
-                        </h2>
-                      </div>
-
-                      <p className={`max-w-[240px] text-sm leading-6 sm:text-right ${INK_BODY}`}>
-                        Join the waitlist before we launch. You get 15% off your first order and a 24-hour head start before the public.
-                      </p>
-                    </div>
-
-                    {/* Countdown */}
-                    <div className="grid grid-cols-4 gap-3">
-                      {[
-                        { value: countdown.days, label: "Days" },
-                        { value: countdown.hours, label: "Hours" },
-                        { value: countdown.minutes, label: "Minutes" },
-                      ].map(({ value, label }) => (
-                        <div
-                          key={label}
-                          className="rounded-xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.05)] px-3 py-4 text-center"
-                        >
-                          <div
-                            className={`text-3xl font-bold tracking-tight md:text-4xl ${INK_HEAD}`}
-                          >
-                            {value}
-                          </div>
-                          <div className={`mt-1 text-[10px] uppercase tracking-[0.22em] ${INK_BODY}`}>
-                            {label}
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Seconds — subtle pulse on each tick */}
-                      <div className="rounded-xl border border-accent/40 bg-accent/20 px-3 py-4 text-center shadow-[0_0_28px_rgba(168,71,42,0.28)]">
-                        <motion.div
-                          key={countdown.seconds}
-                          initial={{ opacity: 0.4, scale: 0.78 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.22, ease: "easeOut" }}
-                          className={`text-3xl font-bold tracking-tight md:text-4xl ${INK_HEAD}`}
-                        >
-                          {countdown.seconds}
-                        </motion.div>
-                        <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-[#E08A6B]">
-                          Seconds
-                        </div>
-                      </div>
-                    </div>
-
-                    <form
-                      onSubmit={handleSubmit}
-                      className="flex flex-col gap-3 pt-1 sm:flex-row"
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => scrollToId("flavors")}
+                      className="h-14 rounded-lg bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-primary-foreground transition-colors duration-200 hover:bg-primary/90"
                     >
-                      <input
-                        type="email"
-                        required
-                        placeholder="Enter your email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        disabled={submitting}
-                        aria-label="Email address"
-                        className="h-16 w-full sm:flex-1 rounded-lg border border-[rgba(247,240,222,0.18)] bg-[rgba(247,240,222,0.06)] px-5 text-base text-[#F7F0DE] placeholder:text-[rgba(247,240,222,0.45)] focus:border-primary/60 focus:outline-none disabled:opacity-60 transition-colors duration-200"
-                      />
+                      See pricing
+                    </button>
 
-                      <motion.button
-                        type="submit"
-                        disabled={submitting}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.97 }}
-                        transition={{ duration: 0.15 }}
-                        className="h-16 rounded-lg bg-primary px-7 text-sm font-bold uppercase tracking-[0.18em] text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:opacity-60"
-                      >
-                        {submitting ? "Submitting..." : "Join the Waitlist"}
-                      </motion.button>
-                    </form>
-
-                    <AnimatePresence mode="wait">
-                      {submitted ? (
-                        <motion.p
-                          key="success"
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.35 }}
-                          className="text-sm font-medium text-emerald-400"
-                        >
-                          You're on the list. Your code is{" "}
-                          <span className="font-bold">MAT15</span> — 15% off your
-                          first order, plus early access at launch.
-                        </motion.p>
-                      ) : (
-                        <motion.p
-                          key="fine-print"
-                          initial={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className={`text-xs ${INK_BODY}`}
-                        >
-                          15% off first order · One use per customer · No spam
-                        </motion.p>
-                      )}
-                    </AnimatePresence>
+                    <button
+                      type="button"
+                      onClick={scrollToWaitlist}
+                      className="h-14 rounded-lg border border-[rgba(247,240,222,0.28)] px-7 text-sm font-bold uppercase tracking-[0.18em] text-[#F7F0DE] transition-colors duration-200 hover:bg-[rgba(247,240,222,0.08)]"
+                    >
+                      Join the waitlist
+                    </button>
                   </div>
+
+                  <p className={`mt-4 text-sm leading-6 ${INK_BODY}`}>
+                    ${LAUNCH.priceOneTime.toFixed(2)} for {STICKS_PER_POUCH}{" "}
+                    sticks — a month of daily dosing.{" "}
+                    <span className="text-[#F7F0DE]">
+                      Waitlist gets {WAITLIST_DISCOUNT_LABEL} off.
+                    </span>
+                  </p>
                 </motion.div>
           </HeroShell>
 
@@ -345,6 +182,9 @@ export default function ComingSoon() {
           <FaqSection tone="sand" mode="prelaunch" />
           <Manifesto />
           <FutureProducts tone="cream" />
+
+          {/* ── The ask, last. ── */}
+          <Waitlist />
         </main>
       </div>
 

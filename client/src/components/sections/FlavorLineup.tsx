@@ -1,7 +1,12 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Band, SectionHead, EASE, bodyOn, headOn, type Tone } from "./Band";
-import { FLAVORS, isFlavorAvailable } from "@/lib/product";
+import {
+  FLAVORS,
+  isFlavorAvailable,
+  STICKS_PER_POUCH,
+  perStickPrice,
+} from "@/lib/product";
 import { INK_CARD } from "@/lib/surfaces";
 import { cn } from "@/lib/utils";
 
@@ -27,8 +32,14 @@ const CARD_FILL: Record<Tone, string> = {
  *
  * The badge follows AVAILABLE_FLAVORS, not the launch state — the launch flavor
  * is worth calling out before the store opens too, which is how the mockup
- * shows it. `mode` only decides whether a price and a link to the product page
- * appear, since a price with no checkout behind it is just friction.
+ * shows it.
+ *
+ * Price, pack size and the link to the product page show in BOTH modes. Hiding
+ * them pre-launch meant the waitlist pitched 15% off a number nobody had seen,
+ * off a pouch whose size nobody knew — the discount read as a trick. The gate
+ * already handles the rest: Shop and Product render the price and swap the buy
+ * button for Notify Me, so the path never dead-ends. `mode` now only sets the
+ * wording of the link out to the shop.
  *
  * The product well is its own panel — a flat wash of the flavour's colour with
  * a glow behind the pouch, ending on a hard edge where the card body starts.
@@ -59,7 +70,7 @@ export function FlavorLineup({
         tone={tone}
         eyebrow="Flavor lineup"
         title="Three flavors. One system."
-        lead="Designed to feel premium, clean, and actually enjoyable to take every day."
+        lead="Same 5g dose in every stick. The only thing that changes is how it tastes."
       />
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
@@ -119,19 +130,23 @@ export function FlavorLineup({
                   {flavor.desc}
                 </p>
 
-                {launched ? (
-                  <p
-                    className={cn(
-                      "mt-4 font-display text-lg font-bold",
-                      headOn(tone)
-                    )}
-                  >
-                    ${flavor.priceOneTime.toFixed(2)}
-                    <span className={cn("ml-2 text-xs font-medium", bodyOn(tone))}>
-                      ${flavor.priceSub.toFixed(2)} on subscription
-                    </span>
-                  </p>
-                ) : null}
+                <p
+                  className={cn(
+                    "mt-4 font-display text-lg font-bold",
+                    headOn(tone)
+                  )}
+                >
+                  ${flavor.priceOneTime.toFixed(2)}
+                  <span className={cn("ml-2 text-xs font-medium", bodyOn(tone))}>
+                    · {STICKS_PER_POUCH} sticks · ${perStickPrice(flavor.priceOneTime)} each
+                  </span>
+                </p>
+
+                <p className={cn("mt-1.5 text-xs leading-6", bodyOn(tone))}>
+                  ${flavor.priceSub.toFixed(2)} on subscription · $
+                  {perStickPrice(flavor.priceSub)} each
+                </p>
+
               </div>
             </>
           );
@@ -150,10 +165,10 @@ export function FlavorLineup({
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.65, ease: EASE, delay: i * 0.12 }}
               whileHover={{ y: -10, transition: { duration: 0.25, ease: EASE } }}
-              className={launched ? undefined : shell}
+              className={available ? undefined : shell}
               style={{ willChange: "transform" }}
             >
-              {launched ? (
+              {available ? (
                 <Link
                   href={`/product?flavor=${flavor.slug}`}
                   className={cn(
@@ -170,6 +185,26 @@ export function FlavorLineup({
             </motion.article>
           );
         })}
+      </div>
+
+      <div className="mt-10 text-center">
+        <Link
+          href="/shop"
+          className={cn(
+            "inline-flex items-center gap-2 rounded-lg border px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] transition-colors duration-200",
+            ink
+              ? "border-[rgba(247,240,222,0.28)] text-[#F7F0DE] hover:bg-[rgba(247,240,222,0.08)]"
+              : "border-foreground/20 text-foreground hover:bg-foreground/5"
+          )}
+        >
+          {launched ? "Shop all flavors" : "See the full lineup"}
+          <span aria-hidden="true">→</span>
+        </Link>
+
+        <p className={cn("mt-3 text-xs", bodyOn(tone))}>
+          One pouch is a month of daily dosing. Cancel or skip a subscription
+          anytime.
+        </p>
       </div>
     </Band>
   );

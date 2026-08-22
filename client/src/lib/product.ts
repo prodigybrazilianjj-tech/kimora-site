@@ -18,6 +18,17 @@ export function isFlavorAvailable(slug: string): boolean {
   return AVAILABLE_FLAVORS.has(slug);
 }
 
+// ── Pack size ────────────────────────────────────────────────────────────
+// One pouch = 30 single-serve sticks = one month of daily dosing. Anywhere we
+// print a price we also print this, so a shopper never sees a number without
+// knowing what it actually buys.
+export const STICKS_PER_POUCH = 30;
+
+/** Unit price behind a pouch price, e.g. 49.99 -> "1.67". */
+export function perStickPrice(pouchPrice: number): string {
+  return (pouchPrice / STICKS_PER_POUCH).toFixed(2);
+}
+
 // ── Per-stick nutrition (explicit dosing) ────────────────────────────────
 // ⚠️ PENDING FINAL BACTOLAC CoA. These are the 2026-06-17 locked targets and
 // are NOT yet confirmed against a production Certificate of Analysis.
@@ -39,7 +50,7 @@ export const NUTRITION_PER_STICK: readonly NutrientLine[] = [
 ];
 
 export const NUTRITION_SERVING_NOTE =
-  "Per stick (1 serving) · 30 sticks per pouch · Amounts finalize on our production Certificate of Analysis.";
+  `Per stick (1 serving) · ${STICKS_PER_POUCH} sticks per pouch · Amounts finalize on our production Certificate of Analysis.`;
 
 // ── Flavor catalog ───────────────────────────────────────────────────────
 // The one description of each flavor. The homepage lineup, the pre-launch

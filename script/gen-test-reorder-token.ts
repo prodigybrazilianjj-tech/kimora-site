@@ -12,7 +12,7 @@ const withLast = generateReorderToken({
   email: "smoketest@example.com",
   businessName: "Combat Club Cottonwood",
   tier: "Wholesale",
-  unitPrice: 28.99,
+  unitPrice: 31.0,
   stripeCustomerId: "",
   lastOrder: [
     { name: "Strawberry Guava", qty: 10 },
@@ -28,7 +28,7 @@ const noLast = generateReorderToken({
   email: "smoketest@example.com",
   businessName: "Old Link Gym",
   tier: "Wholesale",
-  unitPrice: 28.99,
+  unitPrice: 31.0,
   stripeCustomerId: "",
 });
 

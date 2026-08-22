@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { INK, INK_BODY } from "@/lib/surfaces";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -27,7 +28,7 @@ const tiles = [
 
 export function FutureProducts() {
   return (
-    <section className="border-t border-border bg-background">
+    <section className={INK}>
       <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-24">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -39,10 +40,10 @@ export function FutureProducts() {
           <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
             What we're building
           </p>
-          <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
+          <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-surface-ink-foreground sm:text-4xl">
             More than a supplement.
           </h2>
-          <p className="mt-5 max-w-2xl leading-7 text-muted-foreground">
+          <p className={`mt-5 max-w-2xl leading-7 ${INK_BODY}`}>
             Kimora starts with the stick — but it's becoming a full system for
             the people who live on the mats. Gear engineered the same way the
             fuel is: honest, tested, built for live rounds. Here's what's next.
@@ -57,7 +58,7 @@ export function FutureProducts() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.6, ease: EASE, delay: i * 0.1 }}
-              className="group relative aspect-[4/5] overflow-hidden rounded-[24px] border border-border bg-card"
+              className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-[rgba(247,240,222,0.16)] bg-surface-ink"
             >
               <div className="absolute inset-0" style={{ background: tile.glow }} />
               <img
@@ -87,7 +88,7 @@ export function FutureProducts() {
           ))}
         </div>
 
-        <p className="mt-8 text-sm text-muted-foreground">
+        <p className={`mt-8 text-sm ${INK_BODY}`}>
           Rash guards, shorts, and training gear are in development. Join below
           and you'll hear first.
         </p>

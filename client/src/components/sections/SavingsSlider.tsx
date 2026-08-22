@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { INK, INK_BODY } from "@/lib/surfaces";
 
 /**
  * SavingsSlider — subscription value widget (approved mockup 2026-07-05,
@@ -16,7 +17,7 @@ export function SavingsSlider() {
   const sticks = months * 30;
 
   return (
-    <section className="relative overflow-hidden bg-foreground text-background py-16 md:py-24">
+    <section className={`relative overflow-hidden py-16 md:py-24 ${INK}`}>
       <div className="container px-4 mx-auto grid md:grid-cols-2 gap-10 md:gap-16 items-center">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -24,15 +25,15 @@ export function SavingsSlider() {
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.7 }}
         >
-          <p className="text-[11px] font-bold tracking-[0.28em] uppercase text-[#C9A86A] mb-3">
+          <p className="text-[11px] font-bold tracking-[0.28em] uppercase text-primary mb-3">
             Subscribe &amp; Save 20%
           </p>
-          <h2 className="text-4xl md:text-5xl font-display font-extrabold uppercase leading-tight text-[#FBF5E9]">
+          <h2 className="text-4xl md:text-5xl font-display font-extrabold uppercase leading-tight text-surface-ink-foreground">
             The Habit
             <br />
             Pays You Back.
           </h2>
-          <p className="mt-5 max-w-md leading-relaxed text-[#EDE6D6]/65">
+          <p className={`mt-5 max-w-md leading-relaxed ${INK_BODY}`}>
             Creatine only works if you take it every day. Subscription keeps the
             sticks coming — and keeps $10 in your pocket every bag.
           </p>
@@ -43,11 +44,11 @@ export function SavingsSlider() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.7, delay: 0.12 }}
-          className="rounded-2xl border border-[#EDE6D6]/15 bg-[#EDE6D6]/5 p-8 md:p-9"
+          className="rounded-2xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.05)] p-8 md:p-9"
         >
           <label
             htmlFor="savings-months"
-            className="block text-[11px] font-bold tracking-[0.22em] uppercase text-[#C9A86A]"
+            className="block text-[11px] font-bold tracking-[0.22em] uppercase text-primary"
           >
             How long will you train?
           </label>
@@ -60,7 +61,7 @@ export function SavingsSlider() {
             onChange={(e) => setMonths(Number(e.target.value))}
             className="w-full mt-5 mb-2 accent-primary cursor-pointer"
           />
-          <div className="font-display text-xl font-bold text-[#FBF5E9]">
+          <div className="font-display text-xl font-bold text-surface-ink-foreground">
             {months} {months === 1 ? "month" : "months"}
           </div>
 
@@ -69,21 +70,21 @@ export function SavingsSlider() {
               <div className="font-display font-black text-3xl text-[#D9B96E]">
                 ${saved.toFixed(2)}
               </div>
-              <div className="mt-1 text-[10px] font-semibold tracking-[0.18em] uppercase text-[#EDE6D6]/50">
+              <div className={`mt-1 text-[10px] font-semibold tracking-[0.18em] uppercase ${INK_BODY}`}>
                 You Save vs One-Time
               </div>
             </div>
             <div className="rounded-xl bg-black/40 p-5">
-              <div className="font-display font-black text-3xl text-[#C9A86A]">
+              <div className="font-display font-black text-3xl text-primary">
                 {sticks.toLocaleString()}
               </div>
-              <div className="mt-1 text-[10px] font-semibold tracking-[0.18em] uppercase text-[#EDE6D6]/50">
+              <div className={`mt-1 text-[10px] font-semibold tracking-[0.18em] uppercase ${INK_BODY}`}>
                 Sticks Delivered
               </div>
             </div>
           </div>
 
-          <p className="mt-5 text-xs text-[#EDE6D6]/50">
+          <p className={`mt-5 text-xs ${INK_BODY}`}>
             $1.33/day subscribed · pause, swap flavors, or cancel anytime
           </p>
         </motion.div>

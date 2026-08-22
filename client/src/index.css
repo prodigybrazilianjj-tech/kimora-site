@@ -14,6 +14,7 @@
   --color-popover-foreground: hsl(var(--popover-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-strong: hsl(var(--primary-strong));
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
   --color-muted: hsl(var(--muted));
@@ -25,6 +26,8 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-surface-ink: hsl(var(--surface-ink));
+  --color-surface-ink-foreground: hsl(var(--surface-ink-foreground));
   
   --font-sans: "Archivo", sans-serif;
   --font-display: "Gabarito", sans-serif;
@@ -36,26 +39,27 @@
 }
 
 :root {
-  /* Option B — Cream & Brass. Light, warm, cream-forward with Sedona earthtone accents. */
+  /* Option B — Cream & Gold. Light, warm, cream-forward with Sedona earthtone accents. */
   --background: 44 56% 92%; /* cream #F7F0DE */
-  --foreground: 32 40% 19%; /* espresso brown #42301C */
+  --foreground: 40 12% 12%; /* warm ink #211E1A */
 
   --card: 44 60% 96%; /* lighter cream raised surface #FCF8EC */
-  --card-foreground: 32 40% 19%;
+  --card-foreground: 40 12% 12%;
 
   --popover: 44 60% 96%;
-  --popover-foreground: 32 40% 19%;
+  --popover-foreground: 40 12% 12%;
 
-  --primary: 39 60% 45%; /* Brass #B5862E — the lead accent */
-  --primary-foreground: 43 60% 94%; /* cream text on brass #FBF5E6 */
+  --primary: 38 43% 60%; /* Gold #C9A86A — the lead accent */
+  --primary-strong: 39 62% 30%; /* deep gold #7C5B1D — gold-as-text on cream and sand */
+  --primary-foreground: 40 12% 12%; /* ink on gold #211E1A — gold is too light to carry cream text */
 
   --secondary: 43 49% 84%; /* warm sand #ECE0C4 */
-  --secondary-foreground: 32 40% 19%;
+  --secondary-foreground: 40 12% 12%;
 
   --muted: 43 45% 87%; /* muted sand #EFE6CF */
-  --muted-foreground: 39 49% 29%; /* taupe brown #705626 */
+  --muted-foreground: 40 6% 37%; /* warm grey #646059 — 37% not 39% so it clears AA on sand too */
 
-  --accent: 14 60% 41%; /* Red Rock #A8472A — outlines / secondary energy */
+  --accent: 14 60% 40%; /* Red Rock #A34529 — outlines / secondary energy */
   --accent-foreground: 43 60% 94%;
 
   --destructive: 0 70% 42%;
@@ -63,7 +67,11 @@
 
   --border: 40 33% 78%; /* warm sand border */
   --input: 40 33% 78%;
-  --ring: 39 60% 45%;
+  --ring: 39 60% 45%; /* brass — deliberately darker than --primary so focus stays visible on cream */
+
+  /* Dark band surface — the page alternates cream and ink sections. */
+  --surface-ink: 40 12% 12%; /* #211E1A */
+  --surface-ink-foreground: 44 56% 92%; /* cream #F7F0DE */
 
   --radius: 0.5rem;
 }

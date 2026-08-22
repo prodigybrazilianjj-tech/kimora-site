@@ -4,14 +4,14 @@ export function About() {
       {/* ✅ OFFSET ANCHOR */}
       <div id="about-anchor" className="h-[140px] md:h-[160px]" />
 
-      <section id="about" className="py-24 bg-secondary/10 border-y border-foreground/5">
+      <section id="about" className="py-24 bg-background">
         <div className="container px-4 mx-auto max-w-5xl">
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
 
             {/* Left: Founder story */}
             <div>
-              <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary mb-5">
+              <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary-strong mb-5">
                 Why Kimora exists
               </p>
 

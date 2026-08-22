@@ -18,22 +18,49 @@ function TikTokIcon({ className }: { className?: string }) {
   );
 }
 
-export function Footer() {
+/**
+ * Two surfaces. "sand" is the long-standing site footer. "ink" is the closing
+ * band for the alternating cream/ink page (ComingSoon) — the cream-page text
+ * tokens (--muted-foreground is a warm grey) vanish on #211E1A, so ink uses
+ * cream at reduced alpha instead of the token scale.
+ */
+const TONES = {
+  sand: {
+    shell: "bg-secondary border-border",
+    display: "text-foreground/20",
+    body: "text-muted-foreground",
+    hover: "hover:text-foreground",
+    address: "text-foreground/70",
+    fine: "text-foreground/70",
+  },
+  ink: {
+    shell: "bg-surface-ink text-surface-ink-foreground border-[rgba(247,240,222,0.14)]",
+    display: "text-[rgba(247,240,222,0.22)]",
+    body: "text-[rgba(247,240,222,0.62)]",
+    hover: "hover:text-[#F7F0DE]",
+    address: "text-[rgba(247,240,222,0.62)]",
+    fine: "text-[rgba(247,240,222,0.58)]",
+  },
+} as const;
+
+export function Footer({ tone = "sand" }: { tone?: keyof typeof TONES }) {
+  const t = TONES[tone];
+
   return (
-    <footer className="py-12 bg-secondary border-t border-border">
+    <footer className={`py-12 border-t ${t.shell}`}>
       <div className="container px-4 mx-auto text-center">
-        <p className="text-3xl font-display font-bold text-foreground/20 tracking-[0.18em] mb-8">
+        <p className={`text-3xl font-display font-bold tracking-[0.18em] mb-8 ${t.display}`}>
           GROW STRONGER. THINK SHARPER.
         </p>
 
-        <div className="flex flex-col items-center gap-4 mb-10 text-sm text-muted-foreground">
+        <div className={`flex flex-col items-center gap-4 mb-10 text-sm ${t.body}`}>
           <div className="flex items-center gap-5">
             <a
               href="https://instagram.com/kimoracreatine"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Kimora on Instagram"
-              className="hover:text-foreground transition-colors"
+              className={`${t.hover} transition-colors`}
             >
               <InstagramIcon className="w-5 h-5" />
             </a>
@@ -43,7 +70,7 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Kimora on TikTok"
-              className="hover:text-foreground transition-colors"
+              className={`${t.hover} transition-colors`}
             >
               <TikTokIcon className="w-5 h-5" />
             </a>
@@ -51,48 +78,48 @@ export function Footer() {
 
           <span>Kimora Co. © 2026. All rights reserved.</span>
 
-          <span className="text-xs text-foreground/40">
+          <span className={`text-xs ${t.address}`}>
             PO Box 20024, Sedona, AZ 86341
           </span>
 
           <a
             href="mailto:support@kimoraco.com"
-            className="hover:text-foreground transition-colors"
+            className={`${t.hover} transition-colors`}
           >
             support@kimoraco.com
           </a>
 
           {/* Legal + Utility Links */}
           <div className="flex flex-wrap justify-center gap-6 text-xs">
-            <Link href="/terms" className="hover:text-foreground transition-colors">
+            <Link href="/terms" className={`${t.hover} transition-colors`}>
               Terms of Service
             </Link>
 
-            <Link href="/privacy" className="hover:text-foreground transition-colors">
+            <Link href="/privacy" className={`${t.hover} transition-colors`}>
               Privacy Policy
             </Link>
 
             <Link
               href="/manage-subscription"
-              className="hover:text-foreground transition-colors"
+              className={`${t.hover} transition-colors`}
             >
               Manage Subscription
             </Link>
 
-            <Link href="/refunds" className="hover:text-foreground transition-colors">
+            <Link href="/refunds" className={`${t.hover} transition-colors`}>
               Refund Policy
             </Link>
 
             <Link
               href="/wholesale"
-              className="hover:text-foreground transition-colors"
+              className={`${t.hover} transition-colors`}
             >
               Wholesale
             </Link>
           </div>
         </div>
 
-        <p className="text-xs text-foreground/20 max-w-2xl mx-auto leading-relaxed">
+        <p className={`text-xs max-w-2xl mx-auto leading-relaxed ${t.fine}`}>
           These statements have not been evaluated by the Food and Drug
           Administration. This product is not intended to diagnose, treat, cure,
           or prevent any disease. Always consult your healthcare provider before

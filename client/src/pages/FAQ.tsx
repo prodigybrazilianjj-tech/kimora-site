@@ -38,10 +38,11 @@ export default function FAQ() {
       <Navbar />
       <main className="pt-32 pb-24">
         <div className="container px-4 mx-auto max-w-3xl">
-          <Link href="/">
-            <a className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8 transition-colors">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to main site
-            </a>
+          <Link
+            href="/"
+            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8 transition-colors"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to main site
           </Link>
 
           <h1 className="text-5xl md:text-7xl font-display font-bold text-foreground mb-6">
@@ -54,7 +55,7 @@ export default function FAQ() {
           <Accordion type="single" collapsible className="space-y-4">
             {faqs.map((faq, index) => (
               <AccordionItem key={index} value={`item-${index}`} className="border-foreground/10">
-                <AccordionTrigger className="text-lg font-bold text-foreground hover:text-primary transition-colors text-left">
+                <AccordionTrigger className="text-lg font-bold text-foreground hover:text-primary-strong transition-colors text-left">
                   {faq.q}
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground leading-relaxed text-base">

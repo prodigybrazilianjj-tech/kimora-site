@@ -19,7 +19,7 @@ function Lane() {
       {ITEMS.map((item) => (
         <span key={item} className="flex items-center gap-12 shrink-0">
           <span>{item}</span>
-          <span className="text-primary/80" aria-hidden="true">
+          <span className="text-primary-foreground/70" aria-hidden="true">
             ◆
           </span>
         </span>
@@ -31,7 +31,7 @@ function Lane() {
 export function Marquee() {
   return (
     <div
-      className="overflow-hidden bg-foreground text-background border-y-[3px] border-primary py-3.5 group"
+      className="overflow-hidden bg-primary text-primary-foreground border-y-[3px] border-surface-ink py-3.5 group"
       aria-hidden="true"
     >
       <div className="flex w-max gap-12 whitespace-nowrap font-display font-bold text-sm md:text-base tracking-[0.22em] uppercase animate-marquee group-hover:[animation-play-state:paused] motion-reduce:animate-none">

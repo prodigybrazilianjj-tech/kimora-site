@@ -42,10 +42,10 @@ export function EmailCapture() {
   return (
     <section
       id="email-capture"
-      className="py-24 bg-background border-t border-foreground/5 scroll-mt-[92px]"
+      className="py-24 bg-secondary scroll-mt-[92px]"
     >
       <div className="container px-4 mx-auto max-w-2xl text-center">
-        <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary mb-5">
+        <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary-strong mb-5">
           Limited launch offer
         </p>
 
@@ -61,7 +61,7 @@ export function EmailCapture() {
         {state === "success" ? (
           <div className="bg-card border border-primary/40 rounded-2xl px-8 py-10">
             <div
-              className="text-primary text-5xl font-display font-bold tracking-widest mb-3"
+              className="text-primary-strong text-5xl font-display font-bold tracking-widest mb-3"
               style={{ fontFamily: "ui-monospace, monospace" }}
             >
               MAT15

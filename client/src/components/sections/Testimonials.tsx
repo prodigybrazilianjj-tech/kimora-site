@@ -53,7 +53,7 @@ function TestimonialCard({
 
 export function Testimonials() {
   return (
-    <section className="py-16 md:py-24 bg-card/30 border-t border-foreground/5 overflow-hidden">
+    <section className="py-16 md:py-24 bg-secondary overflow-hidden">
       <div className="container px-4 mx-auto max-w-6xl">
         <div className="mb-10 md:mb-12">
           <p className="text-[11px] font-bold tracking-[0.28em] uppercase text-accent mb-3">
@@ -73,7 +73,7 @@ export function Testimonials() {
         </div>
       </div>
 
-      <p className="text-center text-xs text-foreground/25 mt-10 tracking-wide">
+      <p className="text-center text-xs text-muted-foreground mt-10 tracking-wide">
         Early access community · Testimonials are from beta users
       </p>
     </section>

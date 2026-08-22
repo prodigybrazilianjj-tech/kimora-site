@@ -41,10 +41,10 @@ export function StickyNotifyBar() {
         visible ? "translate-y-0" : "translate-y-[140%]"
       }`}
     >
-      <div className="flex items-center gap-3 md:gap-4 rounded-full bg-[#1C130B] text-[#EDE6D6] py-2 pl-5 pr-2 shadow-[0_18px_40px_rgba(0,0,0,0.35)] whitespace-nowrap">
+      <div className="flex items-center gap-3 md:gap-4 rounded-full bg-surface-ink text-surface-ink-foreground py-2 pl-5 pr-2 shadow-[0_18px_40px_rgba(0,0,0,0.45)] whitespace-nowrap">
         <span className="text-xs md:text-sm font-semibold">
           Strawberry Guava is coming —{" "}
-          <span className="text-[#C9A86A]">get 15% off at launch</span>
+          <span className="text-primary">get 15% off at launch</span>
         </span>
         <Button
           size="sm"
@@ -56,7 +56,7 @@ export function StickyNotifyBar() {
         <button
           aria-label="Dismiss"
           onClick={() => setDismissed(true)}
-          className="pr-2 text-[#EDE6D6]/50 hover:text-[#EDE6D6] text-sm"
+          className="pr-2 text-[rgba(247,240,222,0.6)] hover:text-surface-ink-foreground text-sm"
         >
           ✕
         </button>

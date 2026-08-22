@@ -55,7 +55,7 @@ export function NotifyMe({
 
   if (state === "success") {
     return (
-      <p className="text-sm font-medium text-primary leading-relaxed">
+      <p className="text-sm font-medium text-primary-strong leading-relaxed">
         {successMessage}
       </p>
     );

@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { INK, INK_BODY } from "@/lib/surfaces";
 
 /**
  * CinematicBand — full-bleed dark break in the cream page rhythm
@@ -13,7 +14,7 @@ const VIDEO_SRC: string | null = null;
 
 export function CinematicBand() {
   return (
-    <section className="relative min-h-[70vh] flex items-center justify-center text-center overflow-hidden bg-[#1C130B]">
+    <section className={`relative min-h-[70vh] flex items-center justify-center text-center overflow-hidden ${INK}`}>
       {VIDEO_SRC ? (
         <video
           className="absolute inset-0 w-full h-full object-cover opacity-60"
@@ -40,12 +41,12 @@ export function CinematicBand() {
         transition={{ duration: 0.8 }}
         className="relative z-10 px-4 py-24"
       >
-        <h2 className="font-display font-black uppercase leading-[0.96] text-[clamp(2.5rem,6vw,5.25rem)] text-[#EDE6D6]">
+        <h2 className="font-display font-black uppercase leading-[0.96] text-[clamp(2.5rem,6vw,5.25rem)] text-surface-ink-foreground">
           Built on
           <br />
-          the <span className="text-[#C9A86A]">Mats.</span>
+          the <span className="text-primary">Mats.</span>
         </h2>
-        <p className="mt-6 mx-auto max-w-lg leading-relaxed text-[#EDE6D6]/65">
+        <p className={`mt-6 mx-auto max-w-lg leading-relaxed ${INK_BODY}`}>
           Not made in a marketing meeting. Kimora exists because daily creatine
           should be as automatic as showing up to train.
         </p>

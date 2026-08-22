@@ -653,7 +653,7 @@ export default function Checkout() {
 
                 <div className="border-t border-foreground/10 pt-4 flex justify-between">
                   <span className="text-xl font-bold text-foreground">Total</span>
-                  <span className="text-xl font-bold text-primary">
+                  <span className="text-xl font-bold text-primary-strong">
                     Finalized in Stripe
                   </span>
                 </div>

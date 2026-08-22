@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
+import { INK, INK_BODY } from "@/lib/surfaces";
 
 /**
  * StatsBand — animated formula counters that tick up on scroll-into-view
@@ -42,7 +43,7 @@ function Counter({ target }: { target: number }) {
 
 export function StatsBand() {
   return (
-    <section className="bg-secondary border-y border-border py-14 md:py-16">
+    <section className={`py-14 md:py-16 ${INK}`}>
       <div className="container px-4 mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-4 text-center">
           {STATS.map((stat, i) => (
@@ -54,13 +55,13 @@ export function StatsBand() {
               transition={{ delay: i * 0.08, duration: 0.6 }}
               className={i === 4 ? "col-span-2 md:col-span-1" : ""}
             >
-              <div className="font-display font-black text-4xl md:text-5xl text-foreground">
+              <div className="font-display font-black text-4xl md:text-5xl text-surface-ink-foreground">
                 <Counter target={stat.value} />
-                <span className="text-accent text-[0.55em] align-baseline ml-0.5">
+                <span className="text-primary text-[0.55em] align-baseline ml-0.5">
                   {stat.suffix}
                 </span>
               </div>
-              <div className="mt-1.5 text-[10px] md:text-[11px] font-semibold tracking-[0.22em] uppercase text-muted-foreground">
+              <div className={`mt-1.5 text-[10px] md:text-[11px] font-semibold tracking-[0.22em] uppercase ${INK_BODY}`}>
                 {stat.label}
               </div>
             </motion.div>

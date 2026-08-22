@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
 
@@ -166,9 +167,9 @@ export default function Terms() {
             </h2>
             <p>
               Our return and refund policy is described on our{" "}
-              <a href="/refunds" className="underline">
+              <Link href="/refunds" className="underline">
                 Refunds
-              </a>{" "}
+              </Link>{" "}
               page and is incorporated into these Terms by reference. Please
               review it before placing an order.
             </p>

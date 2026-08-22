@@ -78,7 +78,7 @@ export default function Home() {
         <FAQPreview />
       </main>
       <StickyNotifyBar />
-      <Footer />
+      <Footer tone="ink" />
     </div>
   );
 }

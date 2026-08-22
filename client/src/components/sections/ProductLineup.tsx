@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { isFlavorAvailable } from "@/lib/product";
@@ -109,7 +110,7 @@ export function ProductLineup() {
                 className={cn(
                   "inline-block rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] mb-4",
                   available
-                    ? "bg-primary/15 text-primary"
+                    ? "bg-primary/15 text-primary-strong"
                     : "bg-foreground/5 text-muted-foreground"
                 )}
               >
@@ -133,9 +134,9 @@ export function ProductLineup() {
                     : "bg-secondary hover:bg-secondary/80 text-secondary-foreground"
                 )}
               >
-                <a href={`/product?flavor=${flavor.slug}`}>
+                <Link href={`/product?flavor=${flavor.slug}`}>
                   {available ? `View ${flavor.name}` : "Join the Waitlist"}
-                </a>
+                </Link>
               </Button>
             </motion.div>
           </div>

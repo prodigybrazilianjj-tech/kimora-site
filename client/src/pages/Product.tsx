@@ -174,7 +174,7 @@ export default function Product() {
           <div className="flex flex-col">
             <div className="mb-4">
               {available ? (
-                <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-3 py-1 text-xs font-bold uppercase tracking-wider">
+                <span className="inline-flex items-center rounded-full bg-primary/15 text-primary-strong px-3 py-1 text-xs font-bold uppercase tracking-wider">
                   Launch Flavor
                 </span>
               ) : (
@@ -261,7 +261,7 @@ export default function Product() {
                       <span className="font-bold text-foreground block">
                         Subscribe & Save
                       </span>
-                      <span className="text-xs text-primary font-medium">
+                      <span className="text-xs text-primary-strong font-medium">
                         Save 20% + Free Shipping
                       </span>
                     </div>
@@ -279,7 +279,7 @@ export default function Product() {
                 {purchaseType === "subscribe" && (
                   <div className="mt-4 pl-8 animate-in slide-in-from-top-2">
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center rounded-full bg-primary/15 text-primary px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider">
+                      <span className="inline-flex items-center rounded-full bg-primary/15 text-primary-strong px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider">
                         Monthly
                       </span>
                       <span className="text-xs text-muted-foreground">
@@ -328,7 +328,7 @@ export default function Product() {
             {!canBuy ? (
               <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-5">
                 <div className="mb-2 flex items-center gap-3">
-                  <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
+                  <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary-strong">
                     Coming Soon
                   </span>
                   <span className="text-sm font-semibold text-foreground">
@@ -349,7 +349,7 @@ export default function Product() {
                 <div className="flex items-center border border-foreground/10 rounded-lg bg-foreground/5 h-14">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-4 text-foreground hover:text-primary transition-colors"
+                    className="px-4 text-foreground hover:text-primary-strong transition-colors"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
@@ -358,7 +358,7 @@ export default function Product() {
                   </span>
                   <button
                     onClick={() => setQuantity(Math.min(6, quantity + 1))}
-                    className="px-4 text-foreground hover:text-primary transition-colors"
+                    className="px-4 text-foreground hover:text-primary-strong transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                   </button>

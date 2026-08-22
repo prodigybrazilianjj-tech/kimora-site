@@ -1,10 +1,21 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Footer } from "@/components/sections/Footer";
 import { motion, AnimatePresence } from "framer-motion";
+import { INK, INK_HEAD, INK_LEAD, INK_BODY, INK_CARD, LIGHT_CARD } from "@/lib/surfaces";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+
+const WRAP = "mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20";
+const EYEBROW = "text-sm font-medium uppercase tracking-[0.26em]";
+
+/** Fact strip — each line is lifted verbatim from a section further down. */
+const FACTS = [
+  "5g creatine monohydrate",
+  "Sodium, potassium, magnesium",
+  "No sugar, no sucralose",
+  "Made for the mat",
+];
 
 export default function ComingSoon() {
   const [email, setEmail] = useState("");
@@ -92,19 +103,19 @@ export default function ComingSoon() {
     {
       name: "Strawberry Guava",
       img: "/assets/products/strawberry-guava/pouch_sticks_v1.webp",
-      glow: "rgba(255,149,86,0.18)",
+      well: "rgba(210,88,67,0.16)",
       desc: "Tropical, richer, and fruit-forward with a fuller flavor profile.",
     },
     {
       name: "Lemon Lychee",
       img: "/assets/products/lemon-lychee/pouch_sticks_v6.webp",
-      glow: "rgba(255,213,88,0.18)",
+      well: "rgba(229,209,78,0.13)",
       desc: "Bright lemon with a sweet, floral lychee finish.",
     },
     {
       name: "Raspberry Dragonfruit",
       img: "/assets/products/raspberry-dragonfruit/pouch_sticks_v8.webp",
-      glow: "rgba(255,86,149,0.18)",
+      well: "rgba(214,40,57,0.14)",
       desc: "Smooth, balanced, and built to be the daily driver.",
     },
   ];
@@ -112,14 +123,9 @@ export default function ComingSoon() {
   return (
     <>
       <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
-        {/* warm cream base wash */}
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#F9F3E4_0%,#F7F0DE_45%,#F4ECD8_100%)]" />
-        {/* warm aurora glows */}
-        <div className="pointer-events-none absolute -left-32 -top-40 h-[34rem] w-[44rem] rounded-full bg-[radial-gradient(circle,rgba(216,174,90,0.45),transparent_70%)] blur-[120px]" />
-        <div className="pointer-events-none absolute -right-40 top-24 h-[36rem] w-[42rem] rounded-full bg-[radial-gradient(circle,rgba(168,71,42,0.20),transparent_70%)] blur-[130px]" />
         {/* fine grain texture */}
         <div
-          className="pointer-events-none absolute inset-0 mix-blend-multiply"
+          className="pointer-events-none absolute inset-0 z-20 mix-blend-multiply"
           style={{
             opacity: 0.05,
             backgroundImage:
@@ -148,7 +154,7 @@ export default function ComingSoon() {
                   initial={{ opacity: 0, x: 12 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.55, ease: EASE, delay: 0.25 }}
-                  className="rounded-full border border-foreground/10 bg-foreground/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary backdrop-blur-sm"
+                  className="rounded-full border border-foreground/10 bg-foreground/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary-strong backdrop-blur-sm"
                 >
                   Creatine · Electrolytes · Daily
                 </motion.span>
@@ -156,22 +162,37 @@ export default function ComingSoon() {
             </div>
           </motion.header>
 
-          {/* ── Hero ── */}
-          <section className="mx-auto w-full max-w-7xl px-6 pb-16 pt-8 md:px-8 lg:px-10 lg:pb-24 lg:pt-10">
-            <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,500px)_minmax(0,1fr)] lg:gap-6">
+          {/* ── 1. Hero — ink ── */}
+          <section className={`relative overflow-hidden ${INK}`}>
+            {/* warm aurora glows */}
+            <div className="pointer-events-none absolute -left-32 -top-40 h-[34rem] w-[44rem] rounded-full bg-[radial-gradient(circle,rgba(201,168,106,0.22),transparent_70%)] blur-[120px]" />
+            <div className="pointer-events-none absolute -right-40 top-24 h-[36rem] w-[42rem] rounded-full bg-[radial-gradient(circle,rgba(168,71,42,0.28),transparent_70%)] blur-[130px]" />
 
-              {/* Left: copy + CTA card */}
-              <div className="relative z-10 max-w-[600px]">
+            {/* Gym-display illustration bleeds off the right edge — a layer, not a
+                grid column, so there's no dead space to balance around it. */}
+            <img
+              src="/assets/brand/octopus-bear-display-red.png"
+              alt="Kimora octopus and bear"
+              className="pointer-events-none absolute -right-24 top-28 z-[1] w-[560px] max-w-none opacity-25 lg:-right-16 lg:top-16 lg:w-[820px] lg:opacity-90"
+            />
+
+            {/* Ink scrim so the copy stays legible where it crosses the artwork. */}
+            <div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(90deg,#211E1A_0%,rgba(33,30,26,0.92)_38%,rgba(33,30,26,0)_72%)]" />
+
+            <div className="relative z-[2] mx-auto w-full max-w-7xl px-6 pb-20 pt-12 md:px-8 lg:px-10 lg:pb-28 lg:pt-16">
+              <div className="max-w-[600px]">
                 <motion.p
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
-                  className="inline-block bg-gradient-to-r from-[#8A6520] via-[#B5862E] to-[#D8AE5A] bg-clip-text text-sm font-semibold uppercase tracking-[0.30em] text-transparent"
+                  className="inline-block bg-gradient-to-r from-[#C9A86A] via-[#E3C88E] to-[#D8AE5A] bg-clip-text text-sm font-semibold uppercase tracking-[0.30em] text-transparent"
                 >
                   Coming soon
                 </motion.p>
 
-                <h1 className="mt-5 text-5xl font-display font-bold leading-[0.95] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+                <h1
+                  className={`mt-5 text-5xl font-display font-bold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl ${INK_HEAD}`}
+                >
                   {["TRAIN WITH", "PURPOSE."].map((line, i) => (
                     <motion.span
                       key={line}
@@ -197,7 +218,7 @@ export default function ComingSoon() {
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, ease: EASE, delay: 0.68 }}
-                  className="mt-8 max-w-[520px] text-lg leading-8 text-foreground/80 sm:text-xl"
+                  className={`mt-8 max-w-[520px] text-lg leading-8 sm:text-xl ${INK_LEAD}`}
                 >
                   Creatine + electrolytes built for fighters.
                 </motion.p>
@@ -206,7 +227,7 @@ export default function ComingSoon() {
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, ease: EASE, delay: 0.78 }}
-                  className="mt-5 max-w-[560px] text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8"
+                  className={`mt-5 max-w-[560px] text-base leading-7 sm:text-lg sm:leading-8 ${INK_BODY}`}
                 >
                   Single-serve daily performance support with no scooping, no mess,
                   and no friction between intention and consistency.
@@ -224,32 +245,34 @@ export default function ComingSoon() {
                       initial={{ opacity: 0, x: -14 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.5, ease: EASE, delay: 0.85 + i * 0.07 }}
-                      className="rounded-full border border-border bg-foreground/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-foreground/80"
+                      className="rounded-full border border-[rgba(247,240,222,0.18)] bg-[rgba(247,240,222,0.05)] px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-[rgba(247,240,222,0.78)]"
                     >
                       {badge}
                     </motion.span>
                   ))}
                 </div>
 
-                {/* CTA card */}
+                {/* Waitlist card */}
                 <motion.div
                   initial={{ opacity: 0, y: 40 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.75, ease: EASE, delay: 1.08 }}
-                  className="mt-10 rounded-[30px] border border-border bg-card/70 p-5 shadow-[0_24px_60px_rgba(66,48,28,0.16),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-md sm:p-6"
+                  className="mt-10 rounded-2xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.04)] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.35)] backdrop-blur-md sm:p-6"
                 >
                   <div className="flex flex-col gap-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                       <div>
-                        <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                        <p className={`text-[11px] uppercase tracking-[0.24em] ${INK_BODY}`}>
                           Pre-Launch Exclusive
                         </p>
-                        <h2 className="mt-2 text-3xl font-display font-bold tracking-tight text-foreground">
+                        <h2
+                          className={`mt-2 text-3xl font-display font-bold tracking-tight ${INK_HEAD}`}
+                        >
                           Get 15% off — and first access.
                         </h2>
                       </div>
 
-                      <p className="max-w-[240px] text-sm leading-6 text-muted-foreground sm:text-right">
+                      <p className={`max-w-[240px] text-sm leading-6 sm:text-right ${INK_BODY}`}>
                         Join the waitlist before we launch. You get 15% off your first order and a 24-hour head start before the public.
                       </p>
                     </div>
@@ -263,29 +286,31 @@ export default function ComingSoon() {
                       ].map(({ value, label }) => (
                         <div
                           key={label}
-                          className="rounded-2xl border border-border bg-muted px-3 py-4 text-center"
+                          className="rounded-2xl border border-[rgba(247,240,222,0.16)] bg-[rgba(247,240,222,0.05)] px-3 py-4 text-center"
                         >
-                          <div className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                          <div
+                            className={`text-3xl font-bold tracking-tight md:text-4xl ${INK_HEAD}`}
+                          >
                             {value}
                           </div>
-                          <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                          <div className={`mt-1 text-[10px] uppercase tracking-[0.22em] ${INK_BODY}`}>
                             {label}
                           </div>
                         </div>
                       ))}
 
                       {/* Seconds — subtle pulse on each tick */}
-                      <div className="rounded-2xl border border-accent/30 bg-accent/10 px-3 py-4 text-center shadow-[0_0_28px_rgba(168,71,42,0.16)]">
+                      <div className="rounded-2xl border border-accent/40 bg-accent/20 px-3 py-4 text-center shadow-[0_0_28px_rgba(168,71,42,0.28)]">
                         <motion.div
                           key={countdown.seconds}
                           initial={{ opacity: 0.4, scale: 0.78 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ duration: 0.22, ease: "easeOut" }}
-                          className="text-3xl font-bold tracking-tight text-foreground md:text-4xl"
+                          className={`text-3xl font-bold tracking-tight md:text-4xl ${INK_HEAD}`}
                         >
                           {countdown.seconds}
                         </motion.div>
-                        <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-accent">
+                        <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-[#E08A6B]">
                           Seconds
                         </div>
                       </div>
@@ -302,7 +327,8 @@ export default function ComingSoon() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         disabled={submitting}
-                        className="h-16 w-full sm:flex-1 rounded-2xl border border-border bg-muted px-5 text-base text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none disabled:opacity-60 transition-colors duration-200"
+                        aria-label="Email address"
+                        className="h-16 w-full sm:flex-1 rounded-2xl border border-[rgba(247,240,222,0.18)] bg-[rgba(247,240,222,0.06)] px-5 text-base text-[#F7F0DE] placeholder:text-[rgba(247,240,222,0.45)] focus:border-primary/60 focus:outline-none disabled:opacity-60 transition-colors duration-200"
                       />
 
                       <motion.button
@@ -311,7 +337,7 @@ export default function ComingSoon() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.97 }}
                         transition={{ duration: 0.15 }}
-                        className="h-16 rounded-2xl bg-[linear-gradient(180deg,#D8AE5A_0%,#B5862E_55%,#8A6520_100%)] px-7 text-sm font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-[0_12px_26px_rgba(181,134,46,0.40),inset_0_1px_0_rgba(255,255,255,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(181,134,46,0.5)] disabled:opacity-60"
+                        className="h-16 rounded-2xl bg-[linear-gradient(180deg,#E3C88E_0%,#C9A86A_55%,#A6864B_100%)] px-7 text-sm font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-[0_12px_26px_rgba(201,168,106,0.34),inset_0_1px_0_rgba(255,255,255,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(201,168,106,0.45)] disabled:opacity-60"
                       >
                         {submitting ? "Submitting..." : "Join the Waitlist"}
                       </motion.button>
@@ -336,7 +362,7 @@ export default function ComingSoon() {
                           key="fine-print"
                           initial={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className="text-xs text-muted-foreground"
+                          className={`text-xs ${INK_BODY}`}
                         >
                           15% off first order · One use per customer · No spam
                         </motion.p>
@@ -345,38 +371,33 @@ export default function ComingSoon() {
                   </div>
                 </motion.div>
               </div>
-
-              {/* Right: hero product (floating cut-out lineup) */}
-              <div className="relative">
-                <div className="relative flex min-h-[400px] items-center justify-center lg:min-h-[600px]">
-                  {/* warm ambient glow */}
-                  <motion.div
-                    animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.08, 1] }}
-                    transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}
-                    className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[680px] -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-primary/25 blur-[150px]"
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, y: 18 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.9, ease: EASE, delay: 0.3 }}
-                    className="relative z-10 w-full max-w-[640px] lg:max-w-[760px] xl:max-w-[820px] lg:-mr-10 xl:-mr-16"
-                  >
-                    <motion.img
-                      src="/assets/products/lineup_hero_v11.webp"
-                      alt="Kimora creatine + electrolytes — Raspberry Dragonfruit, Strawberry Guava, and Lemon Lychee"
-                      animate={{ y: [0, -6, 0] }}
-                      transition={{ duration: 7, ease: "easeInOut", repeat: Infinity }}
-                      className="block h-auto w-full drop-shadow-[0_30px_40px_rgba(66,48,28,0.28)]"
-                    />
-                  </motion.div>
-                </div>
-              </div>
             </div>
           </section>
 
-          {/* ── What's in it / what's not ── */}
-          <section className="border-t border-border bg-background">
-            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
+          {/* ── 2. Fact strip — cream, gold rules top + bottom ── */}
+          <section className="border-y border-primary bg-background">
+            <div className="mx-auto max-w-7xl px-6 py-7 md:px-8 lg:px-10">
+              <ul className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
+                {FACTS.map((fact, i) => (
+                  <motion.li
+                    key={fact}
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{ duration: 0.45, ease: EASE, delay: i * 0.07 }}
+                    className="flex items-center gap-2.5 text-xs uppercase tracking-[0.18em] text-foreground/85 md:justify-center"
+                  >
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                    {fact}
+                  </motion.li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          {/* ── 3. The formula — ink ── */}
+          <section className={INK}>
+            <div className={WRAP}>
               <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -384,10 +405,10 @@ export default function ComingSoon() {
                 transition={{ duration: 0.6, ease: EASE }}
                 className="mb-10 max-w-3xl"
               >
-                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
-                  The formula
-                </p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
+                <p className={`${EYEBROW} text-primary`}>The formula</p>
+                <h2
+                  className={`mt-4 text-3xl font-display font-bold tracking-wide sm:text-4xl ${INK_HEAD}`}
+                >
                   What's in it. What's not.
                 </h2>
               </motion.div>
@@ -398,12 +419,12 @@ export default function ComingSoon() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-60px" }}
                   transition={{ duration: 0.6, ease: EASE }}
-                  className="rounded-[24px] border border-border bg-card p-8"
+                  className={`${INK_CARD} p-8`}
                 >
-                  <h3 className="text-xl font-display font-bold text-foreground">
+                  <h3 className={`text-xl font-display font-bold ${INK_HEAD}`}>
                     In every stick
                   </h3>
-                  <ul className="mt-5 space-y-3 leading-7 text-muted-foreground">
+                  <ul className={`mt-5 space-y-3 leading-7 ${INK_BODY}`}>
                     <li>5g creatine monohydrate (200 mesh — no underdose)</li>
                     <li>A real electrolyte panel — sodium, potassium, magnesium</li>
                     <li>Naturally sweetened with stevia and monk fruit</li>
@@ -415,12 +436,12 @@ export default function ComingSoon() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-60px" }}
                   transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
-                  className="rounded-[24px] border border-border bg-card p-8"
+                  className={`${INK_CARD} p-8`}
                 >
-                  <h3 className="text-xl font-display font-bold text-foreground">
+                  <h3 className={`text-xl font-display font-bold ${INK_HEAD}`}>
                     What we left out
                   </h3>
-                  <ul className="mt-5 space-y-3 leading-7 text-muted-foreground">
+                  <ul className={`mt-5 space-y-3 leading-7 ${INK_BODY}`}>
                     <li>No silicon dioxide</li>
                     <li>No artificial colors</li>
                     <li>No sugar, no sucralose, no sugar alcohols</li>
@@ -429,78 +450,16 @@ export default function ComingSoon() {
                 </motion.div>
               </div>
 
-              <p className="mt-8 max-w-3xl leading-8 text-foreground/80">
+              <p className={`mt-8 max-w-3xl leading-8 ${INK_LEAD}`}>
                 One formula behind all three flavors. Same dose, different
                 profiles. Tear, mix, drink.
               </p>
             </div>
           </section>
 
-          {/* ── Why Kimora ── */}
-          <section className="border-t border-border bg-card">
-            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
-              <motion.div
-                initial={{ opacity: 0, y: 32 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.7, ease: EASE }}
-                className="max-w-3xl"
-              >
-                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
-                  Why Kimora exists
-                </p>
-
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
-                  Consistency wins.
-                </h2>
-
-                <p className="mt-6 leading-8 text-muted-foreground">
-                  You do not get stronger from one lift. You do not get better
-                  from one roll. And you do not get results from taking creatine
-                  only when you remember.
-                </p>
-
-                <p className="mt-4 leading-8 text-foreground/80">
-                  Kimora was built to remove the friction so daily use becomes the
-                  default.
-                </p>
-              </motion.div>
-            </div>
-          </section>
-
-          {/* ── Who it's for ── */}
-          <section className="border-t border-border bg-card">
-            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
-              <motion.div
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.7, ease: EASE }}
-                className="max-w-3xl"
-              >
-                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
-                  Built for combat sports
-                </p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
-                  Made for the mat, not the supplement aisle.
-                </h2>
-                <p className="mt-6 leading-8 text-muted-foreground">
-                  Combat sports athletes train differently — the rounds are long,
-                  the cuts are real, and the recovery window between sessions is
-                  short. Kimora is built for that reality: a stick that survives a
-                  gym bag and works mid-session, not a tub that sits on a counter.
-                  For the people who roll, spar, drill, cut, and compete.
-                </p>
-                <p className="mt-6 text-sm font-medium uppercase tracking-[0.22em] text-foreground/70">
-                  BJJ · MMA · Muay Thai · Boxing · Grappling · Serious Lifters
-                </p>
-              </motion.div>
-            </div>
-          </section>
-
-          {/* ── The stick ── */}
-          <section className="border-t border-border bg-background">
-            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
+          {/* ── 4. Flavor lineup — sand ── */}
+          <section className="bg-secondary">
+            <div className={WRAP}>
               <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -508,93 +467,7 @@ export default function ComingSoon() {
                 transition={{ duration: 0.6, ease: EASE }}
                 className="mb-10 max-w-3xl"
               >
-                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
-                  The format
-                </p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
-                  Why a stick, not a tub.
-                </h2>
-              </motion.div>
-
-              {/* Pouch + single-serve sticks — show the format */}
-              <motion.figure
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.7, ease: EASE }}
-                className="mb-10 overflow-hidden rounded-[24px] border border-border bg-card"
-              >
-                <img
-                  src="/assets/products/strawberry-guava/pouch_sticks_studio.webp"
-                  alt="Kimora Strawberry Guava pouch with its single-serve creatine + electrolyte sticks"
-                  loading="lazy"
-                  className="mx-auto block h-auto w-full max-w-[760px] object-contain"
-                />
-              </motion.figure>
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                <motion.div
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-60px" }}
-                  transition={{ duration: 0.6, ease: EASE }}
-                  className="rounded-[24px] border border-border bg-card p-8"
-                >
-                  <h3 className="text-xl font-display font-bold text-foreground">
-                    Fits the bag
-                  </h3>
-                  <p className="mt-3 leading-7 text-muted-foreground">
-                    A single-serve stick fits a gi pocket. No tub, no scoop, no
-                    shaker on the mat.
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-60px" }}
-                  transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
-                  className="rounded-[24px] border border-border bg-card p-8"
-                >
-                  <h3 className="text-xl font-display font-bold text-foreground">
-                    One stick, one day
-                  </h3>
-                  <p className="mt-3 leading-7 text-muted-foreground">
-                    No measuring, no guessing the dose. Tear, mix, drink.
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-60px" }}
-                  transition={{ duration: 0.6, ease: EASE, delay: 0.2 }}
-                  className="rounded-[24px] border border-border bg-card p-8"
-                >
-                  <h3 className="text-xl font-display font-bold text-foreground">
-                    Survives the gym
-                  </h3>
-                  <p className="mt-3 leading-7 text-muted-foreground">
-                    A matte laminate pack built to take a beating in your bag.
-                  </p>
-                </motion.div>
-              </div>
-            </div>
-          </section>
-
-          {/* ── Flavor lineup ── */}
-          <section className="border-t border-border bg-background">
-            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
-              <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="mb-10 max-w-3xl"
-              >
-                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
-                  Flavor lineup
-                </p>
+                <p className={`${EYEBROW} text-primary-strong`}>Flavor lineup</p>
 
                 <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
                   Three flavors. One system.
@@ -615,16 +488,25 @@ export default function ComingSoon() {
                     viewport={{ once: true, margin: "-60px" }}
                     transition={{ duration: 0.65, ease: EASE, delay: i * 0.12 }}
                     whileHover={{ y: -10, transition: { duration: 0.25, ease: EASE } }}
-                    className="overflow-hidden rounded-[24px] border border-border bg-card transition-colors duration-300 hover:border-foreground/15"
+                    className={`overflow-hidden ${LIGHT_CARD} transition-colors duration-300 hover:border-foreground/15`}
                     style={{ willChange: "transform" }}
                   >
-                    <div className="relative aspect-[3/4] overflow-hidden bg-muted">
+                    {/* Product well — tinted with the flavor colour at low alpha. */}
+                    <div
+                      className="relative aspect-[4/5] overflow-hidden"
+                      style={{ backgroundColor: flavor.well }}
+                    >
+                      {/* Opaque, not a tint: a translucent pill washes out against
+                          the packaging behind it. */}
+                      <span className="absolute left-4 top-4 z-[5] rounded-full border border-accent/40 bg-background px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+                        Coming Soon
+                      </span>
                       <motion.img
                         src={flavor.img}
                         alt={flavor.name}
                         whileHover={{ scale: 1.05 }}
                         transition={{ duration: 0.4, ease: EASE }}
-                        className="absolute inset-0 h-full w-full object-cover"
+                        className="absolute inset-0 z-[1] h-full w-full object-cover"
                         style={{ willChange: "transform" }}
                       />
                     </div>
@@ -641,9 +523,132 @@ export default function ComingSoon() {
               </div>
             </div>
           </section>
-          {/* ── Tested before it ships ── */}
-          <section className="border-t border-border bg-card">
-            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
+
+          {/* ── 5. The format — ink ── */}
+          <section className={INK}>
+            <div className={WRAP}>
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.6, ease: EASE }}
+                className="mb-10 max-w-3xl"
+              >
+                <p className={`${EYEBROW} text-primary`}>The format</p>
+                <h2
+                  className={`mt-4 text-3xl font-display font-bold tracking-wide sm:text-4xl ${INK_HEAD}`}
+                >
+                  Why a stick, not a tub.
+                </h2>
+              </motion.div>
+
+              {/* Pouch + single-serve sticks — show the format */}
+              <motion.figure
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.7, ease: EASE }}
+                className={`mb-10 overflow-hidden ${INK_CARD}`}
+              >
+                <img
+                  src="/assets/products/strawberry-guava/pouch_sticks_studio.webp"
+                  alt="Kimora Strawberry Guava pouch with its single-serve creatine + electrolyte sticks"
+                  loading="lazy"
+                  className="mx-auto block h-auto w-full max-w-[760px] object-contain"
+                />
+              </motion.figure>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                {[
+                  {
+                    title: "Fits the bag",
+                    body: "A single-serve stick fits a gi pocket. No tub, no scoop, no shaker on the mat.",
+                  },
+                  {
+                    title: "One stick, one day",
+                    body: "No measuring, no guessing the dose. Tear, mix, drink.",
+                  },
+                  {
+                    title: "Survives the gym",
+                    body: "A matte laminate pack built to take a beating in your bag.",
+                  },
+                ].map((item, i) => (
+                  <motion.div
+                    key={item.title}
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-60px" }}
+                    transition={{ duration: 0.6, ease: EASE, delay: i * 0.1 }}
+                    className={`${INK_CARD} p-8`}
+                  >
+                    <h3 className={`text-xl font-display font-bold ${INK_HEAD}`}>
+                      {item.title}
+                    </h3>
+                    <p className={`mt-3 leading-7 ${INK_BODY}`}>{item.body}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* ── 6. Why Kimora exists + Built for combat sports — cream ── */}
+          <section className="bg-background">
+            <div className={WRAP}>
+              <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
+                <motion.div
+                  initial={{ opacity: 0, y: 32 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ duration: 0.7, ease: EASE }}
+                >
+                  <p className={`${EYEBROW} text-primary-strong`}>Why Kimora exists</p>
+
+                  <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
+                    Consistency wins.
+                  </h2>
+
+                  <p className="mt-6 leading-8 text-muted-foreground">
+                    You do not get stronger from one lift. You do not get better
+                    from one roll. And you do not get results from taking creatine
+                    only when you remember.
+                  </p>
+
+                  <p className="mt-4 leading-8 text-foreground/80">
+                    Kimora was built to remove the friction so daily use becomes the
+                    default.
+                  </p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 28 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ duration: 0.7, ease: EASE, delay: 0.1 }}
+                >
+                  <p className={`${EYEBROW} text-primary-strong`}>
+                    Built for combat sports
+                  </p>
+                  <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
+                    Made for the mat, not the supplement aisle.
+                  </h2>
+                  <p className="mt-6 leading-8 text-muted-foreground">
+                    Combat sports athletes train differently — the rounds are long,
+                    the cuts are real, and the recovery window between sessions is
+                    short. Kimora is built for that reality: a stick that survives a
+                    gym bag and works mid-session, not a tub that sits on a counter.
+                    For the people who roll, spar, drill, cut, and compete.
+                  </p>
+                  <p className="mt-6 text-sm font-medium uppercase tracking-[0.22em] text-foreground/70">
+                    BJJ · MMA · Muay Thai · Boxing · Grappling · Serious Lifters
+                  </p>
+                </motion.div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── 7. Quality — ink ── */}
+          <section className={INK}>
+            <div className={WRAP}>
               <motion.div
                 initial={{ opacity: 0, y: 28 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -651,13 +656,13 @@ export default function ComingSoon() {
                 transition={{ duration: 0.7, ease: EASE }}
                 className="max-w-3xl"
               >
-                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
-                  Quality
-                </p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
+                <p className={`${EYEBROW} text-primary`}>Quality</p>
+                <h2
+                  className={`mt-4 text-3xl font-display font-bold tracking-wide sm:text-4xl ${INK_HEAD}`}
+                >
                   Clean formula. Nothing hidden.
                 </h2>
-                <p className="mt-6 leading-8 text-muted-foreground">
+                <p className={`mt-6 leading-8 ${INK_BODY}`}>
                   No proprietary blends, no fairy dusting, no fillers you can't
                   pronounce. Every stick is fully disclosed: 5g creatine
                   monohydrate at label dose, a real electrolyte panel, and natural
@@ -668,9 +673,9 @@ export default function ComingSoon() {
             </div>
           </section>
 
-          {/* ── FAQ ── */}
-          <section className="border-t border-border bg-background">
-            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20">
+          {/* ── 8. FAQ — sand ── */}
+          <section className="bg-secondary">
+            <div className={WRAP}>
               <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -678,9 +683,7 @@ export default function ComingSoon() {
                 transition={{ duration: 0.6, ease: EASE }}
                 className="mb-10 max-w-3xl"
               >
-                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
-                  FAQ
-                </p>
+                <p className={`${EYEBROW} text-primary-strong`}>FAQ</p>
                 <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
                   Questions, answered.
                 </h2>
@@ -719,7 +722,7 @@ export default function ComingSoon() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-60px" }}
                     transition={{ duration: 0.55, ease: EASE, delay: (i % 2) * 0.08 }}
-                    className="rounded-[24px] border border-border bg-card p-7"
+                    className={`${LIGHT_CARD} p-7`}
                   >
                     <h3 className="text-lg font-display font-bold text-foreground">
                       {item.q}
@@ -733,25 +736,25 @@ export default function ComingSoon() {
             </div>
           </section>
 
-          {/* ── Manifesto ── */}
-          <section className="border-t border-border bg-card">
+          {/* ── 9. Manifesto — ink, centred ── */}
+          <section className={INK}>
             <div className="mx-auto max-w-5xl px-6 py-20 text-center md:px-8 lg:px-10 lg:py-28">
               <motion.p
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-80px" }}
                 transition={{ duration: 0.7, ease: EASE }}
-                className="font-display text-2xl font-semibold uppercase leading-tight tracking-wide text-foreground sm:text-3xl lg:text-4xl"
+                className={`font-display text-2xl font-semibold uppercase leading-tight tracking-wide sm:text-3xl lg:text-4xl ${INK_HEAD}`}
               >
                 We don't sell supplements. We build athletes who are{" "}
-                <span className="text-accent">stronger in the body</span> and{" "}
-                <span className="text-accent">sharper in the mind.</span>
+                <span className="text-primary">stronger in the body</span> and{" "}
+                <span className="text-primary">sharper in the mind.</span>
               </motion.p>
             </div>
           </section>
 
-          {/* ── What we're building (apparel teaser) ── */}
-          <section className="border-t border-border bg-background">
+          {/* ── 10. More than a supplement — cream, tiles stay dark ── */}
+          <section className="bg-background">
             <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-24">
               <motion.div
                 initial={{ opacity: 0, y: 24 }}
@@ -760,9 +763,7 @@ export default function ComingSoon() {
                 transition={{ duration: 0.6, ease: EASE }}
                 className="mb-10 max-w-3xl"
               >
-                <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
-                  What we're building
-                </p>
+                <p className={`${EYEBROW} text-primary-strong`}>What we're building</p>
                 <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
                   More than a supplement.
                 </h2>
@@ -801,7 +802,7 @@ export default function ComingSoon() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-60px" }}
                     transition={{ duration: 0.6, ease: EASE, delay: i * 0.1 }}
-                    className="group relative aspect-[4/5] overflow-hidden rounded-[24px] border border-border bg-card"
+                    className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-surface-ink"
                   >
                     <div
                       className="absolute inset-0"
@@ -818,14 +819,15 @@ export default function ComingSoon() {
                       className="absolute inset-0 h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-[1.04]"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-                    <div className="absolute right-4 top-4 rounded-full border border-accent/40 bg-background/70 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-accent backdrop-blur-sm">
+                    <div className="absolute right-4 top-4 rounded-full border border-accent/40 bg-background px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
                       Coming Soon
                     </div>
+                    {/* The tile is dark whatever the band is, so its label is cream. */}
                     <div className="absolute inset-x-0 bottom-0 p-6">
-                      <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                      <span className="text-[11px] uppercase tracking-[0.2em] text-[rgba(247,240,222,0.72)]">
                         {tile.cat}
                       </span>
-                      <h3 className="mt-1 font-display text-2xl font-bold uppercase tracking-wide text-foreground">
+                      <h3 className="mt-1 font-display text-2xl font-bold uppercase tracking-wide text-[#F7F0DE]">
                         {tile.name}
                       </h3>
                     </div>
@@ -842,7 +844,7 @@ export default function ComingSoon() {
         </main>
       </div>
 
-      <Footer />
+      <Footer tone="ink" />
     </>
   );
 }

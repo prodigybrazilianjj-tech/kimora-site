@@ -2,6 +2,8 @@ import { useRef, type MouseEvent } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
+import { Link } from "wouter";
+import { INK, INK_BODY } from "@/lib/surfaces";
 
 /**
  * Hero — "dynamic refresh" build (approved mockup 2026-07-05):
@@ -18,10 +20,6 @@ export function Hero() {
   const prefersReducedMotion = useReducedMotion();
   const cardRef = useRef<HTMLImageElement | null>(null);
   const sectionRef = useRef<HTMLElement | null>(null);
-
-  const goToShop = () => {
-    window.location.href = "/shop";
-  };
 
   const goToFormula = () => {
     const el = document.querySelector("#formula");
@@ -49,18 +47,18 @@ export function Hero() {
       ref={sectionRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative min-h-screen flex items-center overflow-hidden pt-24 pb-16"
+      className={`relative min-h-screen flex items-center overflow-hidden pt-24 pb-16 ${INK}`}
     >
       {/* Abner's octopus-vs-bear, full-bleed ghost watermark */}
       <img
         src="/assets/products/transparentlogo.png"
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 m-auto w-[min(88vw,1000px)] max-h-[72%] object-contain opacity-[0.06] brightness-0 pointer-events-none select-none"
+        className="absolute inset-0 m-auto w-[min(88vw,1000px)] max-h-[72%] object-contain opacity-[0.07] brightness-0 invert pointer-events-none select-none"
       />
 
       {/* Warm brass glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(1100px_560px_at_72%_38%,hsl(var(--primary)/0.16),transparent_62%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(1100px_560px_at_72%_38%,hsl(var(--primary)/0.20),transparent_62%)] pointer-events-none" />
 
       <div className="container relative z-10 px-4 md:px-6 mx-auto grid md:grid-cols-2 items-center gap-10 md:gap-8">
         {/* Copy column */}
@@ -69,7 +67,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="inline-flex items-center gap-2.5 border border-foreground/10 rounded-full px-4 py-1.5 bg-foreground/5 backdrop-blur-sm mb-6"
+            className="inline-flex items-center gap-2.5 border border-[rgba(247,240,222,0.18)] rounded-full px-4 py-1.5 bg-[rgba(247,240,222,0.05)] backdrop-blur-sm mb-6"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
             <span className="text-xs font-medium tracking-[0.2em] text-primary uppercase">
@@ -77,12 +75,12 @@ export function Hero() {
             </span>
           </motion.div>
 
-          <h1 className="font-display font-black uppercase leading-[0.94] text-[clamp(3rem,7vw,6.5rem)] tracking-wide text-foreground">
+          <h1 className="font-display font-black uppercase leading-[0.94] text-[clamp(3rem,7vw,6.5rem)] tracking-wide text-surface-ink-foreground">
             {HEADLINE_WORDS.map((word, i) => (
               <span key={word} className="inline-block overflow-hidden align-top">
                 <motion.span
                   className={`inline-block ${
-                    i === HEADLINE_WORDS.length - 1 ? "text-accent" : ""
+                    i === HEADLINE_WORDS.length - 1 ? "text-primary" : ""
                   }`}
                   initial={prefersReducedMotion ? false : { y: "110%" }}
                   animate={{ y: 0 }}
@@ -103,7 +101,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.35 }}
-            className="mt-6 text-base md:text-lg leading-relaxed text-muted-foreground max-w-md mx-auto md:mx-0"
+            className={`mt-6 text-base md:text-lg leading-relaxed max-w-md mx-auto md:mx-0 ${INK_BODY}`}
           >
             5g creatine + full electrolytes in one single-serve stick. Built for
             the mats — BJJ, MMA, and the lifters who back it up.
@@ -116,17 +114,19 @@ export function Hero() {
             className="mt-8 flex flex-wrap justify-center md:justify-start items-center gap-4"
           >
             <Button
+              asChild
               size="lg"
-              onClick={goToShop}
               className="h-14 px-8 bg-primary hover:bg-primary/90 text-primary-foreground text-base font-bold uppercase tracking-wider shadow-[0_8px_24px_hsl(var(--primary)/0.35)] hover:shadow-[0_14px_32px_hsl(var(--primary)/0.45)] hover:-translate-y-0.5 transition-all duration-300"
             >
-              Shop Strawberry Guava <ChevronRight className="ml-2 h-5 w-5" />
+              <Link href="/shop">
+                Shop Strawberry Guava <ChevronRight className="ml-2 h-5 w-5" />
+              </Link>
             </Button>
             <Button
               size="lg"
               variant="outline"
               onClick={goToFormula}
-              className="h-14 px-8 border-accent text-foreground hover:bg-accent/10 text-base font-bold uppercase tracking-wider"
+              className="h-14 px-8 border-accent text-surface-ink-foreground hover:bg-accent/25 text-base font-bold uppercase tracking-wider"
             >
               See the Formula
             </Button>
@@ -164,14 +164,14 @@ export function Hero() {
               ref={cardRef}
               src="/assets/products/hero_matside_v1.png"
               alt="Kimora Strawberry Guava — pouch, single-serve sticks and shaker at the edge of the mats"
-              className="w-full rounded-3xl shadow-[0_36px_70px_rgba(28,19,11,0.32),0_0_0_1px_hsl(var(--foreground)/0.08)] transition-transform duration-200 ease-out will-change-transform"
+              className="w-full rounded-3xl shadow-[0_36px_70px_rgba(0,0,0,0.45),0_0_0_1px_rgba(247,240,222,0.10)] transition-transform duration-200 ease-out will-change-transform"
             />
           </motion.div>
         </div>
       </div>
 
       {/* Scroll cue */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-muted-foreground pointer-events-none">
+      <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none ${INK_BODY}`}>
         <span className="text-[10px] tracking-[0.3em] uppercase">Scroll</span>
         <span className="w-px h-9 bg-gradient-to-b from-primary to-transparent" />
       </div>

@@ -29,12 +29,14 @@ function getSecret(): string {
   );
 }
 
-// Single flat gym wholesale price (6/10/2026 pricing decision): every gym
-// account pays $28.99/bag — $21 COGS, 42% gym margin vs. $49.99 MSRP. The old
-// tiered model ($37.49 intro / $32.49 standard / $27.49 volume) is retired.
-// Existing reorder tokens carry their own locked-in unitPrice, so this only
-// affects new applications and the metadata fallback.
-export const WHOLESALE_UNIT_PRICE = 28.99;
+// Single flat gym wholesale price (8/13/2026 reprice, was $28.99 from 6/10):
+// every gym account pays $31.00/bag — gym keeps $18.99/bag vs. the $49.99 MSRP
+// shelf, or $29.00/bag when the pouch is broken into 30 single sticks at $2 on
+// the free counter display. The old tiered model ($37.49 intro / $32.49
+// standard / $27.49 volume) is retired. Existing reorder tokens carry their own
+// locked-in unitPrice, so this only affects new applications and the metadata
+// fallback.
+export const WHOLESALE_UNIT_PRICE = 31.0;
 
 export function inferUnitPrice(_tier?: string): number {
   return WHOLESALE_UNIT_PRICE;

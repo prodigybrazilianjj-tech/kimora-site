@@ -7,7 +7,7 @@ export function Formula() {
       {/* Navbar uses hash "#formula" and scrolls to "#formula-anchor" */}
       <div id="formula-anchor" className="h-[140px] md:h-[160px]" />
 
-      <section id="formula" className="py-24 bg-card/30">
+      <section id="formula" className="py-24 bg-background">
         <div className="container px-4 mx-auto max-w-4xl">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-6">
@@ -23,7 +23,7 @@ export function Formula() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 relative">
             <div className="space-y-6">
-              <h3 className="text-xl font-bold text-primary tracking-wider uppercase mb-8">
+              <h3 className="text-xl font-bold text-primary-strong tracking-wider uppercase mb-8">
                 Performance & Hydration
               </h3>
               <ul className="space-y-4">
@@ -60,7 +60,7 @@ export function Formula() {
             <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-foreground/10 -translate-x-1/2" />
 
             <div className="space-y-6">
-              <h3 className="text-xl font-bold text-primary tracking-wider uppercase mb-8">
+              <h3 className="text-xl font-bold text-primary-strong tracking-wider uppercase mb-8">
                 Clean, Daily Formula
               </h3>
               <ul className="space-y-4">

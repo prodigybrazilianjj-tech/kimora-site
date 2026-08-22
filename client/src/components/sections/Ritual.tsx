@@ -25,7 +25,7 @@ const STEPS = [
 
 export function Ritual() {
   return (
-    <section className="py-16 md:py-24">
+    <section className="py-16 md:py-24 bg-secondary">
       <div className="container px-4 mx-auto">
         <div className="text-center mb-10 md:mb-14">
           <p className="text-[11px] font-bold tracking-[0.28em] uppercase text-accent mb-3">

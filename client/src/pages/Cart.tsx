@@ -64,7 +64,7 @@ export default function Cart() {
                           : "One-time Purchase"}
                       </p>
 
-                      <p className="text-sm font-medium text-primary mt-1">
+                      <p className="text-sm font-medium text-primary-strong mt-1">
                         ${Number(item.price || 0).toFixed(2)}
                       </p>
                     </div>
@@ -74,7 +74,7 @@ export default function Cart() {
                         <button
                           type="button"
                           onClick={() => updateQuantity(item.id, -1)}
-                          className="px-2 text-foreground hover:text-primary transition-colors h-full flex items-center"
+                          className="px-2 text-foreground hover:text-primary-strong transition-colors h-full flex items-center"
                           aria-label={`Decrease quantity of ${prettyFlavor(item.flavor)}`}
                         >
                           <Minus className="w-3 h-3" />
@@ -101,7 +101,7 @@ export default function Cart() {
                         <button
                           type="button"
                           onClick={() => updateQuantity(item.id, 1)}
-                          className="px-2 text-foreground hover:text-primary transition-colors h-full flex items-center"
+                          className="px-2 text-foreground hover:text-primary-strong transition-colors h-full flex items-center"
                           aria-label={`Increase quantity of ${prettyFlavor(item.flavor)}`}
                         >
                           <Plus className="w-3 h-3" />

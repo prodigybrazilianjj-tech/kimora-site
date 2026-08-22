@@ -20,10 +20,11 @@ export function FAQPreview() {
           </div>
         </div>
 
-        <Link href="/faq">
-          <a className="inline-flex items-center text-primary font-bold hover:text-primary/80 transition-colors uppercase tracking-wider">
-            View all FAQs <ArrowRight className="ml-2 w-4 h-4" />
-          </a>
+        <Link
+          href="/faq"
+          className="inline-flex items-center text-primary-strong font-bold hover:text-primary-strong/80 transition-colors uppercase tracking-wider"
+        >
+          View all FAQs <ArrowRight className="ml-2 w-4 h-4" />
         </Link>
       </div>
     </section>

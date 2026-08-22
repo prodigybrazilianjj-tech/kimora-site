@@ -38,3 +38,15 @@ export const WAITLIST_DISCOUNT_LABEL = `${Math.round(WAITLIST_DISCOUNT * 100)}%`
 export function waitlistPrice(pouchPrice: number): string {
   return (pouchPrice * (1 - WAITLIST_DISCOUNT)).toFixed(2);
 }
+
+/**
+ * Where the navbar's Home link goes — always the public front door, never
+ * HOME_PATH.
+ *
+ * These differ while the gate is on. HOME_PATH is where the marketing homepage
+ * currently *lives* (/preview-home), which is a staging address, not somewhere
+ * to send a visitor: clicking Home from the shop used to drop them on a page
+ * the front door deliberately isn't. Both pages carry #flavors, #formula and
+ * #about, so the section links can point here too.
+ */
+export const FRONT_DOOR = "/";

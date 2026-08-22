@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
-import { PRELAUNCH_GATE, HOME_PATH } from "@/lib/prelaunch";
+import { PRELAUNCH_GATE, HOME_PATH, FRONT_DOOR } from "@/lib/prelaunch";
 import { SiteHeader, type NavLink } from "@/components/sections/SiteHeader";
 
 /**
@@ -56,7 +56,9 @@ function scrollToTop() {
 
 export function Navbar() {
   const [location, setLocation] = useLocation();
-  const isHome = location === HOME_PATH;
+  // Either page counts as home: both carry the sections, so nav scrolls in
+  // place rather than bouncing a preview visitor out to the front door.
+  const isHome = location === FRONT_DOOR || location === HOME_PATH;
   const pendingSelectorRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -85,7 +87,7 @@ export function Navbar() {
     if (window.location.hash) clearHashNoJump();
 
     if (!isHome) {
-      setLocation(HOME_PATH);
+      setLocation(FRONT_DOOR);
       window.setTimeout(scrollToTop, 0);
       return;
     }
@@ -97,9 +99,12 @@ export function Navbar() {
     const normalized = hash.startsWith("#") ? hash : `#${hash}`;
 
     if (!isHome) {
-      setHashNoJump(normalized);
+      // Carry the target in the URL rather than in a ref: the destination may
+      // not render this component (the pre-launch front door has its own
+      // header), in which case an unmounting ref takes the pending scroll with
+      // it. Both home pages read the hash on mount.
       pendingSelectorRef.current = normalized;
-      setLocation(HOME_PATH);
+      setLocation(`${FRONT_DOOR}${normalized}`);
       return;
     }
 

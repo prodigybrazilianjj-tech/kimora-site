@@ -1,4 +1,5 @@
-import { scrollToId, scrollToPageTop } from "@/lib/scroll";
+import { useEffect } from "react";
+import { scrollToId, scrollToPageTop, HEADER_OFFSET } from "@/lib/scroll";
 import { Footer } from "@/components/sections/Footer";
 import { StatsBand } from "@/components/sections/StatsBand";
 import { FlavorLineup } from "@/components/sections/FlavorLineup";
@@ -40,6 +41,25 @@ const NAV_LINKS = [
 ];
 
 export default function ComingSoon() {
+  // A visitor coming from the shop's nav arrives with "#flavors" in the URL.
+  // A full page load jumps there natively; an in-app navigation does not, and
+  // the shop's header has already unmounted by the time we render, so the
+  // scroll has to happen here.
+  useEffect(() => {
+    const run = () => {
+      const hash = window.location.hash;
+      if (!hash) return;
+
+      const id = hash.slice(1);
+      scrollToId(id, HEADER_OFFSET, "auto");
+      window.setTimeout(() => scrollToId(id, HEADER_OFFSET, "auto"), 250);
+    };
+
+    run();
+    window.addEventListener("hashchange", run);
+    return () => window.removeEventListener("hashchange", run);
+  }, []);
+
   return (
     <>
       <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">

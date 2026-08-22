@@ -14,12 +14,16 @@
 /** Roughly the header's height, so a section doesn't land underneath it. */
 export const HEADER_OFFSET = 84;
 
-export function scrollToId(id: string, offset: number = HEADER_OFFSET) {
+export function scrollToId(
+  id: string,
+  offset: number = HEADER_OFFSET,
+  behavior: ScrollBehavior = "smooth"
+) {
   const el = document.getElementById(id);
   if (!el) return;
 
   const top = el.getBoundingClientRect().top + window.scrollY - offset;
-  window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  window.scrollTo({ top: Math.max(0, top), behavior });
 }
 
 export function scrollToPageTop() {

@@ -66,8 +66,13 @@ function Router() {
       <ScrollToTop />
 
       <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/coming-soon" component={ComingSoon} />
+        {/* Pre-launch front door. Home is the launch-day homepage and lives at
+            /preview-home until then — flip these two lines to go live. */}
+        <Route path="/" component={ComingSoon} />
+        <Route path="/preview-home" component={Home} />
+
+        {/* Old direct link, kept so bookmarks and any ad URLs still land. */}
+        <Route path="/coming-soon">{() => <Redirect to="/" />}</Route>
         <Route path="/faq" component={FAQ} />
 
         {/* Storefront is always browsable so visitors can see products + prices. */}

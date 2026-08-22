@@ -6,40 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { isFlavorAvailable } from "@/lib/product";
+import { FLAVORS, isFlavorAvailable } from "@/lib/product";
 
-const products = [
-  {
-    id: "strawberry-guava",
-    name: "Strawberry Guava",
-    desc: "Tart, tropical, and refreshingly smooth.",
-    image: "/assets/products/strawberry-guava/pouch_sticks_v1.webp",
-    priceOneTime: 49.99,
-    priceSub: 39.99,
-    accent: "from-orange-600/20 to-transparent",
-    bgAccent: "from-orange-500/20",
-  },
-  {
-    id: "lemon-lychee",
-    name: "Lemon Lychee",
-    desc: "Bright lemon meets sweet, floral lychee — crisp, juicy, and refreshing.",
-    image: "/assets/products/lemon-lychee/pouch_sticks_v6.webp",
-    priceOneTime: 49.99,
-    priceSub: 39.99,
-    accent: "from-yellow-500/20 to-transparent",
-    bgAccent: "from-yellow-500/20",
-  },
-  {
-    id: "raspberry-dragonfruit",
-    name: "Raspberry Dragonfruit",
-    desc: "Bold, juicy, and perfectly balanced.",
-    image: "/assets/products/raspberry-dragonfruit/pouch_sticks_v8.webp",
-    priceOneTime: 49.99,
-    priceSub: 39.99,
-    accent: "from-red-600/25 to-transparent",
-    bgAccent: "from-red-500/20",
-  },
-];
+// Card gradients are Shop-only styling; everything factual comes from the catalog.
+const ACCENTS: Record<string, { accent: string; bgAccent: string }> = {
+  "strawberry-guava": { accent: "from-orange-600/20 to-transparent", bgAccent: "from-orange-500/20" },
+  "lemon-lychee": { accent: "from-yellow-500/20 to-transparent", bgAccent: "from-yellow-500/20" },
+  "raspberry-dragonfruit": { accent: "from-red-600/25 to-transparent", bgAccent: "from-red-500/20" },
+};
+
+const products = FLAVORS.map((f) => ({
+  id: f.slug,
+  name: f.name,
+  desc: f.desc,
+  image: f.image,
+  priceOneTime: f.priceOneTime,
+  priceSub: f.priceSub,
+  ...ACCENTS[f.slug],
+}));
 
 export default function Shop() {
   const [isSubscribe, setIsSubscribe] = useState(true);

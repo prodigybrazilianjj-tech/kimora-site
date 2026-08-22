@@ -2,11 +2,11 @@ import { useEffect } from "react";
 import { Navbar } from "@/components/sections/Navbar";
 import { Hero } from "@/components/sections/Hero";
 import { Marquee } from "@/components/sections/Marquee";
-import { ProductLineup } from "@/components/sections/ProductLineup";
+import { FlavorLineup } from "@/components/sections/FlavorLineup";
 import { StatsBand } from "@/components/sections/StatsBand";
 import { Benefits } from "@/components/sections/Benefits";
 import { Formula } from "@/components/sections/Formula";
-import { CinematicBand } from "@/components/sections/CinematicBand";
+import { Manifesto } from "@/components/sections/Manifesto";
 import { Ritual } from "@/components/sections/Ritual";
 import { Comparison } from "@/components/sections/Comparison";
 import { SavingsSlider } from "@/components/sections/SavingsSlider";
@@ -14,7 +14,7 @@ import { About } from "@/components/sections/About";
 import { FutureProducts } from "@/components/sections/FutureProducts";
 import { Testimonials } from "@/components/sections/Testimonials";
 import { EmailCapture } from "@/components/sections/EmailCapture";
-import { FAQPreview } from "@/components/sections/FAQPreview";
+import { FaqSection } from "@/components/sections/FaqSection";
 import { StickyNotifyBar } from "@/components/sections/StickyNotifyBar";
 import { Footer } from "@/components/sections/Footer";
 
@@ -63,19 +63,22 @@ export default function Home() {
       <main>
         <Hero />
         <Marquee />
-        <ProductLineup />
+        <FlavorLineup tone="cream" mode="launch" anchor="flavors-anchor" />
         <StatsBand />
         <Benefits />
-        <Formula />
-        <CinematicBand />
+        <Formula tone="cream" anchor="formula-anchor" />
+        <Manifesto />
         <Ritual />
         <Comparison />
         <SavingsSlider />
         <Testimonials />
         <About />
-        <FutureProducts />
+        <FutureProducts
+          tone="ink"
+          footnote="Rash guards, shorts, and training gear are in development. Join below and you'll hear first."
+        />
         <EmailCapture />
-        <FAQPreview />
+        <FaqSection tone="cream" mode="launch" showAllLink />
       </main>
       <StickyNotifyBar />
       <Footer tone="ink" />

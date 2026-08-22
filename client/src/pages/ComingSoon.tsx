@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Footer } from "@/components/sections/Footer";
+import { StatsBand } from "@/components/sections/StatsBand";
+import { FlavorLineup } from "@/components/sections/FlavorLineup";
+import { Formula } from "@/components/sections/Formula";
+import { Quality } from "@/components/sections/Quality";
+import { FaqSection } from "@/components/sections/FaqSection";
+import { Manifesto } from "@/components/sections/Manifesto";
+import { FutureProducts } from "@/components/sections/FutureProducts";
 import { motion, AnimatePresence } from "framer-motion";
 import { INK, INK_HEAD, INK_LEAD, INK_BODY, INK_CARD, LIGHT_CARD } from "@/lib/surfaces";
 
@@ -8,14 +15,6 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 const WRAP = "mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-20";
 const EYEBROW = "text-sm font-medium uppercase tracking-[0.26em]";
-
-/** Fact strip — each line is lifted verbatim from a section further down. */
-const FACTS = [
-  "5g creatine monohydrate",
-  "Sodium, potassium, magnesium",
-  "No sugar, no sucralose",
-  "Made for the mat",
-];
 
 export default function ComingSoon() {
   const [email, setEmail] = useState("");
@@ -99,27 +98,6 @@ export default function ComingSoon() {
     }
   }
 
-  const flavors = [
-    {
-      name: "Strawberry Guava",
-      img: "/assets/products/strawberry-guava/pouch_sticks_v1.webp",
-      well: "rgba(210,88,67,0.16)",
-      desc: "Tropical, richer, and fruit-forward with a fuller flavor profile.",
-    },
-    {
-      name: "Lemon Lychee",
-      img: "/assets/products/lemon-lychee/pouch_sticks_v6.webp",
-      well: "rgba(229,209,78,0.13)",
-      desc: "Bright lemon with a sweet, floral lychee finish.",
-    },
-    {
-      name: "Raspberry Dragonfruit",
-      img: "/assets/products/raspberry-dragonfruit/pouch_sticks_v8.webp",
-      well: "rgba(214,40,57,0.14)",
-      desc: "Smooth, balanced, and built to be the daily driver.",
-    },
-  ];
-
   return (
     <>
       <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -149,12 +127,19 @@ export default function ComingSoon() {
                 KIM<span className="text-accent">O</span>RA
               </Link>
 
-              <div className="hidden items-center gap-3 sm:flex">
+              <div className="flex items-center gap-4">
+                <Link
+                  href="/shop"
+                  className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+                >
+                  See the flavors
+                </Link>
+
                 <motion.span
                   initial={{ opacity: 0, x: 12 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.55, ease: EASE, delay: 0.25 }}
-                  className="rounded-full border border-foreground/10 bg-foreground/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary-strong backdrop-blur-sm"
+                  className="hidden rounded-full border border-foreground/10 bg-foreground/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary-strong backdrop-blur-sm sm:inline-block"
                 >
                   Creatine · Electrolytes · Daily
                 </motion.span>
@@ -374,155 +359,12 @@ export default function ComingSoon() {
             </div>
           </section>
 
-          {/* ── 2. Fact strip — cream, gold rules top + bottom ── */}
-          <section className="border-y border-primary bg-background">
-            <div className="mx-auto max-w-7xl px-6 py-7 md:px-8 lg:px-10">
-              <ul className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-                {FACTS.map((fact, i) => (
-                  <motion.li
-                    key={fact}
-                    initial={{ opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-40px" }}
-                    transition={{ duration: 0.45, ease: EASE, delay: i * 0.07 }}
-                    className="flex items-center gap-2.5 text-xs uppercase tracking-[0.18em] text-foreground/85 md:justify-center"
-                  >
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                    {fact}
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-          </section>
+          {/* ── 2. The numbers — cream, gold rules top + bottom ── */}
+          <StatsBand tone="cream" rules />
 
-          {/* ── 3. The formula — ink ── */}
-          <section className={INK}>
-            <div className={WRAP}>
-              <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="mb-10 max-w-3xl"
-              >
-                <p className={`${EYEBROW} text-primary`}>The formula</p>
-                <h2
-                  className={`mt-4 text-3xl font-display font-bold tracking-wide sm:text-4xl ${INK_HEAD}`}
-                >
-                  What's in it. What's not.
-                </h2>
-              </motion.div>
+          <Formula tone="ink" />
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <motion.div
-                  initial={{ opacity: 0, y: 32 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-60px" }}
-                  transition={{ duration: 0.6, ease: EASE }}
-                  className={`${INK_CARD} p-8`}
-                >
-                  <h3 className={`text-xl font-display font-bold ${INK_HEAD}`}>
-                    In every stick
-                  </h3>
-                  <ul className={`mt-5 space-y-3 leading-7 ${INK_BODY}`}>
-                    <li>5g creatine monohydrate (200 mesh — no underdose)</li>
-                    <li>A real electrolyte panel — sodium, potassium, magnesium</li>
-                    <li>Naturally sweetened with stevia and monk fruit</li>
-                  </ul>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 32 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-60px" }}
-                  transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
-                  className={`${INK_CARD} p-8`}
-                >
-                  <h3 className={`text-xl font-display font-bold ${INK_HEAD}`}>
-                    What we left out
-                  </h3>
-                  <ul className={`mt-5 space-y-3 leading-7 ${INK_BODY}`}>
-                    <li>No silicon dioxide</li>
-                    <li>No artificial colors</li>
-                    <li>No sugar, no sucralose, no sugar alcohols</li>
-                    <li>No proprietary blends, no hidden doses</li>
-                  </ul>
-                </motion.div>
-              </div>
-
-              <p className={`mt-8 max-w-3xl leading-8 ${INK_LEAD}`}>
-                One formula behind all three flavors. Same dose, different
-                profiles. Tear, mix, drink.
-              </p>
-            </div>
-          </section>
-
-          {/* ── 4. Flavor lineup — sand ── */}
-          <section className="bg-secondary">
-            <div className={WRAP}>
-              <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="mb-10 max-w-3xl"
-              >
-                <p className={`${EYEBROW} text-primary-strong`}>Flavor lineup</p>
-
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
-                  Three flavors. One system.
-                </h2>
-
-                <p className="mt-5 leading-7 text-muted-foreground">
-                  Designed to feel premium, clean, and actually enjoyable to take
-                  every day.
-                </p>
-              </motion.div>
-
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-                {flavors.map((flavor, i) => (
-                  <motion.article
-                    key={flavor.name}
-                    initial={{ opacity: 0, y: 44 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-60px" }}
-                    transition={{ duration: 0.65, ease: EASE, delay: i * 0.12 }}
-                    whileHover={{ y: -10, transition: { duration: 0.25, ease: EASE } }}
-                    className={`overflow-hidden ${LIGHT_CARD} transition-colors duration-300 hover:border-foreground/15`}
-                    style={{ willChange: "transform" }}
-                  >
-                    {/* Product well — tinted with the flavor colour at low alpha. */}
-                    <div
-                      className="relative aspect-[4/5] overflow-hidden"
-                      style={{ backgroundColor: flavor.well }}
-                    >
-                      {/* Opaque, not a tint: a translucent pill washes out against
-                          the packaging behind it. */}
-                      <span className="absolute left-4 top-4 z-[5] rounded-full border border-accent/40 bg-background px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
-                        Coming Soon
-                      </span>
-                      <motion.img
-                        src={flavor.img}
-                        alt={flavor.name}
-                        whileHover={{ scale: 1.05 }}
-                        transition={{ duration: 0.4, ease: EASE }}
-                        className="absolute inset-0 z-[1] h-full w-full object-cover"
-                        style={{ willChange: "transform" }}
-                      />
-                    </div>
-                    <div className="border-t border-border p-6 text-center">
-                      <h3 className="text-2xl font-display font-bold text-foreground">
-                        {flavor.name}
-                      </h3>
-                      <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                        {flavor.desc}
-                      </p>
-                    </div>
-                  </motion.article>
-                ))}
-              </div>
-            </div>
-          </section>
+          <FlavorLineup tone="sand" mode="prelaunch" />
 
           {/* ── 5. The format — ink ── */}
           <section className={INK}>
@@ -646,201 +488,11 @@ export default function ComingSoon() {
             </div>
           </section>
 
-          {/* ── 7. Quality — ink ── */}
-          <section className={INK}>
-            <div className={WRAP}>
-              <motion.div
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.7, ease: EASE }}
-                className="max-w-3xl"
-              >
-                <p className={`${EYEBROW} text-primary`}>Quality</p>
-                <h2
-                  className={`mt-4 text-3xl font-display font-bold tracking-wide sm:text-4xl ${INK_HEAD}`}
-                >
-                  Clean formula. Nothing hidden.
-                </h2>
-                <p className={`mt-6 leading-8 ${INK_BODY}`}>
-                  No proprietary blends, no fairy dusting, no fillers you can't
-                  pronounce. Every stick is fully disclosed: 5g creatine
-                  monohydrate at label dose, a real electrolyte panel, and natural
-                  sweeteners — that's it. What's on the label is what's in the
-                  stick.
-                </p>
-              </motion.div>
-            </div>
-          </section>
-
-          {/* ── 8. FAQ — sand ── */}
-          <section className="bg-secondary">
-            <div className={WRAP}>
-              <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="mb-10 max-w-3xl"
-              >
-                <p className={`${EYEBROW} text-primary-strong`}>FAQ</p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
-                  Questions, answered.
-                </h2>
-              </motion.div>
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {[
-                  {
-                    q: "When does Kimora launch?",
-                    a: "Soon — we're finishing final production. Join the waitlist and you'll get the buy link 24 hours before the public, plus 15% off your first order.",
-                  },
-                  {
-                    q: "What do I get for joining the waitlist?",
-                    a: "15% off your first order, a 24-hour early-access head start, and the formula details before anyone else. No spam.",
-                  },
-                  {
-                    q: "What's in a stick?",
-                    a: "5g creatine monohydrate, a real electrolyte panel (sodium, potassium, magnesium), naturally sweetened with stevia and monk fruit. No silicon dioxide, no artificial colors, no sugar alcohols.",
-                  },
-                  {
-                    q: "How do I know it's dosed right?",
-                    a: "Full transparency — 5g creatine monohydrate at label dose, a real electrolyte panel (sodium, potassium, magnesium), naturally sweetened. No proprietary blends, no hidden fillers. What's on the label is in the stick.",
-                  },
-                  {
-                    q: "How do I take it?",
-                    a: "One stick a day. Tear it open, mix into water, drink — after class or whenever fits your day.",
-                  },
-                  {
-                    q: "Who is it for?",
-                    a: "Combat sports athletes and serious lifters — BJJ, MMA, Muay Thai, boxing, grappling. Built for people who train daily.",
-                  },
-                ].map((item, i) => (
-                  <motion.div
-                    key={item.q}
-                    initial={{ opacity: 0, y: 28 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-60px" }}
-                    transition={{ duration: 0.55, ease: EASE, delay: (i % 2) * 0.08 }}
-                    className={`${LIGHT_CARD} p-7`}
-                  >
-                    <h3 className="text-lg font-display font-bold text-foreground">
-                      {item.q}
-                    </h3>
-                    <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                      {item.a}
-                    </p>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* ── 9. Manifesto — ink, centred ── */}
-          <section className={INK}>
-            <div className="mx-auto max-w-5xl px-6 py-20 text-center md:px-8 lg:px-10 lg:py-28">
-              <motion.p
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.7, ease: EASE }}
-                className={`font-display text-2xl font-semibold uppercase leading-tight tracking-wide sm:text-3xl lg:text-4xl ${INK_HEAD}`}
-              >
-                We don't sell supplements. We build athletes who are{" "}
-                <span className="text-primary">stronger in the body</span> and{" "}
-                <span className="text-primary">sharper in the mind.</span>
-              </motion.p>
-            </div>
-          </section>
-
-          {/* ── 10. More than a supplement — cream, tiles stay dark ── */}
-          <section className="bg-background">
-            <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-24">
-              <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="mb-10 max-w-3xl"
-              >
-                <p className={`${EYEBROW} text-primary-strong`}>What we're building</p>
-                <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-foreground sm:text-4xl">
-                  More than a supplement.
-                </h2>
-                <p className="mt-5 max-w-2xl leading-7 text-muted-foreground">
-                  Kimora starts with the stick — but it's becoming a full system
-                  for the people who live on the mats. Gear engineered the same way
-                  the fuel is: honest, tested, built for live rounds. Here's what's
-                  next.
-                </p>
-              </motion.div>
-
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {[
-                  {
-                    cat: "Apparel",
-                    name: "Rash Guards",
-                    img: "/assets/apparel/rashguard-teaser.webp",
-                    glow: "radial-gradient(110% 85% at 50% 22%, rgba(168,72,31,0.30), transparent 60%)",
-                  },
-                  {
-                    cat: "Apparel",
-                    name: "Grappling Shorts",
-                    img: "/assets/apparel/shorts-teaser-v2.webp",
-                    glow: "radial-gradient(110% 85% at 50% 22%, rgba(201,168,106,0.22), transparent 60%)",
-                  },
-                  {
-                    cat: "Train",
-                    name: "Training Gear",
-                    img: "/assets/apparel/training-bag-teaser-v3.webp",
-                    glow: "radial-gradient(110% 85% at 50% 22%, rgba(168,72,31,0.22), transparent 60%)",
-                  },
-                ].map((tile, i) => (
-                  <motion.div
-                    key={tile.name}
-                    initial={{ opacity: 0, y: 40 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-60px" }}
-                    transition={{ duration: 0.6, ease: EASE, delay: i * 0.1 }}
-                    className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-surface-ink"
-                  >
-                    <div
-                      className="absolute inset-0"
-                      style={{ background: tile.glow }}
-                    />
-                    <img
-                      src={tile.img}
-                      alt={tile.name}
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display =
-                          "none";
-                      }}
-                      className="absolute inset-0 h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-[1.04]"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-                    <div className="absolute right-4 top-4 rounded-full border border-accent/40 bg-background px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
-                      Coming Soon
-                    </div>
-                    {/* The tile is dark whatever the band is, so its label is cream. */}
-                    <div className="absolute inset-x-0 bottom-0 p-6">
-                      <span className="text-[11px] uppercase tracking-[0.2em] text-[rgba(247,240,222,0.72)]">
-                        {tile.cat}
-                      </span>
-                      <h3 className="mt-1 font-display text-2xl font-bold uppercase tracking-wide text-[#F7F0DE]">
-                        {tile.name}
-                      </h3>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              <p className="mt-8 text-sm text-muted-foreground">
-                Rash guards, shorts, and training gear are in development. Join the
-                waitlist above and you'll hear first.
-              </p>
-            </div>
-          </section>
+          {/* ── 7-10. Shared with the homepage — see components/sections. ── */}
+          <Quality tone="ink" />
+          <FaqSection tone="sand" mode="prelaunch" />
+          <Manifesto />
+          <FutureProducts tone="cream" />
         </main>
       </div>
 

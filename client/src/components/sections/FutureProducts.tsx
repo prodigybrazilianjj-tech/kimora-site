@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
-import { INK, INK_BODY } from "@/lib/surfaces";
-
-const EASE = [0.22, 1, 0.36, 1] as const;
+import { Band, SectionHead, EASE, bodyOn, type Tone } from "./Band";
+import { cn } from "@/lib/utils";
 
 // The brand ladder beyond the stick. These are teasers — no links, no prices,
 // just signal that Kimora is becoming a full system for people on the mats.
@@ -26,73 +25,61 @@ const tiles = [
   },
 ];
 
-export function FutureProducts() {
+export function FutureProducts({
+  tone = "cream",
+  footnote = "Rash guards, shorts, and training gear are in development. Join the waitlist above and you'll hear first.",
+}: {
+  tone?: Tone;
+  /** The closing line changes with the page's call to action. */
+  footnote?: string;
+}) {
   return (
-    <section className={INK}>
-      <div className="mx-auto max-w-7xl px-6 py-16 md:px-8 lg:px-10 lg:py-24">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6, ease: EASE }}
-          className="mb-10 max-w-3xl"
-        >
-          <p className="text-sm font-medium uppercase tracking-[0.26em] text-primary">
-            What we're building
-          </p>
-          <h2 className="mt-4 text-3xl font-display font-bold tracking-wide text-surface-ink-foreground sm:text-4xl">
-            More than a supplement.
-          </h2>
-          <p className={`mt-5 max-w-2xl leading-7 ${INK_BODY}`}>
-            Kimora starts with the stick — but it's becoming a full system for
-            the people who live on the mats. Gear engineered the same way the
-            fuel is: honest, tested, built for live rounds. Here's what's next.
-          </p>
-        </motion.div>
+    <Band tone={tone}>
+      <SectionHead
+        tone={tone}
+        eyebrow="What we're building"
+        title="More than a supplement."
+        lead="Kimora starts with the stick — but it's becoming a full system for the people who live on the mats. Gear engineered the same way the fuel is: honest, tested, built for live rounds. Here's what's next."
+      />
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {tiles.map((tile, i) => (
-            <motion.div
-              key={tile.name}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.6, ease: EASE, delay: i * 0.1 }}
-              className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-[rgba(247,240,222,0.16)] bg-surface-ink"
-            >
-              <div className="absolute inset-0" style={{ background: tile.glow }} />
-              <img
-                src={tile.img}
-                alt={tile.name}
-                loading="lazy"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-              />
-              {/* Legibility scrim — only the bottom band darkens, so the product
-                  stays bright while the white label below stays readable. */}
-              <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-              <div className="absolute right-4 top-4 rounded-full border border-white/25 bg-black/45 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white backdrop-blur-sm">
-                Coming Soon
-              </div>
-              <div className="absolute inset-x-0 bottom-0 p-6">
-                <span className="text-[11px] uppercase tracking-[0.2em] text-white/75">
-                  {tile.cat}
-                </span>
-                <h3 className="mt-1 font-display text-2xl font-bold uppercase tracking-wide text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
-                  {tile.name}
-                </h3>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <p className={`mt-8 text-sm ${INK_BODY}`}>
-          Rash guards, shorts, and training gear are in development. Join below
-          and you'll hear first.
-        </p>
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {tiles.map((tile, i) => (
+          <motion.div
+            key={tile.name}
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.6, ease: EASE, delay: i * 0.1 }}
+            className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-surface-ink"
+          >
+            <div className="absolute inset-0" style={{ background: tile.glow }} />
+            <img
+              src={tile.img}
+              alt={tile.name}
+              loading="lazy"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+              className="absolute inset-0 h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-[1.04]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+            <div className="absolute right-4 top-4 rounded-full border border-accent/40 bg-background px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+              Coming Soon
+            </div>
+            {/* The tile is dark whatever the band is, so its label is cream. */}
+            <div className="absolute inset-x-0 bottom-0 p-6">
+              <span className="text-[11px] uppercase tracking-[0.2em] text-[rgba(247,240,222,0.72)]">
+                {tile.cat}
+              </span>
+              <h3 className="mt-1 font-display text-2xl font-bold uppercase tracking-wide text-[#F7F0DE]">
+                {tile.name}
+              </h3>
+            </div>
+          </motion.div>
+        ))}
       </div>
-    </section>
+
+      <p className={cn("mt-8 text-sm", bodyOn(tone))}>{footnote}</p>
+    </Band>
   );
 }

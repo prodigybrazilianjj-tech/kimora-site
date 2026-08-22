@@ -18,3 +18,9 @@
 export const PRELAUNCH_GATE = true;
 
 export const PRELAUNCH_GATE_WHOLESALE = false;
+
+// Where the marketing homepage lives right now. While the gate is on, the
+// waitlist page owns "/" and Home is parked at /preview-home; at launch Home
+// takes "/" back. App.tsx routes from this and the navbar resolves its section
+// links against it, so the two cannot drift.
+export const HOME_PATH = PRELAUNCH_GATE ? "/preview-home" : "/";

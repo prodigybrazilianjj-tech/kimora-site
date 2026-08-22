@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { Footer } from "@/components/sections/Footer";
 import { StatsBand } from "@/components/sections/StatsBand";
 import { FlavorLineup } from "@/components/sections/FlavorLineup";
+import { SiteHeader } from "@/components/sections/SiteHeader";
+import { WhyNotATub } from "@/components/sections/WhyNotATub";
 import { Formula } from "@/components/sections/Formula";
 import { Quality } from "@/components/sections/Quality";
 import { FaqSection } from "@/components/sections/FaqSection";
@@ -113,39 +115,26 @@ export default function ComingSoon() {
 
         <main className="relative z-10">
           {/* ── Header ── */}
-          <motion.header
-            initial={{ opacity: 0, y: -18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: "easeOut" }}
-            className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md backdrop-saturate-150"
-          >
-            <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-5 md:px-8 lg:px-10">
+          <SiteHeader>
+            <div className="flex items-center gap-4">
               <Link
-                href="/"
-                className="font-wordmark text-4xl font-bold leading-none tracking-[0.16em] text-foreground transition-colors hover:text-foreground sm:text-5xl"
+                href="/shop"
+                className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
               >
-                KIM<span className="text-accent">O</span>RA
+                See the flavors
               </Link>
 
-              <div className="flex items-center gap-4">
-                <Link
-                  href="/shop"
-                  className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-                >
-                  See the flavors
-                </Link>
-
-                <motion.span
-                  initial={{ opacity: 0, x: 12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.55, ease: EASE, delay: 0.25 }}
-                  className="hidden rounded-full border border-foreground/10 bg-foreground/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary-strong backdrop-blur-sm sm:inline-block"
-                >
-                  Creatine · Electrolytes · Daily
-                </motion.span>
-              </div>
+              {/* Decorative, so this is what drops on small screens — not the link. */}
+              <motion.span
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.55, ease: EASE, delay: 0.25 }}
+                className="hidden rounded-full border border-foreground/10 bg-foreground/[0.04] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary-strong backdrop-blur-sm sm:inline-block"
+              >
+                Creatine · Electrolytes · Daily
+              </motion.span>
             </div>
-          </motion.header>
+          </SiteHeader>
 
           {/* ── 1. Hero — ink ── */}
           <section className={`relative overflow-hidden ${INK}`}>
@@ -366,72 +355,7 @@ export default function ComingSoon() {
 
           <FlavorLineup tone="sand" mode="prelaunch" />
 
-          {/* ── 5. The format — ink ── */}
-          <section className={INK}>
-            <div className={WRAP}>
-              <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="mb-10 max-w-3xl"
-              >
-                <p className={`${EYEBROW} text-primary`}>The format</p>
-                <h2
-                  className={`mt-4 text-3xl font-display font-bold tracking-wide sm:text-4xl ${INK_HEAD}`}
-                >
-                  Why a stick, not a tub.
-                </h2>
-              </motion.div>
-
-              {/* Pouch + single-serve sticks — show the format */}
-              <motion.figure
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.7, ease: EASE }}
-                className={`mb-10 overflow-hidden ${INK_CARD}`}
-              >
-                <img
-                  src="/assets/products/strawberry-guava/pouch_sticks_studio.webp"
-                  alt="Kimora Strawberry Guava pouch with its single-serve creatine + electrolyte sticks"
-                  loading="lazy"
-                  className="mx-auto block h-auto w-full max-w-[760px] object-contain"
-                />
-              </motion.figure>
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {[
-                  {
-                    title: "Fits the bag",
-                    body: "A single-serve stick fits a gi pocket. No tub, no scoop, no shaker on the mat.",
-                  },
-                  {
-                    title: "One stick, one day",
-                    body: "No measuring, no guessing the dose. Tear, mix, drink.",
-                  },
-                  {
-                    title: "Survives the gym",
-                    body: "A matte laminate pack built to take a beating in your bag.",
-                  },
-                ].map((item, i) => (
-                  <motion.div
-                    key={item.title}
-                    initial={{ opacity: 0, y: 40 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-60px" }}
-                    transition={{ duration: 0.6, ease: EASE, delay: i * 0.1 }}
-                    className={`${INK_CARD} p-8`}
-                  >
-                    <h3 className={`text-xl font-display font-bold ${INK_HEAD}`}>
-                      {item.title}
-                    </h3>
-                    <p className={`mt-3 leading-7 ${INK_BODY}`}>{item.body}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </section>
+          <WhyNotATub tone="ink" />
 
           {/* ── 6. Why Kimora exists + Built for combat sports — cream ── */}
           <section className="bg-background">

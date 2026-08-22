@@ -1,7 +1,14 @@
 import { Brain, Zap, Dumbbell } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Band, SectionHead, SurfaceCard, bodyOn, headOn, type Tone } from "./Band";
+import { cn } from "@/lib/utils";
 
-const benefits = [
+/**
+ * What creatine + electrolytes actually do. Homepage-only — the pre-launch page
+ * makes the case through the formula section instead — but it runs on the same
+ * Band/SectionHead recipe so it reads as one system with everything around it.
+ */
+
+const BENEFITS = [
   {
     title: "Cognition",
     icon: Brain,
@@ -19,28 +26,47 @@ const benefits = [
   },
 ];
 
-export function Benefits() {
+export function Benefits({ tone = "sand" }: { tone?: Tone }) {
+  const ink = tone === "ink";
+
   return (
-    <section className="py-12 md:py-16 bg-secondary">
-      <div className="container px-4 mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {benefits.map((benefit, index) => (
-            <Card key={benefit.title} className="bg-card border-foreground/5">
-              <CardContent className="p-8 flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6 text-primary-strong">
-                  <benefit.icon className="w-8 h-8" />
-                </div>
-                <h3 className="text-3xl font-display font-bold text-foreground mb-4">
-                  {benefit.title}
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {benefit.desc}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+    <Band tone={tone}>
+      <SectionHead
+        tone={tone}
+        eyebrow="Why it works"
+        title="Stronger in the body. Sharper in the mind."
+      />
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        {BENEFITS.map((benefit, i) => (
+          <SurfaceCard
+            key={benefit.title}
+            tone={tone}
+            delay={i * 0.1}
+            className="flex flex-col items-center p-8 text-center"
+          >
+            <div
+              className={cn(
+                "mb-6 flex h-16 w-16 items-center justify-center rounded-full",
+                ink
+                  ? "bg-[rgba(247,240,222,0.08)] text-primary"
+                  : "bg-primary/10 text-primary-strong"
+              )}
+            >
+              <benefit.icon className="h-8 w-8" />
+            </div>
+            <h3
+              className={cn(
+                "mb-3 text-2xl font-display font-bold",
+                headOn(tone)
+              )}
+            >
+              {benefit.title}
+            </h3>
+            <p className={cn("leading-7", bodyOn(tone))}>{benefit.desc}</p>
+          </SurfaceCard>
+        ))}
       </div>
-    </section>
+    </Band>
   );
 }

@@ -8,7 +8,7 @@ import { Benefits } from "@/components/sections/Benefits";
 import { Formula } from "@/components/sections/Formula";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { Ritual } from "@/components/sections/Ritual";
-import { Comparison } from "@/components/sections/Comparison";
+import { WhyNotATub } from "@/components/sections/WhyNotATub";
 import { SavingsSlider } from "@/components/sections/SavingsSlider";
 import { About } from "@/components/sections/About";
 import { FutureProducts } from "@/components/sections/FutureProducts";
@@ -69,7 +69,7 @@ export default function Home() {
         <Formula tone="cream" anchor="formula-anchor" />
         <Manifesto />
         <Ritual />
-        <Comparison />
+        <WhyNotATub tone="cream" anchor="comparison-anchor" />
         <SavingsSlider />
         <Testimonials />
         <About />

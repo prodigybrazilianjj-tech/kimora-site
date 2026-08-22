@@ -1,8 +1,15 @@
 import { motion } from "framer-motion";
+import { Band, SectionHead, EASE, bodyOn, headOn, type Tone } from "./Band";
+import { INK_CARD, LIGHT_CARD } from "@/lib/surfaces";
+import { cn } from "@/lib/utils";
 
 /**
- * Ritual — Tear / Mix / Roll habit cards (approved mockup 2026-07-05).
- * Hover lifts the card and stretches the accent bar.
+ * Tear / Mix / Roll — the daily habit in three steps. Homepage-only; the
+ * pre-launch page argues the same point as prose under "Consistency wins."
+ *
+ * The oversized outlined numeral and the accent bar that stretches on hover are
+ * from the approved 2026-07-05 mockup and are kept as-is; only the surface and
+ * text colours now come from the band system.
  */
 
 const STEPS = [
@@ -23,47 +30,58 @@ const STEPS = [
   },
 ];
 
-export function Ritual() {
-  return (
-    <section className="py-16 md:py-24 bg-secondary">
-      <div className="container px-4 mx-auto">
-        <div className="text-center mb-10 md:mb-14">
-          <p className="text-[11px] font-bold tracking-[0.28em] uppercase text-accent mb-3">
-            The Ritual
-          </p>
-          <h2 className="text-4xl md:text-5xl font-display font-extrabold uppercase text-foreground">
-            Ten Seconds. Every Day.
-          </h2>
-        </div>
+export function Ritual({ tone = "sand" }: { tone?: Tone }) {
+  const ink = tone === "ink";
 
-        <div className="grid md:grid-cols-3 gap-5">
-          {STEPS.map((step, i) => (
-            <motion.div
-              key={step.n}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ delay: i * 0.12, duration: 0.6 }}
-              className="group relative overflow-hidden rounded-2xl border border-border bg-card p-8 md:p-9 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_22px_40px_hsl(var(--foreground)/0.14)]"
+  return (
+    <Band tone={tone}>
+      <SectionHead
+        tone={tone}
+        eyebrow="The ritual"
+        title="Ten seconds. Every day."
+        align="center"
+      />
+
+      <div className="grid gap-6 md:grid-cols-3">
+        {STEPS.map((step, i) => (
+          <motion.div
+            key={step.n}
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ delay: i * 0.12, duration: 0.6, ease: EASE }}
+            className={cn(
+              "group relative overflow-hidden p-8 transition-all duration-300 hover:-translate-y-1.5 md:p-9",
+              ink ? INK_CARD : LIGHT_CARD,
+              ink
+                ? "hover:shadow-[0_22px_40px_rgba(0,0,0,0.45)]"
+                : "hover:shadow-[0_22px_40px_hsl(var(--foreground)/0.14)]"
+            )}
+          >
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute right-5 top-3 select-none font-display text-[86px] font-black leading-none text-transparent"
+              style={{ WebkitTextStroke: "1.5px hsl(var(--primary) / 0.5)" }}
             >
-              <span
-                aria-hidden="true"
-                className="absolute top-3 right-5 font-display font-black text-[86px] leading-none text-transparent select-none"
-                style={{ WebkitTextStroke: "1.5px hsl(var(--primary) / 0.5)" }}
-              >
-                {step.n}
-              </span>
-              <span className="block h-[3px] w-11 rounded bg-accent mb-6 transition-all duration-300 group-hover:w-20" />
-              <h3 className="text-2xl font-display font-extrabold uppercase text-foreground mb-2.5">
-                {step.title}
-              </h3>
-              <p className="text-sm md:text-[15px] leading-relaxed text-muted-foreground">
-                {step.body}
-              </p>
-            </motion.div>
-          ))}
-        </div>
+              {step.n}
+            </span>
+
+            <span className="mb-6 block h-[3px] w-11 rounded bg-accent transition-all duration-300 group-hover:w-20" />
+
+            <h3
+              className={cn(
+                "mb-2.5 text-2xl font-display font-bold uppercase",
+                headOn(tone)
+              )}
+            >
+              {step.title}
+            </h3>
+            <p className={cn("text-sm leading-relaxed md:text-[15px]", bodyOn(tone))}>
+              {step.body}
+            </p>
+          </motion.div>
+        ))}
       </div>
-    </section>
+    </Band>
   );
 }

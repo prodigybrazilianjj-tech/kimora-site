@@ -3,10 +3,9 @@ import { Link, useLocation } from "wouter";
 import { Menu, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
-import { PRELAUNCH_GATE } from "@/lib/prelaunch";
-import { OMark } from "@/components/OMark";
+import { PRELAUNCH_GATE, HOME_PATH } from "@/lib/prelaunch";
+import { SiteHeader } from "@/components/sections/SiteHeader";
 
 /**
  * 🔒 PRELAUNCH GATE
@@ -65,34 +64,12 @@ function scrollToTop() {
 }
 
 export function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
   const [location, setLocation] = useLocation();
   const { cartCount } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isHome = location === "/";
+  const isHome = location === HOME_PATH;
   const pendingSelectorRef = useRef<string | null>(null);
-
-  const navBase =
-    "fixed top-0 left-0 right-0 z-50 border-b border-transparent transition-colors duration-300";
-
-  const navBackground =
-    !isHome || isScrolled
-      ? "bg-background/90 backdrop-blur-md border-border"
-      : "bg-transparent";
-
-  useEffect(() => {
-    if (!isHome) {
-      setIsScrolled(true);
-      return;
-    }
-
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isHome]);
 
   useEffect(() => {
     if (!isHome) return;
@@ -114,7 +91,7 @@ export function Navbar() {
     if (window.location.hash) clearHashNoJump();
 
     if (!isHome) {
-      setLocation("/");
+      setLocation(HOME_PATH);
       window.setTimeout(() => scrollToTop(), 0);
       return;
     }
@@ -131,7 +108,7 @@ export function Navbar() {
     if (!isHome) {
       setHashNoJump(normalizedHash);
       pendingSelectorRef.current = selector;
-      setLocation("/");
+      setLocation(HOME_PATH);
       return;
     }
 
@@ -181,18 +158,13 @@ export function Navbar() {
   }, [isHome, location]);
 
   return (
-    <nav className={cn(navBase, navBackground)}>
-      <div className="container mx-auto px-4 md:px-6 h-[72px] flex items-center justify-between">
-        <Link
-          href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            goHomeTop();
-          }}
-          className="font-wordmark text-3xl font-bold tracking-[0.14em] text-foreground hover:text-foreground transition-colors"
-        >
-          KIM<OMark className="bg-foreground" tracking={0.14} />RA
-        </Link>
+    <SiteHeader
+      position="fixed"
+      onWordmarkClick={(e) => {
+        e.preventDefault();
+        goHomeTop();
+      }}
+    >
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
@@ -293,7 +265,6 @@ export function Navbar() {
             </SheetContent>
           </Sheet>
         </div>
-      </div>
-    </nav>
+    </SiteHeader>
   );
 }

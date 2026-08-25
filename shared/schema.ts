@@ -439,6 +439,17 @@ export const waitlistEmails = pgTable(
 
     source: varchar("source", { length: 64 }).notNull().default("coming-soon"),
 
+    /**
+     * Lifecycle flag, added after the Aug 2026 bot flood.
+     *
+     *   'active'      - a real signup. Eligible for sends, counted in totals.
+     *   'quarantined' - bot flood, or overflow from the outbound-email breaker
+     *                   in server/botGuard.ts. Never emailed, hidden from the
+     *                   default admin view. Kept rather than deleted so the
+     *                   evidence survives and a false positive is reversible.
+     */
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+
     metadata: jsonb("metadata").$type<{
       ip?: string | null;
       userAgent?: string | null;
@@ -454,6 +465,7 @@ export const waitlistEmails = pgTable(
 export const insertWaitlistEmailSchema = createInsertSchema(waitlistEmails).pick({
   email: true,
   source: true,
+  status: true,
   metadata: true,
 });
 

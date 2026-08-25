@@ -47,9 +47,25 @@ function jsonLdScript(block: object): string {
   return `<script type="application/ld+json">${json}</script>`;
 }
 
+/**
+ * Matches one meta tag's content attribute.
+ *
+ * The quote character is captured (group 2) and the value is matched with a
+ * tempered negation against it, rather than the simpler `content=["'][^"']*`.
+ * That naive form stops at the first quote of EITHER kind, so a baseline
+ * value containing an apostrophe — "…don't load it" — would leave the tail of
+ * the old value dangling after the new one. The template comment invites
+ * editing these values, so that is reachable.
+ *
+ *   group 1: everything up to and including `content=`
+ *   group 2: the quote character
+ *   group 3: the existing value
+ *   group 4: the closing quote
+ */
 function metaPattern(kind: "name" | "property", key: string): RegExp {
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(
-    `(<meta\\s+${kind}=["']${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']\\s+content=["'])[^"']*(["'])`,
+    `(<meta\\s+${kind}=["']${escapedKey}["']\\s+content=)(["'])((?:(?!\\2)[\\s\\S])*)(\\2)`,
     "i",
   );
 }
@@ -62,6 +78,11 @@ function hasMeta(html: string, kind: "name" | "property", key: string): boolean 
  * Rewrite the `content` of an existing meta tag, matched on its name/property.
  * Returns the html unchanged if the tag isn't present, so a template edit that
  * drops a tag degrades quietly instead of throwing.
+ *
+ * A replacer FUNCTION, not a replacement string: `$` is special in a
+ * replacement string, so a description containing "$1" or "$&" would splice
+ * part of the regex match back into the page. Prices live in these
+ * descriptions, so `$` is not hypothetical.
  */
 function setMeta(
   html: string,
@@ -69,7 +90,11 @@ function setMeta(
   key: string,
   value: string,
 ): string {
-  return html.replace(metaPattern(kind, key), `$1${attr(value)}$2`);
+  return html.replace(
+    metaPattern(kind, key),
+    (_match, prefix: string, quote: string) =>
+      `${prefix}${quote}${attr(value)}${quote}`,
+  );
 }
 
 /**
@@ -84,10 +109,12 @@ export function injectHead(template: string, pathname: string): string {
 
   let html = template;
 
-  // Title (the template ships the homepage title hardcoded).
+  // Title (the template ships the homepage title hardcoded). Replacer
+  // function for the same reason as setMeta — `$` is special in a replacement
+  // string.
   html = html.replace(
     /<title>[\s\S]*?<\/title>/i,
-    `<title>${text(route.title)}</title>`,
+    () => `<title>${text(route.title)}</title>`,
   );
 
   // Open Graph and Twitter already exist in the template — retarget them.

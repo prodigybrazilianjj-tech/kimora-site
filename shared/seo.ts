@@ -4,7 +4,10 @@
 //   1. server/seo.ts       → injects <title>, description, canonical, OG,
 //                            robots and JSON-LD into the served index.html
 //   2. script/build.ts     → writes dist/public/sitemap.xml at build time
-//   3. client/public/robots.txt → the disallow list mirrors `indexable: false`
+//   3. client/public/robots.txt → its disallow list tracks `indexable: false`,
+//                            with one deliberate exception: /preview-home is
+//                            noindex but NOT disallowed, so crawlers are
+//                            allowed in to read the noindex.
 //
 // The site is a client-rendered SPA: every route is served the same
 // index.html, so without this the whole site reports the homepage's title and
@@ -51,8 +54,13 @@ export interface RouteSeo {
 
 /**
  * The public route table. Mirrors the <Switch> in client/src/App.tsx —
- * when a route is added there, add it here too or it ships with the
- * homepage's title.
+ * when a route is added there, add it here too.
+ *
+ * A route that exists in App.tsx but not here does NOT merely get the wrong
+ * title: DEFAULT_ROUTE is `indexable: false`, so it ships noindex and is
+ * absent from the sitemap. Fail-closed is the right default for a table that
+ * decides what Google sees, but it does mean a forgotten route disappears
+ * quietly rather than looking wrong.
  */
 export const ROUTES: readonly RouteSeo[] = [
   {
@@ -129,15 +137,27 @@ export const ROUTES: readonly RouteSeo[] = [
   },
 
   // ── Not for the index ──────────────────────────────────────────────────
-  // Staging address for the launch-day homepage while the pre-launch gate is
-  // on. Indexing it would put a second copy of the homepage in the index.
-  {
-    path: "/preview-home",
-    title: "Kimora Co. | Creatine + Electrolyte Stick Packs for BJJ & MMA",
-    description:
-      "5 g creatine monohydrate plus real electrolytes in a single-serve stick. Naturally sweetened with stevia and monk fruit. Built for BJJ, MMA and lifters.",
-    indexable: false,
-  },
+  // /preview-home only EXISTS while the gate is on (App.tsx renders the route
+  // conditionally), so its entry here is conditional too — otherwise this
+  // table would keep describing a route that 404s after launch. It is noindex
+  // because it is a staging address for the launch-day homepage; indexing it
+  // would put a second copy of the homepage in the index.
+  //
+  // Deliberately NOT disallowed in robots.txt. A disallowed URL is never
+  // fetched, so the noindex below would never be read — and a blocked URL can
+  // still be indexed URL-only from an inbound link. noindex alone is the
+  // stronger signal, but only if the crawler is allowed to see it.
+  ...(PRELAUNCH_GATE
+    ? [
+        {
+          path: "/preview-home",
+          title: "Kimora Co. | Creatine + Electrolyte Stick Packs for BJJ & MMA",
+          description:
+            "5 g creatine monohydrate plus real electrolytes in a single-serve stick. Naturally sweetened with stevia and monk fruit. Built for BJJ, MMA and lifters.",
+          indexable: false,
+        } satisfies RouteSeo,
+      ]
+    : []),
   {
     path: "/wholesale/apply",
     title: "Wholesale Application | Kimora Co.",

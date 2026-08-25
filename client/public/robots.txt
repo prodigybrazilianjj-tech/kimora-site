@@ -32,7 +32,6 @@ Disallow: /cart
 Disallow: /checkout
 Disallow: /order-success
 Disallow: /manage-subscription
-Disallow: /preview-home
 Disallow: /wholesale/apply
 Disallow: /api/
 Disallow: /kimora-reorder.html
@@ -44,9 +43,12 @@ Disallow: /cart
 Disallow: /checkout
 Disallow: /order-success
 Disallow: /manage-subscription
-Disallow: /preview-home
 Disallow: /wholesale/apply
 Disallow: /api/
 Disallow: /kimora-reorder.html
+
+# /preview-home is intentionally NOT disallowed. It carries a noindex, and a
+# disallowed URL is never fetched — so the noindex would never be read, and the
+# URL could still be indexed link-only. Let crawlers in to see the noindex.
 
 Sitemap: https://www.kimoraco.com/sitemap.xml

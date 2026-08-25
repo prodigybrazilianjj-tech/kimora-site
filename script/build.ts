@@ -1,6 +1,8 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile, cp } from "fs/promises";
+import { rm, readFile, writeFile, cp } from "fs/promises";
+
+import { buildSitemapXml } from "../shared/seo";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -37,6 +39,12 @@ async function buildAll() {
 
   console.log("building client...");
   await viteBuild();
+
+  // sitemap.xml is generated rather than checked in so it can never drift from
+  // the route table in shared/seo.ts. lastmod is the build date, which is
+  // accurate for a site whose content only changes on deploy.
+  console.log("writing sitemap...");
+  await writeFile("dist/public/sitemap.xml", buildSitemapXml(), "utf-8");
 
   console.log("building server...");
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));

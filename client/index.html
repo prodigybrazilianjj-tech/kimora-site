@@ -4,20 +4,35 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
 
-    <title>KIMORA | Grow Stronger. Think Sharper.</title>
+    <!--
+      These are the BASELINE head tags. In production every one of them is
+      rewritten per-route by server/seo.ts before the HTML is sent, using the
+      table in shared/seo.ts — a wouter route change never touches <head>, so
+      without that stamping the whole site reports the homepage's title.
+      What you edit here is what dev and any un-stamped fallback will show.
+
+      Deliberately absent: the canonical link element. Hardcoded here it would
+      name the homepage on every route and mark /faq, /shop and /product as
+      duplicates of /. It is only ever correct per-request, so server/seo.ts
+      owns it.
+
+      Canonical host is www — the apex 301s to it.
+    -->
+    <title>Kimora Co. | Creatine + Electrolyte Stick Packs for BJJ &amp; MMA</title>
+    <meta name="description" content="5 g creatine monohydrate plus real electrolytes in a single-serve stick. Naturally sweetened with stevia and monk fruit. Built for BJJ, MMA and lifters." />
 
     <!-- Open Graph -->
-    <meta property="og:title" content="KIMORA | Grow Stronger. Think Sharper." />
-    <meta property="og:description" content="Daily creatine + electrolytes in single-serve stick packs. Built for BJJ, MMA, and lifters." />
+    <meta property="og:title" content="Kimora Co. | Creatine + Electrolyte Stick Packs for BJJ &amp; MMA" />
+    <meta property="og:description" content="5 g creatine monohydrate plus real electrolytes in a single-serve stick. Naturally sweetened with stevia and monk fruit. Built for BJJ, MMA and lifters." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://kimoraco.com" />
-    <meta property="og:image" content="https://kimoraco.com/opengraph.jpg" />
+    <meta property="og:url" content="https://www.kimoraco.com/" />
+    <meta property="og:image" content="https://www.kimoraco.com/opengraph.jpg" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="KIMORA | Grow Stronger. Think Sharper." />
-    <meta name="twitter:description" content="Daily creatine + electrolytes in single-serve stick packs. Built for BJJ, MMA, and lifters." />
-    <meta name="twitter:image" content="https://kimoraco.com/opengraph.jpg" />
+    <meta name="twitter:title" content="Kimora Co. | Creatine + Electrolyte Stick Packs for BJJ &amp; MMA" />
+    <meta name="twitter:description" content="5 g creatine monohydrate plus real electrolytes in a single-serve stick. Naturally sweetened with stevia and monk fruit. Built for BJJ, MMA and lifters." />
+    <meta name="twitter:image" content="https://www.kimoraco.com/opengraph.jpg" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/favicon2.png?v=3" />

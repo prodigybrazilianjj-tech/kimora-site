@@ -13,23 +13,23 @@ export default function FAQ() {
   const faqs = [
     {
       q: "Do I need to load Kimora?",
-      a: "No loading phase is necessary. While loading (taking 20g/day for a week) can saturate muscles slightly faster, it often causes bloating and digestive discomfort. Taking one 5g stick of Kimora daily will fully saturate your muscles within 3-4 weeks without the side effects."
+      a: "No. Loading—around 20g a day for a week—reaches muscle saturation faster and is more likely to upset your stomach. The research is consistent that a standard daily dose gets to the same place in roughly three to four weeks. One stick is 5g of creatine monohydrate."
     },
     {
       q: "When should I take it?",
-      a: "Consistency matters more than timing. Take it whenever you can consistently build it into your routine—morning, pre-workout, post-workout, or with dinner. Many users find taking it with a meal helps absorption."
+      a: "Consistency matters more than timing. Creatine works by being present in the muscle, not by being in your bloodstream at a clever moment—so take it at whatever hour you'll actually take it every day. Morning, pre-training, post-training, with dinner. The best time is the one you don't skip."
     },
     {
       q: "Can I stack this with pre-workout or other electrolyte drinks?",
-      a: "Absolutely. Kimora is stimulant-free, so it stacks perfectly with your favorite pre-workout. The electrolytes in Kimora are balanced for daily hydration, so you can also combine it with other hydration products if you're training in extreme heat, but for most sessions, Kimora alone is sufficient."
+      a: "Yes. Kimora contains no stimulants, so there's nothing to double up on if you also take a pre-workout. It contains sodium, potassium and magnesium; if you're training in real heat and want more on top of that, there's no interaction to avoid."
     },
     {
       q: "Will creatine make me bloated or 'puffy'?",
-      a: "Creatine pulls water into your muscle cells (intracellular hydration), which is exactly what you want for performance and recovery. It does not cause subcutaneous water retention (bloating under the skin) unless you take low-quality creatine or load it aggressively. Kimora uses premium micronized creatine to minimize any digestive issues."
+      a: "Creatine draws water into the muscle cell. That's intracellular, and it's the mechanism the research describes rather than a side effect. The 'puffy' look people report is generally associated with aggressive loading rather than a standard daily dose. Kimora uses micronized creatine monohydrate."
     },
     {
       q: "Do I have to be a fighter to use Kimora?",
-      a: "Not at all. While we built this with combat sports demands in mind (high intensity, weight management needs, cognitive stress), the benefits of creatine and electrolytes apply to anyone who lifts, runs, or wants to improve their cognitive function and physical performance."
+      a: "No. We built it around combat sports—high intensity, weight management, training most days—but creatine monohydrate is one of the most studied supplements in sports nutrition, and none of that research is specific to fighters. If you lift or run, it's the same compound."
     }
   ];
 

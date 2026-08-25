@@ -4,7 +4,7 @@ import { eq, desc, inArray, sql } from "drizzle-orm";
 
 import { db } from "../db";
 import { orders, orderItems, waitlistEmails } from "../../shared/schema";
-import { safeTokenEqual } from "../security";
+import { bearerTokenFromRequest, adminToken, matchesAny } from "../security";
 
 import {
   reconcileInventoryReservationForOrderItem,
@@ -57,22 +57,19 @@ function toOrderNumber(sessionId: string | null | undefined) {
   return s.replace(/^cs_/, "");
 }
 
-function adminTokenFromReq(req: any) {
-  const header =
-    String(req.headers["x-admin-token"] ?? "").trim() ||
-    String(req.headers["authorization"] ?? "").trim();
+/*
+Previously this file carried its OWN token reader that looked at headers only.
+That silently broke the contract documented on bearerTokenFromRequest() in
+server/security.ts: unlocking the /tools gate sets a SameSite=Strict cookie
+that the API is supposed to accept, so an operator who had just unlocked
+/tools/dtc still got a bare 401 from every /api/admin/* route with no hint why.
 
-  if (!header) return "";
-
-  if (header.toLowerCase().startsWith("bearer ")) {
-    return header.slice(7).trim();
-  }
-
-  return header;
-}
-
+One reader now, shared with the wholesale routes. The cookie is safe to accept
+here for the same reason it is there: SameSite=Strict means a cross-site form
+or fetch cannot ride it.
+*/
 function requireAdmin(req: any, res: any) {
-  const expected = String(process.env.ADMIN_DASHBOARD_TOKEN ?? "").trim();
+  const expected = adminToken();
 
   if (!expected) {
     return res.status(500).json({
@@ -81,9 +78,7 @@ function requireAdmin(req: any, res: any) {
     });
   }
 
-  const got = adminTokenFromReq(req);
-
-  if (!safeTokenEqual(got, expected)) {
+  if (!matchesAny(bearerTokenFromRequest(req), expected)) {
     return res.status(401).json({ ok: false, message: "Unauthorized" });
   }
 
@@ -275,19 +270,42 @@ export function registerAdminRoutes(app: Express) {
     const denied = requireAdmin(req, res);
     if (denied) return;
 
+    // Quarantined rows (bot flood, breaker overflow) are hidden by default so
+    // the headline count means "people", not "rows". ?includeQuarantined=1
+    // shows everything; ?status=quarantined shows only the parked ones.
+    const statusFilter = String(req.query.status ?? "").trim();
+    const includeQuarantined =
+      String(req.query.includeQuarantined ?? "") === "1";
+
     try {
+      const where = statusFilter
+        ? eq(waitlistEmails.status, statusFilter)
+        : includeQuarantined
+          ? undefined
+          : eq(waitlistEmails.status, "active");
+
       const rows = await db
         .select({
           id: waitlistEmails.id,
           email: waitlistEmails.email,
           source: waitlistEmails.source,
+          status: waitlistEmails.status,
           createdAt: waitlistEmails.createdAt,
         })
         .from(waitlistEmails)
+        .where(where)
         .orderBy(desc(waitlistEmails.createdAt))
         .limit(5000);
 
-      return res.json({ ok: true, rows });
+      const counts = await db
+        .select({
+          status: waitlistEmails.status,
+          n: sql<number>`count(*)::int`,
+        })
+        .from(waitlistEmails)
+        .groupBy(waitlistEmails.status);
+
+      return res.json({ ok: true, rows, counts });
     } catch (err: any) {
       const s = safeErrSummary(err);
       console.error("GET /api/admin/waitlist error:", s);

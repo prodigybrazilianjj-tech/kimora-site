@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Band, EASE } from "./Band";
 import { INK_HEAD, INK_BODY } from "@/lib/surfaces";
+import { BotGuardFields, useFormGuard } from "@/lib/formGuard";
 import { FLAVORS, LAUNCH_FLAVOR, STICKS_PER_POUCH } from "@/lib/product";
 import {
   WAITLIST_CODE,
@@ -28,6 +29,7 @@ export function Waitlist() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const guard = useFormGuard();
 
   const launchAt = useMemo(() => {
     const configured =
@@ -87,7 +89,7 @@ export function Waitlist() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, ...guard.payload }),
       });
 
       const data = await res.json();
@@ -173,7 +175,8 @@ export function Waitlist() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
+        <form onSubmit={handleSubmit} className="relative flex flex-col gap-3 sm:flex-row">
+          <BotGuardFields guard={guard} />
           <input
             type="email"
             required

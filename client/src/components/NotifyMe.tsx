@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BotGuardFields, useFormGuard } from "@/lib/formGuard";
 
 type State = "idle" | "loading" | "success" | "error";
 
@@ -19,6 +20,7 @@ export function NotifyMe({
   const [email, setEmail] = useState("");
   const [state, setState] = useState<State>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const guard = useFormGuard();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,7 +36,7 @@ export function NotifyMe({
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: trimmed, ...guard.payload }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -62,7 +64,8 @@ export function NotifyMe({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
+    <form onSubmit={handleSubmit} className="relative flex flex-col gap-3 sm:flex-row">
+      <BotGuardFields guard={guard} />
       <input
         type="email"
         required

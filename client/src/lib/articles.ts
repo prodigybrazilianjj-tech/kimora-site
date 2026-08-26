@@ -38,6 +38,22 @@
 // are pending the production CoA and appear nowhere. No wholesale pricing.
 // ─────────────────────────────────────────────────────────────────────────
 
+import { FLAVORS, LAUNCH_FLAVOR, STICKS_PER_POUCH } from "./product";
+
+// ── Prices, for the pieces that quote them ───────────────────────────────
+//
+// Read from the catalog, never typed into prose. The stick-packs piece argues
+// from Kimora's own per-day cost, so a price change in product.ts that left
+// this file asserting the old number would not just be stale — it would make
+// the article's arithmetic visibly wrong on the one page whose entire premise
+// is that it shows its working. Same rule shared/prerender.ts learned on
+// 2026-08-26.
+const LAUNCH = FLAVORS.find((f) => f.slug === LAUNCH_FLAVOR) ?? FLAVORS[0];
+
+const PRICE_ONE_TIME = LAUNCH.priceOneTime.toFixed(2);
+const PER_DAY_ONE_TIME = (LAUNCH.priceOneTime / STICKS_PER_POUCH).toFixed(2);
+const PER_DAY_SUB = (LAUNCH.priceSub / STICKS_PER_POUCH).toFixed(2);
+
 /** One renderable unit of an article. */
 export type ArticleBlock =
   | { type: "h2"; text: string }
@@ -266,6 +282,186 @@ const CREATINE_AND_ELECTROLYTES: Article = {
   ],
 };
 
+const STICK_PACKS: Article = {
+  slug: "creatine-stick-packs",
+  title: "Creatine Stick Packs: Who Makes Them, What You're Paying For | Kimora Co.",
+  headline:
+    "Creatine stick packs: who makes them, and what you're actually paying for",
+  dek: "A stick pack is not better creatine. Here is who makes them, how they differ, and the cost math with our own price in it.",
+  // 149 characters.
+  description:
+    "Which brands make creatine stick packs, how they differ, and the honest cost math against a tub — including ours. A stick is not better creatine.",
+  published: "2026-08-26",
+  updated: "2026-08-26",
+  targetQuery: "Creatine stick packs — which brands make them?",
+  // DRIFT: prose source is marketing/seo/creatine-stick-packs.md. Edit both.
+  //
+  // Deliberately contains NO competitor price and NO competitor dose. Brands
+  // are named — brands are durable — but numbers about them are not, and a
+  // stale figure presented as fact on a page whose whole argument is sourcing
+  // honesty would be self-defeating. The structural claim carries it instead:
+  // the format does not tell you the dose, so read the panel.
+  blocks: [
+    {
+      type: "p",
+      text: "A stick pack is not better creatine. It is the same compound in a more expensive wrapper, and anyone selling you one — us included — should be able to say that out loud before they explain why they think it’s worth it.",
+    },
+    {
+      type: "p",
+      text: "So: here’s who makes them, what separates them, and the cost math with nothing hidden.",
+    },
+
+    { type: "h2", text: "Who makes creatine stick packs" },
+    {
+      type: "p",
+      text: "Two different products are being sold under the same shape, and most roundups blur them together. Worth separating, because they answer different questions.",
+    },
+    {
+      type: "p",
+      text: "Plain creatine in a stick. A measured dose of creatine monohydrate, flavored or not, in a single-serve sachet. Orgain, Kaged, Momentous, Nutricost, Transparent Labs and Core Med Science all make a version. These compete with a tub on convenience alone — same ingredient, portable format.",
+    },
+    {
+      type: "p",
+      text: "Creatine plus electrolytes in a stick. A newer category, and a crowded one as of 2026: MYOXCIENCE, MHP, Create Wellness, OMNI, Ancient Nutrition and Kimora are all in it. These are trying to be two habits in one sachet rather than a portable version of one habit.",
+    },
+    {
+      type: "p",
+      text: "If you are shopping the second group, the useful thing to know is that the format tells you nothing about the dose. Some creatine-and-electrolyte sticks carry a full 5 g of creatine and some carry meaningfully less, because there is only so much room in a stick and electrolytes and flavoring take some of it. The panel is the only place that answers this. Check it on every one of them, ours included.",
+    },
+
+    { type: "h2", text: "What you’re actually paying for" },
+    {
+      type: "p",
+      text: "Here is the number nobody in this category volunteers.",
+    },
+    {
+      type: "p",
+      text: "Creatine monohydrate in a tub costs somewhere between eight and thirty-five cents per five-gram serving, depending on brand and testing. Bought in bulk it goes lower.",
+    },
+    {
+      type: "p",
+      text: `Kimora is $${PRICE_ONE_TIME} for ${STICKS_PER_POUCH} sticks. That is about $${PER_DAY_ONE_TIME} a day, or $${PER_DAY_SUB} on subscription.`,
+    },
+    {
+      type: "p",
+      text: "That is not a rounding error. On the creatine alone, a stick pack — ours or anyone’s — costs several times what the same dose costs out of a tub. If someone tells you otherwise, ask them to show their arithmetic.",
+    },
+    {
+      type: "p",
+      text: "What the extra actually buys, in descending order of honesty: electrolytes you would otherwise be buying separately, so if you already take an electrolyte drink most days, part of that premium is a product you are already paying for. A dose you cannot get wrong and cannot skip because the tub is at home. Flavor and mixability, which sound like luxuries and are the reason a lot of tubs die half-full in a cupboard. And third-party testing plus a formulation someone had to develop — real cost, and also something a good tub can offer.",
+    },
+    {
+      type: "p",
+      text: "What it does not buy is better creatine. It is the same molecule.",
+    },
+
+    { type: "h2", text: "About “micronized”" },
+    {
+      type: "p",
+      text: "While we are naming things the category oversells: micronized creatine is a marketing word doing less work than it appears to.",
+    },
+    {
+      type: "p",
+      text: "Micronization grinds the particles smaller. Smaller particles dissolve faster and grit less. That is a real, noticeable improvement — to the glass.",
+    },
+    {
+      type: "p",
+      text: "It is a physical change, not a chemical one: the molecule that ends up in your bloodstream is identical either way. What the research does not show is a meaningful difference in how much creatine reaches muscle, and both forms take the same three to four weeks to saturate.",
+    },
+    {
+      type: "p",
+      text: "Kimora uses micronized creatine monohydrate. We use it because it makes a drinkable product, not because it works better, and we are not going to imply the second thing by leaving the first one vague.",
+    },
+
+    { type: "h2", text: "When a tub is the right answer" },
+    { type: "p", text: "It genuinely often is. Buy a tub if:" },
+    {
+      type: "p",
+      text: "You train at home or at one gym and take it in the same kitchen every day. Cost per serving is the thing you are optimizing. You do not mind measuring, and you do not mind the taste of unflavored creatine in water. You are already disciplined about a daily supplement and have been for months.",
+    },
+    {
+      type: "p",
+      text: "None of that is a failure mode. It is the cheapest correct way to take creatine, and if it describes you, a stick pack is a worse deal.",
+    },
+
+    { type: "h2", text: "When a stick is the right answer" },
+    {
+      type: "p",
+      text: "You travel, compete, or train at more than one place. You want electrolytes on the same schedule and would rather not manage two products. Or — the common one, and worth being blunt about — you have bought creatine before and stopped taking it. Creatine only works if it is in you, and saturation decays when you stop.",
+    },
+    {
+      type: "p",
+      text: "If the tub is the reason you skip it, a format that gets taken beats a cheaper format that doesn’t. That is the entire argument for this product category, and it is a behavioral argument rather than a biochemical one. We would rather make the honest version of it than dress it up as absorption.",
+    },
+
+    { type: "h2", text: "What to check on any stick pack, ours included" },
+    {
+      type: "qa",
+      q: "Grams of creatine monohydrate per stick.",
+      a: "Front of pack is marketing; the Supplement Facts panel is the claim.",
+    },
+    {
+      type: "qa",
+      q: "Sticks per box, and the resulting cost per day.",
+      a: "Boxes come in fifteens, twenties, thirties and forties, which makes headline prices hard to compare on purpose.",
+    },
+    {
+      type: "qa",
+      q: "What else is in it, and whether you want it.",
+      a: "Some add taurine, some add HMB, some add electrolytes, some add a sweetener you would rather avoid.",
+    },
+    {
+      type: "qa",
+      q: "Third-party testing.",
+      a: "And whether the results are published or merely mentioned.",
+    },
+    {
+      type: "qa",
+      q: "The sweetener, named specifically.",
+      a: "“Sugar-free” is not an ingredient.",
+    },
+    {
+      type: "qa",
+      q: "Whether it is a subscription trap.",
+      a: "Cancellation should take one click.",
+    },
+
+    { type: "h2", text: "What we’re not telling you" },
+    {
+      type: "p",
+      text: "We are not going to tell you a stick pack absorbs better, works faster, or delivers more creatine than a tub. It doesn’t, on any of the three.",
+    },
+    {
+      type: "p",
+      text: "We are not going to publish our final sodium, potassium and magnesium numbers until the production Certificate of Analysis confirms them. The targets are set and the lab has the last word; a site that says one number while the pouch says another is worse than a site that says nothing.",
+    },
+    {
+      type: "p",
+      text: "And we are not going to quote you a competitor’s price or dose on this page. Those change, and a stale number presented as fact would undercut the only thing this page is trying to be useful for. Go read their panel.",
+    },
+    {
+      type: "p",
+      text: `What we will say: 5 g creatine monohydrate per stick. ${STICKS_PER_POUCH} sticks to a pouch, which is a month. Naturally sweetened with stevia and monk fruit. No sugar, no artificial colors, no proprietary blends.`,
+    },
+
+    {
+      type: "sources",
+      items: [
+        {
+          label:
+            "Kreider et al., International Society of Sports Nutrition position stand: safety and efficacy of creatine supplementation in exercise, sport, and medicine. JISSN 14:18 (2017)",
+          url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5469049/",
+        },
+        {
+          label:
+            "Wax et al., Creatine for Exercise and Sports Performance, with Recovery Considerations for Healthy Populations. Nutrients 13:1915 (2021)",
+          url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8228369/",
+        },
+      ],
+    },
+  ],
+};
+
 /**
  * Every published article, newest first. The hub renders this order and the
  * sitemap follows it.
@@ -274,7 +470,10 @@ const CREATINE_AND_ELECTROLYTES: Article = {
  * on the hub, in the route table, in the sitemap, in the prerendered body and
  * in the Article JSON-LD without touching any of those files.
  */
-export const ARTICLES: readonly Article[] = [CREATINE_AND_ELECTROLYTES];
+export const ARTICLES: readonly Article[] = [
+  STICK_PACKS,
+  CREATINE_AND_ELECTROLYTES,
+];
 
 export const LEARN_BASE = "/learn";
 

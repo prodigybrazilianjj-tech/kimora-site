@@ -377,11 +377,16 @@ export function siteJsonLd(): object[] {
       //
       // ⚠️ NOT the physical address. That one is residential, and a
       // streetAddress on a public Organization node would put the founder's
-      // home on every page of the site. Playbook finding #16 called
-      // postalCode a cheap local signal and streetAddress a bad idea; this
-      // takes the first and declines the second, and uses the PO Box's
-      // postcode rather than the residential one so the two are not even
-      // adjacent.
+      // home on every page of the site. Playbook finding #16 called postalCode
+      // a cheap local signal and streetAddress a bad idea; this takes the
+      // first and declines the second.
+      //
+      // Note for anyone reasoning about this later: 86341 and 86351 are NOT
+      // meaningfully separated. 86341 is a PO-Box-only ZIP whose boxes sit at
+      // the Village of Oak Creek post office, which is itself in 86351 — same
+      // small community, same building. The privacy protection here comes
+      // entirely from omitting streetAddress, not from the choice of postcode.
+      // Do not rely on the postcode to obscure anything.
       address: {
         "@type": "PostalAddress",
         postOfficeBoxNumber: "20024",
@@ -390,10 +395,17 @@ export function siteJsonLd(): object[] {
         postalCode: "86341",
         addressCountry: "US",
       },
-      // Where the brand actually sells and ships. areaServed is the honest
-      // local signal for "BJJ supplement brands in Arizona" — it says we
-      // operate here, which is true, without implying a stocked account
-      // anywhere, which is not yet.
+      // The territory this brand is FOR. Not a statement that anything is on
+      // sale — nothing is, PRELAUNCH_GATE is on and productJsonLd() a few
+      // lines down correctly emits PreOrder. An earlier version of this
+      // comment said "where the brand actually sells and ships," which was
+      // false about a company that sells and ships nowhere, and false in the
+      // machine-readable half of the page at that.
+      //
+      // areaServed is kept rather than gated because it is a forward-looking
+      // service-area declaration and reads correctly alongside PreOrder. If
+      // that ever stops being true — if the offer says InStock while this says
+      // Arizona and there is no Arizona fulfilment — this is the line to fix.
       areaServed: [
         { "@type": "State", name: "Arizona" },
         { "@type": "Country", name: "United States" },

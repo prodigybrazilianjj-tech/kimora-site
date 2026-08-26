@@ -124,13 +124,13 @@ export interface Article {
 
 const CREATINE_AND_ELECTROLYTES: Article = {
   slug: "creatine-and-electrolytes-together",
-  // 46 characters. Was "Can You Take Creatine and Electrolytes Together? |
+  // 47 characters. Was "Can You Take Creatine and Electrolytes Together? |
   // Kimora Co." at 61, which Google truncates. The full question survives as
   // the h1 and in `headline`, which is where query matching actually matters.
   title: "Creatine and Electrolytes Together | Kimora Co.",
   headline: "Can you take creatine and electrolytes together?",
   dek: "Yes. The reason is more boring than the internet says, and the boring reason is the honest one.",
-  // 148 characters. The ~155 ceiling is a real constraint, not a style note:
+  // 144 characters. The ~155 ceiling is a real constraint, not a style note:
   // the previous version ran to 165 and Google truncated it mid-clause.
   description:
     "Yes — and the reason is more boring than the internet says. What the sodium-dependent creatine transporter does, and what it doesn't do for you.",
@@ -251,7 +251,16 @@ const CREATINE_AND_ELECTROLYTES: Article = {
     {
       type: "qa",
       q: "Does creatine cause cramping or dehydration?",
-      a: "The International Society of Sports Nutrition’s position stand addresses this directly and reports that the evidence does not support it — studies have found creatine supplementation either has no effect on, or reduces, the incidence of dehydration and muscle cramping. That one has been repeated for twenty years mostly because it sounds plausible.",
+      // Trimmed to the defensive half 2026-08-26. It previously said studies
+      // found creatine "either has no effect on, or reduces, the incidence of
+      // dehydration and muscle cramping" — the "or reduces" clause is a
+      // positive claim carried on someone else's citation, and it is exactly
+      // the claim class /learn/training-in-arizona makes a virtue of refusing.
+      // An engine retrieving both pages would have found Kimora saying its own
+      // ingredient reduces cramp incidence, and two clicks away that nothing
+      // in a sachet addresses cramp. Rebutting the myth does not require
+      // claiming the opposite.
+      a: "The International Society of Sports Nutrition’s position stand addresses this directly and reports that the evidence does not support creatine causing either one. That claim has been repeated for twenty years mostly because it sounds plausible. What causes exercise cramps is a separate question, and a less settled one — see our piece on training in Arizona.",
     },
     {
       type: "qa",
@@ -320,7 +329,7 @@ const STICK_PACKS: Article = {
   headline:
     "Creatine stick packs: who makes them, and what you’re actually paying for",
   dek: "A stick pack is not better creatine. Here is who makes them, how they differ, and the cost math with our own price in it.",
-  // 149 characters.
+  // 145 characters.
   description:
     "Which brands make creatine stick packs, how they differ, and the honest cost math against a tub — including ours. A stick is not better creatine.",
   published: "2026-08-26",
@@ -582,14 +591,18 @@ const STICK_PACKS: Article = {
 
 const TRAINING_IN_ARIZONA: Article = {
   slug: "training-in-arizona",
-  // 58 characters.
-  title: "Training in Arizona: Heat, Altitude, Hydration | Kimora Co.",
+  // 55 characters. The first version was "Training in Arizona: Heat, Altitude,
+  // Hydration" — which optimised for a query nobody typed. targetQuery is
+  // "BJJ supplement brands in Arizona" and the token "BJJ" appeared nowhere on
+  // the page: not the title, not the headline, not the description, not one
+  // block. The whole premise of the piece was capturing that query.
+  title: "Arizona BJJ Supplements: Heat and Altitude | Kimora Co.",
   headline:
-    "Training in Arizona: what dry heat and elevation actually do to you",
+    "Training BJJ in Arizona: what dry heat and elevation actually do to you",
   dek: "Most of what gets written about training in the desert is wrong in a particular, correctable way.",
-  // 145 characters.
+  // 154 characters.
   description:
-    "What dry heat and elevation actually do to a grappler in Arizona — including the altitude advice that only applies for your first two days.",
+    "An Arizona BJJ and MMA supplement brand on what dry heat and elevation actually do to a grappler — and which of the usual altitude advice doesn’t hold up.",
   published: "2026-08-26",
   updated: "2026-08-26",
   targetQuery: "BJJ supplement brands in Arizona",
@@ -608,7 +621,7 @@ const TRAINING_IN_ARIZONA: Article = {
       // cannot find Arizona-specific BJJ supplement brands. This is the shape
       // it needs to find one.
       type: "p",
-      text: "Kimora Co. is a combat-sports supplement brand based in Sedona, Arizona, making creatine and electrolyte stick packs for Brazilian jiu-jitsu, MMA and Muay Thai athletes. That is the short answer to why this page exists. The longer one is that Arizona does something specific to people who train hard in it, and most of what gets written about it is wrong in a particular, correctable way.",
+      text: "Kimora Co. is an Arizona supplement brand for combat sports — based in Sedona, making creatine and electrolyte stick packs for Brazilian jiu-jitsu (BJJ), MMA and Muay Thai athletes. That is the short answer to why this page exists. The longer one is that Arizona does something specific to people who train hard in it, and most of what gets written about it is wrong in a particular, correctable way.",
     },
 
     { type: "h2", text: "Arizona is not one climate" },
@@ -648,26 +661,52 @@ const TRAINING_IN_ARIZONA: Article = {
       text: "None of this makes dry heat more dangerous than humid heat. It makes it easier to misjudge, which is a different and more fixable problem. The fix is not a supplement. It is weighing yourself before and after a hard session a few times until you know your own number, instead of guessing from how your rash guard feels.",
     },
 
-    { type: "h2", text: "The altitude advice that expires after two days" },
+    // ─────────────────────────────────────────────────────────────────────
+    // REWRITTEN 2026-08-26, before publication, after review.
+    //
+    // The first version of this section was the article's headline claim and
+    // it was wrong. It said altitude diuresis lasts "twelve to forty-eight
+    // hours" — a number taken from a hydration brand's blog — and cited two
+    // papers that say three to four days. It then built an H2, a meta
+    // description and a two-audience split on top of it.
+    //
+    // Checking the sources properly broke more than the number. Both scope
+    // the diuresis AND the respiratory loss to the same acute window, so the
+    // asymmetry the section was built on ("the diuresis stops, the breathing
+    // loss is ongoing") is not in either of them. The human data is at
+    // 3,500–4,500 m; Arizona tops out at 2,105 m. And in the one condition
+    // closest to a visiting competitor — ascent combined with physical
+    // activity — subjects RETAINED sodium and water rather than losing it,
+    // which inverts the advice the old version gave its highest-stakes reader.
+    //
+    // Third time the "don't repeat a number sourced only from someone else's
+    // blog copy" rule has caught something on this program. The honest version
+    // below is a better refusal than the one it replaces.
+    // ─────────────────────────────────────────────────────────────────────
+    { type: "h2", text: "What altitude actually does, and what nobody knows" },
     {
       type: "p",
-      text: "Here is the part the category gets wrong, and it is worth being precise about because we would benefit from the sloppy version.",
+      text: "Here is the part the category gets wrong, and we got it wrong too before we read our own sources properly.",
     },
     {
       type: "p",
-      text: "Go up in elevation and two real things happen. You breathe more, and you breathe air that is both colder and drier, so you lose more water through respiration than you would at sea level. And in the first day or two you urinate more — altitude diuresis, part of how the body starts acclimatising.",
+      text: "Go up high enough and two real things happen. You breathe more, and you breathe air that is colder and drier, so you lose more water through respiration. And you urinate more — altitude diuresis, part of how the body begins acclimatising. Pooled across 57 studies, that diuresis lasts three to four days on average and then settles.",
     },
     {
       type: "p",
-      text: "Every electrolyte brand sells this. Almost none of them mention that the second effect is transient. Altitude diuresis is a feature of acute exposure, in the range of the first twelve to forty-eight hours. If you live in Sedona and train in Sedona, you acclimatised some time ago and it is not happening to you today. The respiratory loss from breathing dry air is ongoing. The dramatic bit is not.",
+      text: "So far so good. The problem is where the research was done. The human work behind almost all of this sits at roughly 3,500 to 4,500 metres — eleven to fifteen thousand feet. Flagstaff, the highest town in this state most people train in, is 2,105 metres. Sedona is 1,326. Every confident sentence you have read about hydrating for altitude is extrapolating down from more than twice the elevation, onto a population that mostly lives there already.",
     },
-    { type: "p", text: "Which means the honest version splits into two audiences:" },
     {
-      type: "ul",
-      items: [
-        "If you live here, the durable effect is dry air, not elevation drama. Treat it as a hot-and-dry problem.",
-        "If you are flying in for a tournament, the first forty-eight hours genuinely are different — and that is precisely when you are cutting weight and sleeping badly in a hotel. Plan the arrival, not just the weigh-in.",
-      ],
+      type: "p",
+      text: "There is a further wrinkle that cuts against the obvious advice. The diuresis findings come largely from people who went up and rested. In the studies where ascent was combined with physical activity, subjects retained sodium and water instead of shedding them. A competitor who flies in and immediately trains is closer to that second condition than the first.",
+    },
+    {
+      type: "p",
+      text: "Which leaves an honest position rather than a tidy one: at Arizona elevations, nobody has characterised this well, the effect is smaller than the literature's headline numbers, and it is transient rather than permanent. If you live and train here you acclimatised long ago. If you are flying in, the first few days are the window where anything is happening at all — which is unhelpfully also the window in which you are cutting weight and sleeping badly in a hotel, so pay attention to the arrival rather than only the weigh-in.",
+    },
+    {
+      type: "p",
+      text: "We would sell more product with the confident version. It is just not a thing we can show you.",
     },
 
     { type: "h2", text: "What this means on the mat" },
@@ -683,7 +722,7 @@ const TRAINING_IN_ARIZONA: Article = {
       type: "ul",
       items: [
         "Weigh in before and after a hard class occasionally. A pound is roughly a pint. Do it three or four times and you will know your own sweat rate better than any calculator.",
-        "Drink to that number over the following hours rather than sinking it all at once.",
+        "Drink somewhat more than that over the following hours — a bit above what you lost, not exactly it, and spread out rather than sunk at once.",
         "Sodium is the electrolyte you lose most of in sweat, and individual sweat sodium varies a lot between people. Yours is not the same as your training partner’s.",
         "If you are cutting, do the arithmetic in the weeks before, not the days.",
       ],
@@ -723,8 +762,29 @@ const TRAINING_IN_ARIZONA: Article = {
 
     { type: "h2", text: "What we’re not telling you" },
     {
+      // Two fixes here, both from review, and the second one matters more than
+      // anything else on this page.
+      //
+      // 1. The refusal was shaped so that stripping the leading negation — which
+      //    is exactly what verbatim extraction into an answer-engine snippet
+      //    does — left "our electrolytes prevent cramping, prevent dehydration,
+      //    or protect you from heat illness." The product noun and three
+      //    DSHEA-critical verbs were in one clause held together by a single
+      //    "not". Product moved out of the claim clause.
+      //
+      // 2. The original led with "stops sweating" as a heat-stroke red flag.
+      //    That is the classic myth: exertional heat stroke patients are
+      //    usually STILL SWEATING, and people have been downgraded to "heat
+      //    exhaustion" on exactly that cue. Altered mental status is the
+      //    reliable sign. Leading with the myth buried it. Cooling also has to
+      //    start in parallel with the call, not after it — survival tracks
+      //    time-to-cooling.
       type: "p",
-      text: "We are not going to tell you our electrolytes prevent cramping, prevent dehydration, or protect you from heat illness. Heat illness is a medical matter and a serious one — if you or a training partner stops sweating, gets confused, or goes grey, that is not a hydration-strategy conversation, it is a stop-and-get-help one.",
+      text: "Nobody should be telling you an electrolyte sachet prevents cramp, prevents dehydration, or protects you against heat illness. We aren’t going to.",
+    },
+    {
+      type: "p",
+      text: "And heat illness is a medical emergency, not a hydration-strategy conversation. If a training partner gets confused, disoriented or stops making sense, call 911 and start cooling them immediately — cold water, both at once, not one and then the other. Do not wait for them to stop sweating. People having heat stroke are usually still sweating, and waiting for that sign is how it gets missed.",
     },
     {
       type: "p",

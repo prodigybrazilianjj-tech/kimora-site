@@ -27,6 +27,11 @@
 // router. prelaunch.ts is plain constants with no imports and no browser APIs,
 // so it bundles cleanly into the server and the build script.
 import { PRELAUNCH_GATE } from "../client/src/lib/prelaunch";
+// Flavour names for the Product schema. Same rule as PRELAUNCH_GATE above:
+// imported from the storefront's own catalog rather than retyped, so structured
+// data cannot claim a flavour the site does not sell. product.ts is plain
+// constants with no imports and no browser APIs, so it bundles into the server.
+import { FLAVORS } from "../client/src/lib/product";
 
 /**
  * Canonical origin. kimoraco.com 301s to www.kimoraco.com, so www is the
@@ -340,6 +345,17 @@ export function productJsonLd(): object {
         name: "Stimulant free",
         value: "Yes",
       },
+      // Flavours as machine-readable data, added 2026-08-26. Two answer
+      // engines were still describing Kimora as coming in "Lemon Yuzu" — a
+      // name retired in June 2026 — and omitting Raspberry Dragonfruit
+      // entirely. Both were reading stale crawl residue, because until this
+      // branch there was no crawlable body copy to read instead. Read from
+      // FLAVORS so the list cannot drift from the storefront.
+      {
+        "@type": "PropertyValue",
+        name: "Flavors",
+        value: FLAVORS.map((f) => f.name).join(", "),
+      },
     ],
     offers: {
       "@type": "Offer",
@@ -355,40 +371,46 @@ export function productJsonLd(): object {
 }
 
 /**
- * FAQPage for /faq.
+ * The FAQ question/answer pairs, as [question, answer].
  *
  * ⚠️ Kept verbatim in sync with the `faqs` array in client/src/pages/FAQ.tsx.
  * If the two drift, the rich result contradicts the page and Google drops it.
+ *
+ * Exported rather than kept local to faqJsonLd() because shared/prerender.ts
+ * renders the same text as the crawler-visible body of /faq. One array, three
+ * consumers (page, JSON-LD, fallback body) — the alternative is three copies
+ * of the same five answers drifting apart.
  */
-export function faqJsonLd(): object {
-  const qa: Array<[string, string]> = [
-    [
-      "Do I need to load Kimora?",
-      "No. Loading—around 20g a day for a week—reaches muscle saturation faster and is more likely to upset your stomach. The research is consistent that a standard daily dose gets to the same place in roughly three to four weeks. One stick is 5g of creatine monohydrate.",
-    ],
-    [
-      "When should I take it?",
-      "Consistency matters more than timing. Creatine works by being present in the muscle, not by being in your bloodstream at a clever moment—so take it at whatever hour you'll actually take it every day. Morning, pre-training, post-training, with dinner. The best time is the one you don't skip.",
-    ],
-    [
-      "Can I stack this with pre-workout or other electrolyte drinks?",
-      "Yes. Kimora contains no stimulants, so there's nothing to double up on if you also take a pre-workout. It contains sodium, potassium and magnesium; if you're training in real heat and want more on top of that, there's no interaction to avoid.",
-    ],
-    [
-      "Will creatine make me bloated or 'puffy'?",
-      "Creatine draws water into the muscle cell. That's intracellular, and it's the mechanism the research describes rather than a side effect. The 'puffy' look people report is generally associated with aggressive loading rather than a standard daily dose. Kimora uses micronized creatine monohydrate.",
-    ],
-    [
-      "Do I have to be a fighter to use Kimora?",
-      "No. We built it around combat sports—high intensity, weight management, training most days—but creatine monohydrate is one of the most studied supplements in sports nutrition, and none of that research is specific to fighters. If you lift or run, it's the same compound.",
-    ],
-  ];
+export const FAQ_QA: ReadonlyArray<readonly [string, string]> = [
+  [
+    "Do I need to load Kimora?",
+    "No. Loading—around 20g a day for a week—reaches muscle saturation faster and is more likely to upset your stomach. The research is consistent that a standard daily dose gets to the same place in roughly three to four weeks. One stick is 5g of creatine monohydrate.",
+  ],
+  [
+    "When should I take it?",
+    "Consistency matters more than timing. Creatine works by being present in the muscle, not by being in your bloodstream at a clever moment—so take it at whatever hour you'll actually take it every day. Morning, pre-training, post-training, with dinner. The best time is the one you don't skip.",
+  ],
+  [
+    "Can I stack this with pre-workout or other electrolyte drinks?",
+    "Yes. Kimora contains no stimulants, so there's nothing to double up on if you also take a pre-workout. It contains sodium, potassium and magnesium; if you're training in real heat and want more on top of that, there's no interaction to avoid.",
+  ],
+  [
+    "Will creatine make me bloated or 'puffy'?",
+    "Creatine draws water into the muscle cell. That's intracellular, and it's the mechanism the research describes rather than a side effect. The 'puffy' look people report is generally associated with aggressive loading rather than a standard daily dose. Kimora uses micronized creatine monohydrate.",
+  ],
+  [
+    "Do I have to be a fighter to use Kimora?",
+    "No. We built it around combat sports—high intensity, weight management, training most days—but creatine monohydrate is one of the most studied supplements in sports nutrition, and none of that research is specific to fighters. If you lift or run, it's the same compound.",
+  ],
+];
 
+/** FAQPage for /faq. */
+export function faqJsonLd(): object {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     "@id": `${SITE_ORIGIN}/faq#faq`,
-    mainEntity: qa.map(([q, a]) => ({
+    mainEntity: FAQ_QA.map(([q, a]) => ({
       "@type": "Question",
       name: q,
       acceptedAnswer: { "@type": "Answer", text: a },

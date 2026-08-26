@@ -11,10 +11,10 @@
 // hook would be invisible to all of them. Stamping on the server means the
 // bytes are correct for every client, JS or not.
 //
-// This is NOT a prerender. The <body> is still an empty #root; a non-JS
-// crawler gets a correct, well-described, structured-data-bearing page with no
-// visible body copy. Prerendering the marketing routes is the next structural
-// fix (playbook Phase 1, item 6).
+// injectBody() below handles the other half: the marketing routes' #root ships
+// with real prose in it, so a non-JS crawler gets words and not just labels.
+// See shared/prerender.ts for what that content is and why serving it is not
+// cloaking.
 // ─────────────────────────────────────────────────────────────────────────
 
 import {
@@ -23,6 +23,11 @@ import {
   jsonLdForPath,
   seoForPath,
 } from "../shared/seo";
+import {
+  PRERENDER_WRAPPER_STYLE,
+  prerenderFor,
+  renderPrerenderHtml,
+} from "../shared/prerender";
 
 /** Escape a string for use inside a double-quoted HTML attribute. */
 function attr(value: string): string {
@@ -165,4 +170,48 @@ export function injectHead(template: string, pathname: string): string {
   }
 
   return html.replace(/<\/head>/i, `    ${added.join("\n    ")}\n  </head>`);
+}
+
+/**
+ * Matches the empty SPA mount point: `<div id="root"></div>`.
+ *
+ * Deliberately only matches the EMPTY form. If #root ever ships with content
+ * already inside it, this returns the html untouched rather than nesting a
+ * second copy — the same fail-quiet posture setMeta() takes. It also makes
+ * injectBody idempotent: run it twice and the second pass finds no empty
+ * #root and does nothing.
+ *
+ * The id attribute quote character is captured and the negation tempered
+ * against it for the same reason as metaPattern above.
+ */
+const ROOT_PATTERN =
+  /(<div\s+id=(["'])root\2\s*>)(\s*)(<\/div>)/i;
+
+/**
+ * Put the route's fallback prose inside #root.
+ *
+ * Served to every user agent — there is no user-agent branch here and there
+ * must never be one. React's first render replaces the container's children,
+ * so this is what a browser shows for the few hundred milliseconds before
+ * hydration and what a non-JS crawler reads instead of nothing at all.
+ *
+ * A replacer FUNCTION, not a replacement string: the copy carries prices, and
+ * `$` is special in a replacement string — "$49.99" would otherwise be read as
+ * a group reference and splice part of the match back into the page.
+ *
+ * @param html      The head-stamped HTML.
+ * @param pathname  req.path — query string already stripped by Express.
+ */
+export function injectBody(html: string, pathname: string): string {
+  const content = prerenderFor(pathname);
+  if (!content) return html;
+
+  const body = renderPrerenderHtml(content);
+  if (!body) return html;
+
+  return html.replace(
+    ROOT_PATTERN,
+    (_match, open: string, _quote: string, _ws: string, close: string) =>
+      `${open}<div data-prerender="1" style="${PRERENDER_WRAPPER_STYLE}">${body}</div>${close}`,
+  );
 }

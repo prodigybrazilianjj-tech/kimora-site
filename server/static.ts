@@ -2,7 +2,7 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 
-import { injectHead } from "./seo";
+import { injectBody, injectHead } from "./seo";
 
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
@@ -55,6 +55,13 @@ export function serveStatic(app: Express) {
     // unintended caching change on every HTML response.
     res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
 
-    res.status(200).type("html").send(injectHead(template, req.path));
+    // Head first, then body. Both are pure string transforms over the same
+    // template and neither depends on the request beyond its path — in
+    // particular, neither looks at the user agent, which is what keeps the
+    // fallback body inside #root a progressive-enhancement fallback rather
+    // than cloaking. See shared/prerender.ts.
+    const stamped = injectBody(injectHead(template, req.path), req.path);
+
+    res.status(200).type("html").send(stamped);
   });
 }

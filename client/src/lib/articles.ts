@@ -59,6 +59,21 @@ export type ArticleBlock =
   | { type: "h2"; text: string }
   | { type: "p"; text: string }
   /**
+   * A bulleted list.
+   *
+   * Added 2026-08-26 because it was missing and its absence was silently
+   * corrupting content. The stick-packs piece has four lists in its prose
+   * source; without a list type each one was flattened into a run-on
+   * paragraph sitting under a colon that promised a list — visibly broken on
+   * the page, and worse in the crawler HTML, where a list is one of the few
+   * structures an answer engine reliably extracts.
+   *
+   * The lesson generalises: when the block vocabulary cannot express the
+   * prose, the transcription does not fail loudly, it just quietly produces a
+   * worse article.
+   */
+  | { type: "ul"; items: readonly string[] }
+  /**
    * A question/answer pair. Rendered as a bolded question and a paragraph, and
    * carried through to the prerendered body the same way.
    *
@@ -217,7 +232,10 @@ const CREATINE_AND_ELECTROLYTES: Article = {
     {
       type: "qa",
       q: "Won’t creatine make me hold water and blow my weight cut?",
-      a: "Creatine draws water into the muscle cell. That is the intended effect, not a side effect. The “puffy” look people describe is usually aggressive loading or low-quality product, not creatine at a normal daily dose. If you compete at a weight, do what you’d do with any variable: start it well outside of fight camp so you know your own numbers, rather than three days before you step on a scale.",
+      // "or low-quality product" removed 2026-08-26: an unsourced inferiority
+      // claim about unnamed competitors, and one that sits badly against the
+      // stick-packs piece's "it is the same molecule."
+      a: "Creatine draws water into the muscle cell. That is the intended effect, not a side effect. The “puffy” look people describe is generally associated with aggressive loading rather than a standard daily dose. If you compete at a weight, do what you’d do with any variable: start it well outside of fight camp so you know your own numbers, rather than three days before you step on a scale.",
     },
     {
       type: "qa",
@@ -284,9 +302,12 @@ const CREATINE_AND_ELECTROLYTES: Article = {
 
 const STICK_PACKS: Article = {
   slug: "creatine-stick-packs",
-  title: "Creatine Stick Packs: Who Makes Them, What You're Paying For | Kimora Co.",
+  // 49 characters. The first version was 73 and Google truncated it around
+  // "…What You're Pay". There is no length check on titles the way there is on
+  // descriptions, which is how it got through.
+  title: "Creatine Stick Packs: Who Makes Them | Kimora Co.",
   headline:
-    "Creatine stick packs: who makes them, and what you're actually paying for",
+    "Creatine stick packs: who makes them, and what you’re actually paying for",
   dek: "A stick pack is not better creatine. Here is who makes them, how they differ, and the cost math with our own price in it.",
   // 149 characters.
   description:
@@ -307,6 +328,13 @@ const STICK_PACKS: Article = {
       text: "A stick pack is not better creatine. It is the same compound in a more expensive wrapper, and anyone selling you one — us included — should be able to say that out loud before they explain why they think it’s worth it.",
     },
     {
+      // An extractable one-liner. Answer engines lift sentences of exactly this
+      // shape for "which brands make X", and without one the page relies on an
+      // engine assembling the list itself from three bullets.
+      type: "p",
+      text: "Brands making creatine stick packs as of August 2026 include Thorne, Orgain, Momentous, Nutricost, Core Med Science, Transparent Labs, Kaged, mindbodygreen, MYOXCIENCE, MHP, Create Wellness, OMNI, Ancient Nutrition and Kimora.",
+    },
+    {
       type: "p",
       text: "So: here’s who makes them, what separates them, and the cost math with nothing hidden.",
     },
@@ -318,15 +346,31 @@ const STICK_PACKS: Article = {
     },
     {
       type: "p",
-      text: "Plain creatine in a stick. A measured dose of creatine monohydrate, flavored or not, in a single-serve sachet. Orgain, Kaged, Momentous, Nutricost, Transparent Labs and Core Med Science all make a version. These compete with a tub on convenience alone — same ingredient, portable format.",
+      text: "Three different products are being sold under the same shape, and most roundups blur them together. Worth separating, because they answer different questions. Checked August 2026 — this is a category that moves.",
     },
     {
-      type: "p",
-      text: "Creatine plus electrolytes in a stick. A newer category, and a crowded one as of 2026: MYOXCIENCE, MHP, Create Wellness, OMNI, Ancient Nutrition and Kimora are all in it. These are trying to be two habits in one sachet rather than a portable version of one habit.",
+      type: "ul",
+      items: [
+        "Plain creatine in a stick. A measured dose of creatine monohydrate and nothing else of consequence, flavored or not. Thorne, Orgain, Momentous, Nutricost and Core Med Science. These compete with a tub on convenience alone — same ingredient, portable format.",
+        "Creatine plus a performance additive. Transparent Labs adds HMB, Kaged adds an absorption complex, mindbodygreen adds taurine. Same creatine, plus something else you are also buying and should decide you want.",
+        "Creatine plus electrolytes. The newest of the three and the most crowded: MYOXCIENCE, MHP, Create Wellness, OMNI, Ancient Nutrition and Kimora. These are trying to be two habits in one sachet rather than a portable version of one habit.",
+      ],
     },
     {
+      // Was: "…some carry meaningfully less, because there is only so much room
+      // in a stick and electrolytes and flavoring take some of it." Deleted the
+      // causal clause. It is refuted by our own product — Kimora fits 5 g plus
+      // three minerals into the same stick size — so it was a charitable
+      // physical explanation invented for what is a formulation-cost decision.
+      // Inventing a generous motive for a competitor is the same failure as
+      // inventing an unkind one; the page's whole posture is not doing that.
+      //
+      // Also replaced the implied "some of THEM under-dose, we don't" with a
+      // dated market statement that is substantiable without singling anyone
+      // out. Substantiation is recorded in
+      // marketing/seo/substantiation/creatine-stick-packs-2026-08-26.md.
       type: "p",
-      text: "If you are shopping the second group, the useful thing to know is that the format tells you nothing about the dose. Some creatine-and-electrolyte sticks carry a full 5 g of creatine and some carry meaningfully less, because there is only so much room in a stick and electrolytes and flavoring take some of it. The panel is the only place that answers this. Check it on every one of them, ours included.",
+      text: "If you are shopping the third group, the useful thing to know is that the format tells you nothing about the dose. Checking six creatine-and-electrolyte panels in August 2026, the creatine ranged from under 3 g to a full 5 g per stick. The panel is the only place that answers this. Check it on every one of them, ours included.",
     },
 
     { type: "h2", text: "What you’re actually paying for" },
@@ -335,20 +379,39 @@ const STICK_PACKS: Article = {
       text: "Here is the number nobody in this category volunteers.",
     },
     {
+      // The published range was "eight and thirty-five cents", which was a bulk
+      // -bag floor and a ceiling roughly half of reality for the certified tier
+      // the sentence claimed to cover. It was also the only hard number on the
+      // page — the one thing a reader can check in thirty seconds — on a page
+      // whose entire thesis is that it does not do that. Widened, tiered, and
+      // dated.
       type: "p",
-      text: "Creatine monohydrate in a tub costs somewhere between eight and thirty-five cents per five-gram serving, depending on brand and testing. Bought in bulk it goes lower.",
+      text: "Creatine monohydrate in a tub runs roughly ten to seventy cents per five-gram serving. Uncertified bulk powder sits at the bottom; a third-party-tested brand sits near the top. Checked August 2026.",
     },
     {
       type: "p",
-      text: `Kimora is $${PRICE_ONE_TIME} for ${STICKS_PER_POUCH} sticks. That is about $${PER_DAY_ONE_TIME} a day, or $${PER_DAY_SUB} on subscription.`,
+      text: `Kimora will be $${PRICE_ONE_TIME} for ${STICKS_PER_POUCH} sticks. That is about $${PER_DAY_ONE_TIME} a day, or $${PER_DAY_SUB} on subscription.`,
+    },
+    {
+      // "Several times" was true against a bulk tub and false against a
+      // certified one — at seventy cents it is under double. Stating both ends
+      // is more precise, more checkable, and more credible than the round
+      // number that flattered the argument.
+      type: "p",
+      text: "That is not a rounding error. Against cheap bulk powder, a stick pack — ours or anyone’s — costs something like ten times per dose. Against a premium third-party-tested tub it is closer to double. Either way you are paying more per gram of creatine, and other stick packs land in much the same place we do. If someone in this category tells you otherwise, ask them to show their arithmetic.",
     },
     {
       type: "p",
-      text: "That is not a rounding error. On the creatine alone, a stick pack — ours or anyone’s — costs several times what the same dose costs out of a tub. If someone tells you otherwise, ask them to show their arithmetic.",
+      text: "What the extra actually buys, in descending order of honesty:",
     },
     {
-      type: "p",
-      text: "What the extra actually buys, in descending order of honesty: electrolytes you would otherwise be buying separately, so if you already take an electrolyte drink most days, part of that premium is a product you are already paying for. A dose you cannot get wrong and cannot skip because the tub is at home. Flavor and mixability, which sound like luxuries and are the reason a lot of tubs die half-full in a cupboard. And third-party testing plus a formulation someone had to develop — real cost, and also something a good tub can offer.",
+      type: "ul",
+      items: [
+        "Electrolytes you would otherwise be buying separately. If you already take an electrolyte drink most days, part of that premium is a product you are already paying for, moved into the same sachet.",
+        "A dose you cannot get wrong, and cannot skip because the tub is at home.",
+        "Flavor and mixability — which sound like luxuries, and are the reason a lot of tubs die half-full in a cupboard.",
+        "Third-party testing and a formulation someone had to develop. Real cost, and also something a good tub can offer.",
+      ],
     },
     {
       type: "p",
@@ -366,7 +429,13 @@ const STICK_PACKS: Article = {
     },
     {
       type: "p",
-      text: "It is a physical change, not a chemical one: the molecule that ends up in your bloodstream is identical either way. What the research does not show is a meaningful difference in how much creatine reaches muscle, and both forms take the same three to four weeks to saturate.",
+      // Was: "…and both forms take the same three to four weeks to saturate."
+      // That converted an absence of evidence into a positive finding, in the
+      // same breath as correctly framing the adjacent claim as an absence. No
+      // study has compared micronized against standard on saturation timeline;
+      // the three-to-four-week figure comes from standard daily-dosing work.
+      type: "p",
+      text: "It is a physical change, not a chemical one: the molecule that ends up in your bloodstream is identical either way. What the research does not show is a meaningful difference in how much creatine reaches muscle, and there is no evidence either form saturates faster than the other — both get there on the three-to-four-week timeline a standard daily dose takes.",
     },
     {
       type: "p",
@@ -376,8 +445,13 @@ const STICK_PACKS: Article = {
     { type: "h2", text: "When a tub is the right answer" },
     { type: "p", text: "It genuinely often is. Buy a tub if:" },
     {
-      type: "p",
-      text: "You train at home or at one gym and take it in the same kitchen every day. Cost per serving is the thing you are optimizing. You do not mind measuring, and you do not mind the taste of unflavored creatine in water. You are already disciplined about a daily supplement and have been for months.",
+      type: "ul",
+      items: [
+        "You train at home or at one gym, and take it in the same kitchen every day.",
+        "Cost per serving is the thing you are optimizing.",
+        "You do not mind measuring, and you do not mind the taste of unflavored creatine in water.",
+        "You are already disciplined about a daily supplement, and have been for months.",
+      ],
     },
     {
       type: "p",
@@ -386,8 +460,12 @@ const STICK_PACKS: Article = {
 
     { type: "h2", text: "When a stick is the right answer" },
     {
-      type: "p",
-      text: "You travel, compete, or train at more than one place. You want electrolytes on the same schedule and would rather not manage two products. Or — the common one, and worth being blunt about — you have bought creatine before and stopped taking it. Creatine only works if it is in you, and saturation decays when you stop.",
+      type: "ul",
+      items: [
+        "You travel, compete, or train at more than one place.",
+        "You want electrolytes on the same schedule and would rather not manage two products.",
+        "You have bought creatine before and stopped taking it. This is the common one, and worth being blunt about: creatine only works if it is in you, and saturation decays when you stop.",
+      ],
     },
     {
       type: "p",
@@ -401,9 +479,13 @@ const STICK_PACKS: Article = {
       a: "Front of pack is marketing; the Supplement Facts panel is the claim.",
     },
     {
+      // Was "fifteens, twenties, thirties and forties". No 40-count appears to
+      // exist, and the two most common small sizes — 12 and 14 — were missing.
+      // An invented enumeration in the sentence telling people how to compare
+      // prices is a bad place to be approximately right.
       type: "qa",
       q: "Sticks per box, and the resulting cost per day.",
-      a: "Boxes come in fifteens, twenties, thirties and forties, which makes headline prices hard to compare on purpose.",
+      a: "Boxes run anywhere from twelve sticks to sixty, which makes headline prices hard to compare on purpose.",
     },
     {
       type: "qa",
@@ -421,9 +503,16 @@ const STICK_PACKS: Article = {
       a: "“Sugar-free” is not an ingredient.",
     },
     {
+      // Was: "Whether it is a subscription trap." / "Cancellation should take
+      // one click." Two problems, both ours. Kimora's own cancellation is an
+      // email round-trip plus a magic link plus the Stripe portal — four steps,
+      // not one — so the page was publishing a standard it fails, in a section
+      // headed "ours included." And "subscription trap" is a pejorative sitting
+      // two sections below a list of eleven named competitors, with nothing in
+      // the text scoping it away from them.
       type: "qa",
-      q: "Whether it is a subscription trap.",
-      a: "Cancellation should take one click.",
+      q: "How cancelling actually works.",
+      a: "Check it before you subscribe, not after. Ours takes a few steps — you request a link by email and cancel through the billing portal — and we would rather you know that now than discover it in month three.",
     },
 
     { type: "h2", text: "What we’re not telling you" },
@@ -437,7 +526,16 @@ const STICK_PACKS: Article = {
     },
     {
       type: "p",
-      text: "And we are not going to quote you a competitor’s price or dose on this page. Those change, and a stale number presented as fact would undercut the only thing this page is trying to be useful for. Go read their panel.",
+      text: "And we are not going to pin a price or a dose to a named competitor. Those change, and a stale number presented as fact would undercut the only thing this page is trying to be useful for. The ranges above are dated and are the honest version; for any specific product, go read its panel.",
+    },
+    {
+      // The article quotes Kimora's retail price. Without this it reads, in the
+      // crawler-visible HTML and inside an Article entity naming Kimora as
+      // publisher, as though the product is on sale today — contradicting the
+      // PreOrder availability in the Product schema. Prose is what gets lifted,
+      // so prose has to carry the qualifier.
+      type: "p",
+      text: "One more: Kimora has not launched. Nothing on this site is purchasable today, consumer launch is targeted for December 2026, and the prices above are the announced ones rather than something you can go and pay right now.",
     },
     {
       type: "p",
@@ -445,16 +543,25 @@ const STICK_PACKS: Article = {
     },
 
     {
+      // The two papers support the micronized/uptake and saturation material.
+      // Nothing in a journal supports the brand list, the tub price range or
+      // the box counts — those are market claims, and saying how they were
+      // checked is the citation. A bibliography that does not match the
+      // article's actual load-bearing claims is decoration.
+      type: "p",
+      text: "How we checked the market claims: brand list, formats and panel doses read off manufacturer and major-retailer listings in August 2026. Tub cost per serving compared across uncertified bulk powder and third-party-tested brands over the same period. Prices and formulations move; the dates are there so you can tell how stale this is.",
+    },
+    {
       type: "sources",
       items: [
         {
           label:
-            "Kreider et al., International Society of Sports Nutrition position stand: safety and efficacy of creatine supplementation in exercise, sport, and medicine. JISSN 14:18 (2017)",
+            "Kreider et al., International Society of Sports Nutrition position stand: safety and efficacy of creatine supplementation in exercise, sport, and medicine. JISSN 14:18 (2017) — on creatine forms and muscle uptake",
           url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5469049/",
         },
         {
           label:
-            "Wax et al., Creatine for Exercise and Sports Performance, with Recovery Considerations for Healthy Populations. Nutrients 13:1915 (2021)",
+            "Wax et al., Creatine for Exercise and Sports Performance, with Recovery Considerations for Healthy Populations. Nutrients 13:1915 (2021) — on dosing and saturation",
           url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8228369/",
         },
       ],

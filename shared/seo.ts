@@ -510,7 +510,14 @@ export const FAQ_QA: ReadonlyArray<readonly [string, string]> = [
   ],
   [
     "Will creatine make me bloated or 'puffy'?",
-    "Creatine draws water into the muscle cell. That's intracellular, and it's the mechanism the research describes rather than a side effect. The 'puffy' look people report is generally associated with aggressive loading rather than a standard daily dose. Kimora uses micronized creatine monohydrate.",
+    // "Kimora uses micronized creatine monohydrate." removed from the end of
+    // this answer 2026-08-26. As the closing line of a bloating answer the only
+    // available inference was that micronized helps with puffiness — it does
+    // not, and /learn/creatine-stick-packs now says so in as many words. This
+    // answer is also emitted as FAQPage structured data, so the implication was
+    // machine-readable and quotable. ⚠️ The same string lives in
+    // client/src/pages/FAQ.tsx and was changed there in the same commit.
+    "Creatine draws water into the muscle cell. That's intracellular, and it's the mechanism the research describes rather than a side effect. The 'puffy' look people report is generally associated with aggressive loading rather than a standard daily dose.",
   ],
   [
     "Do I have to be a fighter to use Kimora?",

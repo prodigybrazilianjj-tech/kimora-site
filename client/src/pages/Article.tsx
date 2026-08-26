@@ -117,6 +117,15 @@ function Block({ block }: { block: ArticleBlock }) {
         </p>
       );
 
+    case "ul":
+      return (
+        <ul className="list-disc pl-5 space-y-2 text-base text-foreground/75 leading-relaxed">
+          {block.items.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      );
+
     case "qa":
       return (
         <div className="rounded-xl border border-foreground/10 bg-foreground/5 p-6">

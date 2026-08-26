@@ -323,6 +323,12 @@ function renderBlockHtml(block: ArticleBlock): string {
     case "p":
       return `<p>${esc(block.text)}</p>`;
 
+    case "ul":
+      return `<ul>${block.items
+        .filter((i) => i.trim() !== "")
+        .map((i) => `<li>${esc(i)}</li>`)
+        .join("")}</ul>`;
+
     case "qa":
       return `<div><strong>${esc(block.q)}</strong><p>${esc(block.a)}</p></div>`;
 

@@ -44,33 +44,49 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { PRELAUNCH_GATE } from "../client/src/lib/prelaunch";
-import { FLAVORS, LAUNCH_FLAVOR, STICKS_PER_POUCH } from "../client/src/lib/product";
+import {
+  FLAVORS,
+  LAUNCH_FLAVOR,
+  STICKS_PER_POUCH,
+  isFlavorAvailable,
+} from "../client/src/lib/product";
 import { FAQ_QA, normalizePath } from "./seo";
 
-const PRICE_ONE_TIME = "49.99";
-const PRICE_SUB = "39.99";
+const LAUNCH =
+  FLAVORS.find((f) => f.slug === LAUNCH_FLAVOR) ?? FLAVORS[0];
+
+// Read from the catalog, not retyped. The header above says this file is wrong
+// whenever it disagrees with the page; a hardcoded "49.99" here would survive a
+// price change in product.ts and leave the crawler-visible copy — the copy an
+// answer engine quotes — asserting last quarter's price on a page that shows
+// this quarter's.
+const PRICE_ONE_TIME = LAUNCH.priceOneTime.toFixed(2);
+const PRICE_SUB = LAUNCH.priceSub.toFixed(2);
 
 /**
  * Inline styling for the fallback wrapper.
  *
- * This is not decoration, it is a correctness requirement. The app's stylesheet
- * paints the page dark (#0d0d0f) and sets the text colour on React-rendered
- * elements; a bare <h1> and <p> dropped into #root would inherit the browser
- * default of near-black and render as black-on-black. Text that is technically
- * present and visually invisible is the exact pattern search engines penalise,
- * and it would also mean a real visitor on a slow connection sees a blank
- * screen instead of the page's own words.
+ * SETS NO COLOURS, ON PURPOSE. The first version of this constant painted
+ * #0d0d0f/#F7F0DE, on the belief that the site was dark and that unstyled text
+ * would render near-black on near-black. That was wrong: client/src/index.css
+ * sets --background to cream #F7F0DE and --foreground to warm ink #211E1A, and
+ * body applies both. The site is cream. Hard-coding a dark panel would have put
+ * a black column across the five highest-value pages for the whole bundle-load
+ * window, and — worse — left `color:#F7F0DE` one careless edit away from being
+ * cream text on a cream page, which is exactly the invisible-text pattern this
+ * was supposed to prevent.
  *
- * Colours are the locked brand values — near-black ground, warm off-white type
- * (BRAND_VOICE_GUIDELINES.md §6). Inline rather than in the stylesheet because
- * this has to be correct in the same paint as the HTML, before any external CSS
- * is guaranteed to have applied.
+ * Inheriting from `body` is both correct and self-maintaining: the fallback
+ * cannot become illegible without the real page becoming illegible first. If
+ * the palette is ever inverted, nothing here needs to change.
  *
- * No display:none, no visibility:hidden, no off-screen positioning, no
- * font-size:0. If any of those ever appear here, that is the bug.
+ * What is left is layout only, so a paragraph of prose is not a full-bleed
+ * ragged line. No display:none, no visibility:hidden, no off-screen
+ * positioning, no font-size:0, and no colours. If any of those ever appear
+ * here, that is the bug.
  */
 export const PRERENDER_WRAPPER_STYLE =
-  "background:#0d0d0f;color:#F7F0DE;padding:2rem 1.25rem;max-width:46rem;margin:0 auto;font-family:system-ui,sans-serif;line-height:1.6";
+  "padding:2rem 1.25rem;max-width:46rem;margin:0 auto;line-height:1.6";
 
 /** Escape a string for use as HTML text. */
 function esc(value: string): string {
@@ -93,10 +109,16 @@ export interface PrerenderContent {
   bullets?: string[];
 }
 
-const launchFlavor =
-  FLAVORS.find((f) => f.slug === LAUNCH_FLAVOR)?.name ?? FLAVORS[0].name;
+const launchFlavor = LAUNCH.name;
 
-const flavorLine = FLAVORS.map((f) => `${f.name} — ${f.desc}`);
+// Buyable now vs. announced. The storefront already draws this line —
+// Shop, Product and FlavorLineup all gate on isFlavorAvailable() — so the
+// fallback copy has to draw it too, or it tells a crawler three flavours are
+// on sale when one is.
+const flavorLine = FLAVORS.map(
+  (f) =>
+    `${f.name} — ${f.desc}${isFlavorAvailable(f.slug) ? "" : " (announced, not yet shipping)"}`,
+);
 
 /** The spec block. Repeated across routes on purpose: an answer engine that
  *  retrieves any one page should be able to state the product correctly from
@@ -122,6 +144,11 @@ const PRELAUNCH_NOTE =
  * the fallback genuinely misrepresents the page.
  */
 export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
+  // While PRELAUNCH_GATE is on, "/" renders ComingSoon, not Home (App.tsx) —
+  // this copy mirrors ComingSoon's hero and spec bands. Home lives at
+  // /preview-home, which is noindex and deliberately gets no fallback: the one
+  // route we do not want a crawler quoting is the staging copy of the homepage.
+  // At launch the gate flips, Home takes "/", and this entry still describes it.
   "/": {
     heading: "Kimora Co. — Creatine + Electrolytes, Built for Fighters",
     paragraphs: [
@@ -131,7 +158,7 @@ export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
     ],
     bullets: [
       ...SPEC_BULLETS,
-      `Flavors: ${FLAVORS.map((f) => f.name).join(", ")}. ${launchFlavor} ships first.`,
+      `Flavors: ${FLAVORS.map((f) => f.name).join(", ")}. ${launchFlavor} ships first; the rest are announced and not yet shipping.`,
     ],
   },
 
@@ -183,9 +210,28 @@ export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
   },
 };
 
-/** The fallback body for a pathname, or null if that route has none. */
+/**
+ * The fallback body for a pathname, or null if that route has none.
+ *
+ * Case-SENSITIVE, unlike seoForPath(). normalizePath() lower-cases, but wouter
+ * matches routes case-sensitively — so /FAQ gets the FAQ's head and then
+ * renders the 404 page. Head metadata on a case variant is harmless (the
+ * canonical points back at /faq). A full page of FAQ prose served as the
+ * server HTML of a URL that visibly renders "not found" is not: it is a
+ * server-HTML-vs-rendered-DOM divergence at one URL, which is the shape of
+ * thing that reads as cloaking even though no user agent is being sniffed.
+ */
 export function prerenderFor(pathname: string): PrerenderContent | null {
-  return PRERENDER[normalizePath(pathname)] ?? null;
+  const key = normalizePath(pathname);
+
+  // What normalizePath did apart from lower-casing: strip query, strip
+  // trailing slashes. If re-applying only those to the raw path does not give
+  // back `key`, the difference was case, and this is a variant we do not
+  // recognise.
+  const raw = (pathname.split("?")[0] || "/").replace(/\/+$/, "") || "/";
+  if (raw !== key) return null;
+
+  return PRERENDER[key] ?? null;
 }
 
 /**

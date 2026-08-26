@@ -6,6 +6,8 @@ import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
 
+import { injectBody, injectHead } from "./seo";
+
 const viteLogger = createLogger();
 
 export async function setupVite(server: Server, app: Express) {
@@ -49,7 +51,21 @@ export async function setupVite(server: Server, app: Express) {
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
       const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+
+      // Same two transforms production runs in server/static.ts. Dev used to
+      // skip both, which meant the head stamping and the prerendered body
+      // could only ever be observed on kimoraco.com — the first sight of a bug
+      // in either was a deploy.
+      //
+      // `url` (req.originalUrl), NOT req.path: this handler is mounted with
+      // app.use("*", …), which makes Express rewrite req.url to "/" and put
+      // the real path in req.baseUrl. req.path here is "/" for every route,
+      // so every page would get the homepage's head. That is why the existing
+      // code reads originalUrl. It carries the query string, which both
+      // helpers strip via normalizePath.
+      const stamped = injectBody(injectHead(page, url), url);
+
+      res.status(200).set({ "Content-Type": "text/html" }).end(stamped);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);

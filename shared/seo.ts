@@ -31,7 +31,7 @@ import { PRELAUNCH_GATE } from "../client/src/lib/prelaunch";
 // imported from the storefront's own catalog rather than retyped, so structured
 // data cannot claim a flavour the site does not sell. product.ts is plain
 // constants with no imports and no browser APIs, so it bundles into the server.
-import { FLAVORS } from "../client/src/lib/product";
+import { FLAVORS, isFlavorAvailable } from "../client/src/lib/product";
 
 /**
  * Canonical origin. kimoraco.com 301s to www.kimoraco.com, so www is the
@@ -349,13 +349,31 @@ export function productJsonLd(): object {
       // engines were still describing Kimora as coming in "Lemon Yuzu" — a
       // name retired in June 2026 — and omitting Raspberry Dragonfruit
       // entirely. Both were reading stale crawl residue, because until this
-      // branch there was no crawlable body copy to read instead. Read from
-      // FLAVORS so the list cannot drift from the storefront.
+      // branch there was no crawlable body copy to read instead.
+      //
+      // Split on isFlavorAvailable rather than listing all three flat. The
+      // storefront draws this line everywhere (Shop, Product, FlavorLineup);
+      // a single "Flavors" property naming three would tell a machine that
+      // three are for sale when one is — the mirror image of the Yuzu defect
+      // and no better for having been made by us.
       {
         "@type": "PropertyValue",
-        name: "Flavors",
-        value: FLAVORS.map((f) => f.name).join(", "),
+        name: "Flavors shipping",
+        value: FLAVORS.filter((f) => isFlavorAvailable(f.slug))
+          .map((f) => f.name)
+          .join(", "),
       },
+      ...(FLAVORS.some((f) => !isFlavorAvailable(f.slug))
+        ? [
+            {
+              "@type": "PropertyValue",
+              name: "Flavors announced",
+              value: FLAVORS.filter((f) => !isFlavorAvailable(f.slug))
+                .map((f) => f.name)
+                .join(", "),
+            },
+          ]
+        : []),
     ],
     offers: {
       "@type": "Offer",
@@ -377,9 +395,18 @@ export function productJsonLd(): object {
  * If the two drift, the rich result contradicts the page and Google drops it.
  *
  * Exported rather than kept local to faqJsonLd() because shared/prerender.ts
- * renders the same text as the crawler-visible body of /faq. One array, three
- * consumers (page, JSON-LD, fallback body) — the alternative is three copies
- * of the same five answers drifting apart.
+ * renders the same text as the crawler-visible body of /faq. That collapses
+ * two copies into one.
+ *
+ * ⚠️ There is still a THIRD copy: client/src/pages/FAQ.tsx declares its own
+ * `faqs` array with the same five entries. It has not been pointed at this
+ * export because doing so would be the first `@shared/*` import from client
+ * code in the repo, and the alias — configured in both tsconfig.json and
+ * vite.config.ts but never exercised from the client — cannot be confirmed to
+ * resolve without running a build. It is a one-line change plus one build to
+ * verify. Until then, an edit to the answers has to be made in both places, or
+ * the rendered page and the structured data at the same URL will contradict
+ * each other silently.
  */
 export const FAQ_QA: ReadonlyArray<readonly [string, string]> = [
   [

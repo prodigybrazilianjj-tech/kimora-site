@@ -169,7 +169,15 @@ export function injectHead(template: string, pathname: string): string {
     added.push(jsonLdScript(block));
   }
 
-  return html.replace(/<\/head>/i, `    ${added.join("\n    ")}\n  </head>`);
+  // Replacer FUNCTION, for the same reason as setMeta. `added` carries the
+  // route description via the fallback <meta name="description"> branch, and
+  // three route descriptions quote prices — so a literal "$49.99" reaching a
+  // replacement STRING would be read as a group reference. Safe today only by
+  // accident of which branch runs; not worth leaving to that.
+  return html.replace(
+    /<\/head>/i,
+    () => `    ${added.join("\n    ")}\n  </head>`,
+  );
 }
 
 /**
@@ -181,8 +189,14 @@ export function injectHead(template: string, pathname: string): string {
  * injectBody idempotent: run it twice and the second pass finds no empty
  * #root and does nothing.
  *
- * The id attribute quote character is captured and the negation tempered
- * against it for the same reason as metaPattern above.
+ * The quote character is captured and backreferenced so `id="root'` does not
+ * match. (metaPattern above additionally needs a tempered negation because its
+ * value is arbitrary text; here the value is the literal `root`, so the
+ * backreference alone is enough.)
+ *
+ * It also requires `id` to be the first attribute on the div. That is fine for
+ * a mount point nobody has reason to add classes to, and matching too little
+ * fails safe — but it fails SILENTLY, which is why injectBody warns below.
  */
 const ROOT_PATTERN =
   /(<div\s+id=(["'])root\2\s*>)(\s*)(<\/div>)/i;
@@ -207,11 +221,24 @@ export function injectBody(html: string, pathname: string): string {
   if (!content) return html;
 
   const body = renderPrerenderHtml(content);
-  if (!body) return html;
 
-  return html.replace(
+  const out = html.replace(
     ROOT_PATTERN,
     (_match, open: string, _quote: string, _ws: string, close: string) =>
       `${open}<div data-prerender="1" style="${PRERENDER_WRAPPER_STYLE}">${body}</div>${close}`,
   );
+
+  // We had content for this route and could not place it, which means the
+  // shell's mount point no longer looks like `<div id="root"></div>` — an edit
+  // to client/index.html, or a build step that started rewriting the body.
+  // Failing quiet is right; failing quiet AND silent is how this feature dies
+  // in production without anyone noticing, since it has no visible effect on a
+  // browser that runs JS.
+  if (out === html) {
+    console.warn(
+      `[seo] No empty #root found in the shell; prerendered body for "${pathname}" was not injected.`,
+    );
+  }
+
+  return out;
 }

@@ -1,8 +1,7 @@
-import { Link, useRoute } from "wouter";
+import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
-import NotFound from "@/pages/not-found";
 import { LEARN_BASE, articleForSlug, type ArticleBlock } from "@/lib/articles";
 
 /**
@@ -13,15 +12,21 @@ import { LEARN_BASE, articleForSlug, type ArticleBlock } from "@/lib/articles";
  * sees here and what an answer engine retrieves come from one source and cannot
  * disagree.
  */
-export default function Article() {
-  const [, params] = useRoute(`${LEARN_BASE}/:slug`);
-  const article = params?.slug ? articleForSlug(params.slug) : undefined;
+export default function Article({ params }: { params?: { slug?: string } }) {
+  // `params` comes from <Route path="/learn/:slug" component={Article} />,
+  // which already ran the pattern match. Calling useRoute here would re-derive
+  // state the router just computed.
+  //
+  // Lower-cased because wouter matches case-INSENSITIVELY — regexparam
+  // compiles route patterns with the `i` flag — so this can be handed
+  // "Creatine-And-Electrolytes-Together". server/static.ts 301s known routes to
+  // lowercase before they get here, but this is the layer that would actually
+  // 404, so it should not depend on the redirect having fired.
+  const article = params?.slug
+    ? articleForSlug(params.slug.toLowerCase())
+    : undefined;
 
-  // An unknown slug is a genuine 404, not an empty article page. The route
-  // table in shared/seo.ts only lists slugs that exist, so an unknown one also
-  // ships noindex — the two have to agree or we would be asking Google to index
-  // a page that renders "not found".
-  if (!article) return <NotFound />;
+  if (!article) return <ArticleNotFound />;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -50,6 +55,45 @@ export default function Article() {
             ))}
           </div>
         </article>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+/**
+ * The empty state for an unknown /learn slug.
+ *
+ * Deliberately not the shared not-found page. That one reads "Did you forget
+ * to add the page to the router?" on a bare grey background with no Navbar and
+ * no Footer — developer copy, and no DSHEA disclaimer. /learn/:slug is a
+ * guessable, linkable, shareable public URL space now, so a stale link or a
+ * typo lands a customer there. This keeps them on the site and points them at
+ * the corpus.
+ */
+function ArticleNotFound() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Navbar />
+
+      <main className="pt-32 pb-24">
+        <div className="container px-4 mx-auto max-w-3xl text-center">
+          <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground">
+            That article doesn’t exist
+          </h1>
+
+          <p className="mt-4 text-lg text-foreground/70">
+            It may have moved, or the link may have a typo in it.
+          </p>
+
+          <Link
+            href={LEARN_BASE}
+            className="mt-8 inline-flex items-center text-primary-strong hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> See everything we’ve written
+          </Link>
+        </div>
       </main>
 
       <Footer />

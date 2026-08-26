@@ -261,6 +261,18 @@ export function seoForPath(pathname: string): RouteSeo {
   return ROUTES.find((r) => r.path === key) ?? DEFAULT_ROUTE;
 }
 
+/**
+ * Does this exact path appear in the route table?
+ *
+ * Distinct from seoForPath, which falls back to DEFAULT_ROUTE and so can never
+ * say "no". Used by the case-normalising redirect in server/static.ts, which
+ * must only rewrite URLs we actually own.
+ */
+export function isKnownRoute(pathname: string): boolean {
+  const key = normalizePath(pathname);
+  return ROUTES.some((r) => r.path === key);
+}
+
 /** Absolute canonical URL for a route. */
 export function canonicalFor(pathname: string): string {
   const key = normalizePath(pathname);
@@ -268,6 +280,25 @@ export function canonicalFor(pathname: string): string {
 }
 
 // ── Sitemap ──────────────────────────────────────────────────────────────
+
+/**
+ * Escape a value for XML character data.
+ *
+ * No path in the route table contains an `&` today, so this changes nothing
+ * yet — but `&` is legal in a URL and illegal raw in XML, and the first slug
+ * or query-bearing route that carries one would produce a sitemap Google
+ * rejects wholesale rather than one bad URL. The route table is now generated
+ * from a content registry that people will add to, so "no path contains an
+ * ampersand" stopped being a property anyone is checking.
+ */
+function xml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
 
 /**
  * The lastmod for one route.
@@ -294,7 +325,7 @@ export function buildSitemapXml(lastmod = new Date().toISOString().slice(0, 10))
     .map((r) =>
       [
         "  <url>",
-        `    <loc>${canonicalFor(r.path)}</loc>`,
+        `    <loc>${xml(canonicalFor(r.path))}</loc>`,
         `    <lastmod>${lastmodFor(r.path, lastmod)}</lastmod>`,
         r.changefreq ? `    <changefreq>${r.changefreq}</changefreq>` : null,
         r.priority !== undefined ? `    <priority>${r.priority.toFixed(1)}</priority>` : null,

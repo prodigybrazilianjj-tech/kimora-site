@@ -44,11 +44,34 @@ function text(value: string): string {
 }
 
 /**
- * Serialise JSON-LD for an inline <script>. `<` is escaped so a value can
- * never terminate the script element early.
+ * Serialise every JSON-LD block for the route into ONE inline <script>, as a
+ * single `@graph`.
+ *
+ * This used to emit one <script> per block, which is valid and which parsers
+ * mostly cope with — but `@id` references do not reliably resolve ACROSS
+ * script elements. That mattered the moment Article schema shipped: `author`
+ * is a required field for Article, and it is expressed here as a reference to
+ * the Organization node. Across two scripts a validator is entitled to read
+ * that as "author: missing" and decline to treat the page as an Article at
+ * all, which would make the corpus's structured data do nothing. Same for the
+ * article's `isPartOf` pointing at the /learn CollectionPage.
+ *
+ * One graph, one @context, all nodes in scope for each other. `<` is escaped
+ * so no value can terminate the script element early.
  */
-function jsonLdScript(block: object): string {
-  const json = JSON.stringify(block).replace(/</g, "\\u003c");
+function jsonLdScript(blocks: object[]): string {
+  // Each block carries its own "@context": strip it, since the graph hoists a
+  // single one. Anything else on the node is passed through untouched.
+  const graph = blocks.map((block) => {
+    const { "@context": _dropped, ...node } = block as Record<string, unknown>;
+    return node;
+  });
+
+  const json = JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": graph,
+  }).replace(/</g, "\\u003c");
+
   return `<script type="application/ld+json">${json}</script>`;
 }
 
@@ -165,9 +188,8 @@ export function injectHead(template: string, pathname: string): string {
     );
   }
 
-  for (const block of jsonLdForPath(pathname)) {
-    added.push(jsonLdScript(block));
-  }
+  const jsonLd = jsonLdForPath(pathname);
+  if (jsonLd.length > 0) added.push(jsonLdScript(jsonLd));
 
   // Replacer FUNCTION, for the same reason as setMeta. `added` carries the
   // route description via the fallback <meta name="description"> branch, and

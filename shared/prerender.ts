@@ -86,13 +86,25 @@ const PRICE_SUB = LAUNCH.priceSub.toFixed(2);
  * cannot become illegible without the real page becoming illegible first. If
  * the palette is ever inverted, nothing here needs to change.
  *
- * What is left is layout only, so a paragraph of prose is not a full-bleed
- * ragged line. No display:none, no visibility:hidden, no off-screen
- * positioning, no font-size:0, and no colours. If any of those ever appear
- * here, that is the bug.
+ * What is left is layout and typography only. That grew when /learn shipped:
+ * the marketing routes' fallbacks are a few short paragraphs, but an article's
+ * is 8 KB of prose, and for the window between first paint and hydration a
+ * real visitor sees it. At five paragraphs, unstyled was merely plain; at
+ * article length, unstyled reads as a page that has broken. The measurements
+ * below are the article page's own (max-w-3xl, pt-32, relaxed leading), so the
+ * fallback reflows into the real layout rather than jumping.
+ *
+ * No display:none, no visibility:hidden, no off-screen positioning, no
+ * font-size:0, and no colours. If any of those ever appear here, that is the
+ * bug.
  */
-export const PRERENDER_WRAPPER_STYLE =
-  "padding:2rem 1.25rem;max-width:46rem;margin:0 auto;line-height:1.6";
+export const PRERENDER_WRAPPER_STYLE = [
+  "max-width:48rem",
+  "margin:0 auto",
+  "padding:8rem 1rem 6rem",
+  "line-height:1.7",
+  "font-size:1rem",
+].join(";");
 
 /** Escape a string for use as HTML text. */
 function esc(value: string): string {
@@ -274,34 +286,30 @@ export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
 /**
  * The fallback body for a pathname, or null if that route has none.
  *
- * Case-SENSITIVE, unlike seoForPath(). normalizePath() lower-cases, but wouter
- * matches routes case-sensitively — so /FAQ gets the FAQ's head and then
- * renders the 404 page. Head metadata on a case variant is harmless (the
- * canonical points back at /faq). A full page of FAQ prose served as the
- * server HTML of a URL that visibly renders "not found" is not: it is a
- * server-HTML-vs-rendered-DOM divergence at one URL, which is the shape of
- * thing that reads as cloaking even though no user agent is being sniffed.
+ * Case-INSENSITIVE, via normalizePath, and matching seoForPath again.
+ *
+ * This function briefly refused case variants. That was a fix for a
+ * misdiagnosis: the comment justifying it claimed "wouter matches routes
+ * case-sensitively," and wouter does not — regexparam compiles every route
+ * pattern with the `i` flag, so /FAQ has always rendered the real FAQ page.
+ * The guard therefore did not prevent a divergence; it created one, serving
+ * /FAQ a correct head with an empty body while the page rendered normally.
+ *
+ * The real problem the guard was groping at is handled properly now, one
+ * layer up: server/static.ts 301s any known route to its lowercase form, so
+ * the server, the router and the canonical all agree before this is reached.
  */
 export function prerenderFor(pathname: string): PrerenderContent | null {
-  const key = normalizePath(pathname);
-
-  // What normalizePath did apart from lower-casing: strip query, strip
-  // trailing slashes. If re-applying only those to the raw path does not give
-  // back `key`, the difference was case, and this is a variant we do not
-  // recognise.
-  const raw = (pathname.split("?")[0] || "/").replace(/\/+$/, "") || "/";
-  if (raw !== key) return null;
-
-  return PRERENDER[key] ?? null;
+  return PRERENDER[normalizePath(pathname)] ?? null;
 }
 
 /**
  * One article block as HTML.
  *
- * Mirrors the `Block` component in client/src/pages/Article.tsx element for
- * element. A `qa` pair renders as a bolded question and a paragraph in both,
- * so an engine reading the HTML and a person reading the page get the same
- * structure and not just the same words.
+ * Mirrors the `Block` component in client/src/pages/Article.tsx: same elements
+ * in the same order, minus the styling wrappers. A `qa` pair is a bolded
+ * question followed by its answer in both, so an engine reading the HTML and a
+ * person reading the page get the same structure and not just the same words.
  *
  * The switch is exhaustive over ArticleBlock's union. Adding a block type
  * without adding a case here is a TypeScript error at the return statement,
@@ -316,10 +324,23 @@ function renderBlockHtml(block: ArticleBlock): string {
       return `<p>${esc(block.text)}</p>`;
 
     case "qa":
-      return `<p><strong>${esc(block.q)}</strong> ${esc(block.a)}</p>`;
+      return `<div><strong>${esc(block.q)}</strong><p>${esc(block.a)}</p></div>`;
 
     case "sources": {
       const items = block.items
+        .filter((s) => {
+          // Only https. Every URL here is an authored constant today, so this
+          // guards against a future edit rather than a live hazard — but the
+          // value lands in an href in server-rendered HTML, and `javascript:`
+          // in that position is a live link, not a dead citation. Silently
+          // dropping is right: a missing source is visible in review, a
+          // rendered one is not.
+          try {
+            return new URL(s.url).protocol === "https:";
+          } catch {
+            return false;
+          }
+        })
         .map(
           (s) =>
             // rel="noopener noreferrer" matches the rendered page. nofollow is
@@ -330,7 +351,10 @@ function renderBlockHtml(block: ArticleBlock): string {
             `<li><a href="${escAttr(s.url)}" rel="noopener noreferrer">${esc(s.label)}</a></li>`,
         )
         .join("");
-      return `<h2>Sources</h2><ul>${items}</ul>`;
+
+      // No sources left means every URL was rejected — emit nothing rather
+      // than an empty "Sources" heading promising citations that aren't there.
+      return items ? `<h2>Sources</h2><ul>${items}</ul>` : "";
     }
   }
 }
@@ -351,7 +375,8 @@ export function renderPrerenderHtml(content: PrerenderContent): string {
   }
 
   for (const block of content.blocks ?? []) {
-    parts.push(renderBlockHtml(block));
+    const rendered = renderBlockHtml(block);
+    if (rendered) parts.push(rendered);
   }
 
   if (content.bullets && content.bullets.length > 0) {

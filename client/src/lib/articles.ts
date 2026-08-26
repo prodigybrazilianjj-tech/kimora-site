@@ -88,8 +88,10 @@ const CREATINE_AND_ELECTROLYTES: Article = {
   title: "Can You Take Creatine and Electrolytes Together? | Kimora Co.",
   headline: "Can you take creatine and electrolytes together?",
   dek: "Yes. The reason is more boring than the internet says, and the boring reason is the honest one.",
+  // 148 characters. The ~155 ceiling is a real constraint, not a style note:
+  // the previous version ran to 165 and Google truncated it mid-clause.
   description:
-    "Yes — and the reason is more boring than the internet says. What the sodium-dependent creatine transporter does, what it doesn't, and why one stick beats two scoops.",
+    "Yes — and the reason is more boring than the internet says. What the sodium-dependent creatine transporter does, and what it doesn't do for you.",
   published: "2026-08-26",
   updated: "2026-08-26",
   targetQuery: "Can you take creatine and electrolytes together?",
@@ -138,7 +140,16 @@ const CREATINE_AND_ELECTROLYTES: Article = {
     },
     {
       type: "p",
-      text: "Creatine only works if it is in you. Saturation takes roughly three to four weeks of consistent daily dosing, and then it stays there as long as you keep going. Miss a week and you drift back down. Every real-world creatine failure we have ever heard described — “I tried it, didn’t notice anything” — is a compliance story, not a chemistry story.",
+      // Was: "Miss a week and you drift back down. Every real-world creatine
+      // failure we have ever heard described … is a compliance story, not a
+      // chemistry story." Both halves failed this page's own standard. Washout
+      // takes roughly four to six weeks, not a week. And non-response is a
+      // documented phenomenon discussed in the ISSN position stand this piece
+      // cites two blocks later — so an absolute "every … is a compliance
+      // story" was an unsupported claim on a page whose entire argument is
+      // that it does not make those. It was also exactly the sentence shape an
+      // answer engine lifts.
+      text: "Creatine only works if it is in you. Saturation takes roughly three to four weeks of consistent daily dosing, and then it stays there as long as you keep going. Stop and it washes out over the following weeks. Most of the real-world creatine failures we hear described — “I tried it, didn’t notice anything” — are compliance stories rather than chemistry ones, though a minority of people genuinely respond less than others.",
     },
     {
       type: "p",

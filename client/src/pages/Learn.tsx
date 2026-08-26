@@ -18,8 +18,13 @@ export default function Learn() {
 
       <main className="pt-32 pb-24">
         <div className="container px-4 mx-auto max-w-3xl">
+          {/* Matches the prerendered h1 in shared/prerender.ts verbatim. It
+              said "Learn" and the fallback said the full phrase, which broke
+              the rule that file states about itself — and the longer version
+              is the better h1 anyway, since "Learn" alone tells a crawler
+              nothing about what the corpus covers. */}
           <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground">
-            Learn
+            Learn — Creatine, Electrolytes and Training
           </h1>
 
           <p className="mt-4 text-lg text-foreground/70">

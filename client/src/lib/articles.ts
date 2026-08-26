@@ -448,7 +448,6 @@ const STICK_PACKS: Article = {
       text: "Micronization grinds the particles smaller. Smaller particles dissolve faster and grit less. That is a real, noticeable improvement — to the glass.",
     },
     {
-      type: "p",
       // Was: "…and both forms take the same three to four weeks to saturate."
       // That converted an absence of evidence into a positive finding, in the
       // same breath as correctly framing the adjacent claim as an absence. No

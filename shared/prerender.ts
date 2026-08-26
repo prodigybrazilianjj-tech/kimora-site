@@ -51,6 +51,12 @@ import {
   isFlavorAvailable,
 } from "../client/src/lib/product";
 import { FAQ_QA, normalizePath } from "./seo";
+import {
+  ARTICLES,
+  LEARN_BASE,
+  articlePath,
+  type ArticleBlock,
+} from "../client/src/lib/articles";
 
 const LAUNCH =
   FLAVORS.find((f) => f.slug === LAUNCH_FLAVOR) ?? FLAVORS[0];
@@ -97,6 +103,17 @@ function esc(value: string): string {
 }
 
 /**
+ * Escape a string for use inside a double-quoted HTML attribute.
+ *
+ * Needed once the corpus renders citation links: a source URL is the first
+ * value in this file that lands in an attribute rather than in element text,
+ * and esc() alone leaves a `"` able to close the attribute early.
+ */
+function escAttr(value: string): string {
+  return esc(value).replace(/"/g, "&quot;");
+}
+
+/**
  * One block of fallback body copy.
  *
  * `heading` is rendered as the h1. `paragraphs` and `bullets` are rendered in
@@ -107,6 +124,13 @@ export interface PrerenderContent {
   heading: string;
   paragraphs: string[];
   bullets?: string[];
+  /**
+   * Long-form body, for /learn articles. Rendered after `paragraphs` and
+   * before `bullets`, using the same block list the React page renders — so the
+   * crawler-visible article and the reader-visible article are the same text in
+   * the same order, subheadings and citations included.
+   */
+  blocks?: readonly ArticleBlock[];
 }
 
 const launchFlavor = LAUNCH.name;
@@ -131,6 +155,17 @@ const SPEC_BULLETS = [
   "Stimulant free.",
   `$${PRICE_ONE_TIME} one-time, $${PRICE_SUB} on subscription.`,
 ];
+
+/**
+ * Verbatim from <Footer>, which renders it on every route.
+ *
+ * ⚠️ If the Footer copy changes, change it here in the same commit. Two
+ * different disclaimers on the same URL — one for readers, one for crawlers —
+ * is a worse failure than one imperfect disclaimer, because the crawler
+ * version is the one that gets quoted.
+ */
+const DSHEA_DISCLAIMER =
+  "These statements have not been evaluated by the Food and Drug Administration. This product is not intended to diagnose, treat, cure, or prevent any disease. Always consult your healthcare provider before starting any new supplement.";
 
 const PRELAUNCH_NOTE =
   "Kimora has not launched yet. Nothing is purchasable on this site today; the waitlist is open and consumer launch is targeted for December 2026.";
@@ -208,6 +243,32 @@ export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
     // this fallback cannot drift apart.
     paragraphs: FAQ_QA.map(([q, a]) => `${q} ${a}`),
   },
+
+  [LEARN_BASE]: {
+    heading: "Learn — Creatine, Electrolytes and Training",
+    paragraphs: [
+      "Straight answers about creatine, electrolytes and training. Sourced, and honest about where the evidence stops.",
+    ],
+    bullets: ARTICLES.map((a) => `${a.headline} — ${a.dek}`),
+  },
+
+  // One entry per article, generated from the registry.
+  //
+  // This is the payoff for the whole prerender build. The corpus is written to
+  // be retrieved and quoted by answer engines, and those engines do not run
+  // JavaScript — so an article rendered only by React would have been written
+  // for readers who cannot see it. These entries are the article, in full, in
+  // the HTML.
+  ...Object.fromEntries(
+    ARTICLES.map((a) => [
+      articlePath(a.slug),
+      {
+        heading: a.headline,
+        paragraphs: [a.dek],
+        blocks: a.blocks,
+      } satisfies PrerenderContent,
+    ]),
+  ),
 };
 
 /**
@@ -235,6 +296,46 @@ export function prerenderFor(pathname: string): PrerenderContent | null {
 }
 
 /**
+ * One article block as HTML.
+ *
+ * Mirrors the `Block` component in client/src/pages/Article.tsx element for
+ * element. A `qa` pair renders as a bolded question and a paragraph in both,
+ * so an engine reading the HTML and a person reading the page get the same
+ * structure and not just the same words.
+ *
+ * The switch is exhaustive over ArticleBlock's union. Adding a block type
+ * without adding a case here is a TypeScript error at the return statement,
+ * which is the intended way to find out.
+ */
+function renderBlockHtml(block: ArticleBlock): string {
+  switch (block.type) {
+    case "h2":
+      return `<h2>${esc(block.text)}</h2>`;
+
+    case "p":
+      return `<p>${esc(block.text)}</p>`;
+
+    case "qa":
+      return `<p><strong>${esc(block.q)}</strong> ${esc(block.a)}</p>`;
+
+    case "sources": {
+      const items = block.items
+        .map(
+          (s) =>
+            // rel="noopener noreferrer" matches the rendered page. nofollow is
+            // deliberately NOT set: these are citations to primary literature,
+            // and refusing to pass any signal to the sources an argument rests
+            // on would undercut the one thing this corpus is trying to prove
+            // about itself.
+            `<li><a href="${escAttr(s.url)}" rel="noopener noreferrer">${esc(s.label)}</a></li>`,
+        )
+        .join("");
+      return `<h2>Sources</h2><ul>${items}</ul>`;
+    }
+  }
+}
+
+/**
  * Render one content block to HTML.
  *
  * Empty paragraphs are dropped — the launch-gate lines above collapse to ""
@@ -249,6 +350,10 @@ export function renderPrerenderHtml(content: PrerenderContent): string {
     parts.push(`<p>${esc(p)}</p>`);
   }
 
+  for (const block of content.blocks ?? []) {
+    parts.push(renderBlockHtml(block));
+  }
+
   if (content.bullets && content.bullets.length > 0) {
     const items = content.bullets
       .filter((b) => b.trim() !== "")
@@ -256,6 +361,13 @@ export function renderPrerenderHtml(content: PrerenderContent): string {
       .join("");
     if (items) parts.push(`<ul>${items}</ul>`);
   }
+
+  // The DSHEA disclaimer, which the rendered page carries in <Footer> on every
+  // route. The fallback stands in for the whole page, footer included, so
+  // leaving it out would make the fallback LESS faithful, not more — and it
+  // would mean the one version of the page an answer engine actually reads is
+  // the version without it. Kept verbatim to the Footer copy.
+  parts.push(`<p>${esc(DSHEA_DISCLAIMER)}</p>`);
 
   return parts.join("");
 }

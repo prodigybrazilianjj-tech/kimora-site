@@ -19,6 +19,9 @@ import Checkout from "@/pages/Checkout";
 import OrderSuccess from "@/pages/OrderSuccess";
 import ManageSubscription from "@/pages/ManageSubscription";
 
+import Learn from "@/pages/Learn";
+import Article from "@/pages/Article";
+
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import Refunds from "@/pages/Refunds";
@@ -103,6 +106,15 @@ function Router() {
         {/* Put the more specific route BEFORE /wholesale */}
         <Route path="/wholesale/apply" component={WholesaleApply} />
         <Route path="/wholesale" component={Wholesale} />
+
+        {/* Content. Specific before parameterised, same rule as /wholesale
+            above: wouter takes the first match in the Switch, and "/learn/:slug"
+            would happily swallow "/learn" if the segment were optional — it
+            isn't, but the ordering is the convention here and cheap to keep.
+            An unknown slug renders NotFound from inside Article, so a bad URL
+            under /learn behaves like any other 404. */}
+        <Route path="/learn" component={Learn} />
+        <Route path="/learn/:slug" component={Article} />
 
         {/* Legal */}
         <Route path="/terms" component={Terms} />

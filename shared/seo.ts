@@ -32,6 +32,17 @@ import { PRELAUNCH_GATE } from "../client/src/lib/prelaunch";
 // data cannot claim a flavour the site does not sell. product.ts is plain
 // constants with no imports and no browser APIs, so it bundles into the server.
 import { FLAVORS, isFlavorAvailable } from "../client/src/lib/product";
+// The /learn corpus. Same crossing as the two imports above and for the same
+// reason: the routes, the sitemap and the Article schema all have to describe
+// exactly the articles that exist, and the only way to guarantee that is to
+// read the registry the pages render from.
+import {
+  ARTICLES,
+  LEARN_BASE,
+  articlePath,
+  corpusLastUpdated,
+  type Article,
+} from "../client/src/lib/articles";
 
 /**
  * Canonical origin. kimoraco.com 301s to www.kimoraco.com, so www is the
@@ -113,6 +124,36 @@ export const ROUTES: readonly RouteSeo[] = [
     changefreq: "monthly",
     priority: 0.7,
   },
+  // ── Content ────────────────────────────────────────────────────────────
+  // The hub, then one entry per article, generated from the registry. Adding
+  // an article to client/src/lib/articles.ts puts it in the route table, the
+  // sitemap and the JSON-LD without editing any of them — which matters
+  // because DEFAULT_ROUTE is `indexable: false`, so an article the table
+  // forgot would ship noindex and be absent from the sitemap. Silently.
+  {
+    path: LEARN_BASE,
+    title: "Learn — Creatine, Electrolytes and Training | Kimora Co.",
+    description:
+      "Straight answers about creatine, electrolytes and training. Sourced, and honest about where the evidence stops.",
+    indexable: true,
+    changefreq: "weekly",
+    priority: 0.7,
+  },
+  ...ARTICLES.map(
+    (a) =>
+      ({
+        path: articlePath(a.slug),
+        title: a.title,
+        description: a.description,
+        indexable: true,
+        changefreq: "monthly",
+        // Above the legal pages and below the storefront. These are the pages
+        // the AI-shelf program exists to get retrieved, but they are not the
+        // pages a buyer lands on.
+        priority: 0.8,
+      }) satisfies RouteSeo,
+  ),
+
   {
     path: "/terms",
     title: "Terms of Service | Kimora Co.",
@@ -229,9 +270,24 @@ export function canonicalFor(pathname: string): string {
 // ── Sitemap ──────────────────────────────────────────────────────────────
 
 /**
+ * The lastmod for one route.
+ *
+ * Marketing and legal pages get the build date: their content only changes on
+ * deploy, so that is accurate. Articles get their own `updated` date instead,
+ * because a corpus whose every page claims to have changed on the last deploy
+ * is telling a crawler something false about all of them — and the signal that
+ * matters for content is which piece actually moved.
+ */
+function lastmodFor(path: string, buildDate: string): string {
+  if (path === LEARN_BASE) return corpusLastUpdated();
+
+  const article = ARTICLES.find((a) => articlePath(a.slug) === path);
+  return article ? article.updated : buildDate;
+}
+
+/**
  * Every indexable route as a sitemap.xml document. Written to
- * dist/public/sitemap.xml by script/build.ts, so the build date is the
- * lastmod — accurate for a site whose content only changes on deploy.
+ * dist/public/sitemap.xml by script/build.ts.
  */
 export function buildSitemapXml(lastmod = new Date().toISOString().slice(0, 10)): string {
   const urls = ROUTES.filter((r) => r.indexable)
@@ -239,7 +295,7 @@ export function buildSitemapXml(lastmod = new Date().toISOString().slice(0, 10))
       [
         "  <url>",
         `    <loc>${canonicalFor(r.path)}</loc>`,
-        `    <lastmod>${lastmod}</lastmod>`,
+        `    <lastmod>${lastmodFor(r.path, lastmod)}</lastmod>`,
         r.changefreq ? `    <changefreq>${r.changefreq}</changefreq>` : null,
         r.priority !== undefined ? `    <priority>${r.priority.toFixed(1)}</priority>` : null,
         "  </url>",
@@ -445,6 +501,76 @@ export function faqJsonLd(): object {
   };
 }
 
+/**
+ * Article schema for one /learn piece.
+ *
+ * `Article`, not `BlogPosting`. The corpus is reference material a reader
+ * arrives at from a question, not dated posts in a stream, and the schema
+ * should say which it is.
+ *
+ * `citation` is the reason this block earns its place. The differentiating
+ * move in this corpus is refusing claims the evidence does not support and
+ * naming the evidence that remains — expressing those sources as structured
+ * data is how that becomes machine-checkable rather than just prose an engine
+ * has to take on trust.
+ *
+ * Deliberately absent: `wordCount`, `articleBody`, `image`. Word count is
+ * noise; a full articleBody duplicates the page for no gain now that the body
+ * is actually crawlable; and there is no per-article image to point at, so
+ * claiming one would be false.
+ */
+export function articleJsonLd(article: Article): object {
+  const url = `${SITE_ORIGIN}${articlePath(article.slug)}`;
+
+  const sources = article.blocks.flatMap((b) =>
+    b.type === "sources" ? b.items : [],
+  );
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "@id": `${url}#article`,
+    headline: article.headline,
+    description: article.description,
+    url,
+    datePublished: article.published,
+    dateModified: article.updated,
+    inLanguage: "en-US",
+    author: { "@id": `${SITE_ORIGIN}/#organization` },
+    publisher: { "@id": `${SITE_ORIGIN}/#organization` },
+    isPartOf: { "@id": `${SITE_ORIGIN}${LEARN_BASE}#collection` },
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    ...(sources.length > 0
+      ? {
+          citation: sources.map((s) => ({
+            "@type": "CreativeWork",
+            name: s.label,
+            url: s.url,
+          })),
+        }
+      : {}),
+  };
+}
+
+/** CollectionPage for the /learn hub, listing the corpus in order. */
+export function learnHubJsonLd(): object {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${SITE_ORIGIN}${LEARN_BASE}#collection`,
+    name: "Learn — Creatine, Electrolytes and Training",
+    url: `${SITE_ORIGIN}${LEARN_BASE}`,
+    isPartOf: { "@id": `${SITE_ORIGIN}/#website` },
+    publisher: { "@id": `${SITE_ORIGIN}/#organization` },
+    hasPart: ARTICLES.map((a) => ({
+      "@type": "Article",
+      "@id": `${SITE_ORIGIN}${articlePath(a.slug)}#article`,
+      headline: a.headline,
+      url: `${SITE_ORIGIN}${articlePath(a.slug)}`,
+    })),
+  };
+}
+
 /** All JSON-LD blocks that belong on a given route. */
 export function jsonLdForPath(pathname: string): object[] {
   const key = normalizePath(pathname);
@@ -452,6 +578,14 @@ export function jsonLdForPath(pathname: string): object[] {
 
   if (key === "/faq") blocks.push(faqJsonLd());
   if (key === "/product" || key === "/shop") blocks.push(productJsonLd());
+  if (key === LEARN_BASE) blocks.push(learnHubJsonLd());
+
+  // Matched against the route table rather than by parsing the path, so a
+  // /learn/ URL for an article that does not exist gets no Article block —
+  // the same slug that renders NotFound must not also announce itself as a
+  // published article.
+  const article = ARTICLES.find((a) => articlePath(a.slug) === key);
+  if (article) blocks.push(articleJsonLd(article));
 
   return blocks;
 }

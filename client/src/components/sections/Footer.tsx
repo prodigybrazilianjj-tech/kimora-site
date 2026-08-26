@@ -91,6 +91,15 @@ export function Footer({ tone = "sand" }: { tone?: keyof typeof TONES }) {
 
           {/* Legal + Utility Links */}
           <div className="flex flex-wrap justify-center gap-6 text-xs">
+            {/* Learn sits first and sitewide. The corpus is the point of the
+                SEO program, and the footer is on every page — it is the only
+                internal link that reaches /learn from everywhere, since the
+                header carries a fixed four and Wholesale already lost that
+                argument. */}
+            <Link href="/learn" className={`${t.hover} transition-colors`}>
+              Learn
+            </Link>
+
             <Link href="/terms" className={`${t.hover} transition-colors`}>
               Terms of Service
             </Link>

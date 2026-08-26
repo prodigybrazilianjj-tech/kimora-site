@@ -372,12 +372,32 @@ export function siteJsonLd(): object[] {
         "Kimora Co. makes daily creatine monohydrate and electrolyte stick packs for Brazilian jiu-jitsu, MMA, Muay Thai and strength athletes.",
       foundingDate: "2026",
       founder: { "@type": "Person", name: "Alex Estrada" },
+      // The company's official mailing address — the PO Box already given to
+      // labs, vendors and retailers, so publishing it discloses nothing new.
+      //
+      // ⚠️ NOT the physical address. That one is residential, and a
+      // streetAddress on a public Organization node would put the founder's
+      // home on every page of the site. Playbook finding #16 called
+      // postalCode a cheap local signal and streetAddress a bad idea; this
+      // takes the first and declines the second, and uses the PO Box's
+      // postcode rather than the residential one so the two are not even
+      // adjacent.
       address: {
         "@type": "PostalAddress",
+        postOfficeBoxNumber: "20024",
         addressLocality: "Sedona",
         addressRegion: "AZ",
+        postalCode: "86341",
         addressCountry: "US",
       },
+      // Where the brand actually sells and ships. areaServed is the honest
+      // local signal for "BJJ supplement brands in Arizona" — it says we
+      // operate here, which is true, without implying a stocked account
+      // anywhere, which is not yet.
+      areaServed: [
+        { "@type": "State", name: "Arizona" },
+        { "@type": "Country", name: "United States" },
+      ],
       email: "support@kimoraco.com",
     },
     {

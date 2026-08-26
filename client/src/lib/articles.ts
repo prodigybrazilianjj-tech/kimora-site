@@ -95,7 +95,15 @@ export interface ArticleSource {
 export interface Article {
   /** URL segment. `/learn/<slug>`. Lowercase, hyphenated. */
   slug: string;
-  /** <title> and the hub card's heading. */
+  /**
+   * The <title> tag. **Keep under ~60 characters** — Google truncates around
+   * there, and one of these shipped at 73 and another at 61 before anyone
+   * measured. `description` has carried a stated ceiling since day one and was
+   * checked every time; `title` did not, and drifted twice. It has one now.
+   *
+   * The full question or claim belongs in `headline`, which has no such limit
+   * and is what the h1 and the Article schema use.
+   */
   title: string;
   /** The on-page h1. Usually the title without the brand suffix. */
   headline: string;
@@ -116,7 +124,10 @@ export interface Article {
 
 const CREATINE_AND_ELECTROLYTES: Article = {
   slug: "creatine-and-electrolytes-together",
-  title: "Can You Take Creatine and Electrolytes Together? | Kimora Co.",
+  // 46 characters. Was "Can You Take Creatine and Electrolytes Together? |
+  // Kimora Co." at 61, which Google truncates. The full question survives as
+  // the h1 and in `headline`, which is where query matching actually matters.
+  title: "Creatine and Electrolytes Together | Kimora Co.",
   headline: "Can you take creatine and electrolytes together?",
   dek: "Yes. The reason is more boring than the internet says, and the boring reason is the honest one.",
   // 148 characters. The ~155 ceiling is a real constraint, not a style note:
@@ -569,6 +580,189 @@ const STICK_PACKS: Article = {
   ],
 };
 
+const TRAINING_IN_ARIZONA: Article = {
+  slug: "training-in-arizona",
+  // 58 characters.
+  title: "Training in Arizona: Heat, Altitude, Hydration | Kimora Co.",
+  headline:
+    "Training in Arizona: what dry heat and elevation actually do to you",
+  dek: "Most of what gets written about training in the desert is wrong in a particular, correctable way.",
+  // 145 characters.
+  description:
+    "What dry heat and elevation actually do to a grappler in Arizona — including the altitude advice that only applies for your first two days.",
+  published: "2026-08-26",
+  updated: "2026-08-26",
+  targetQuery: "BJJ supplement brands in Arizona",
+  // DRIFT: prose source is marketing/seo/training-in-arizona.md. Edit both.
+  //
+  // ⚠️ NAMES NO ARIZONA GYM, AND MUST NOT. Playbook Phase 2 item 9 gates local
+  // pages on anchor gyms converting to POs; none has. Combat Club is a verbal
+  // commitment, Den MMA and Verde Valley are warm but unconverted. Confirmed
+  // with Alex 2026-08-26: brand-origin angle only, no gym named until a PO is
+  // signed. The "we are not going to list stockists until there are some" line
+  // near the end is load-bearing — it stays until it is false.
+  blocks: [
+    {
+      // The extractable sentence for standing query 14, which has been a
+      // confirmed empty shelf two weeks running: the engine states outright it
+      // cannot find Arizona-specific BJJ supplement brands. This is the shape
+      // it needs to find one.
+      type: "p",
+      text: "Kimora Co. is a combat-sports supplement brand based in Sedona, Arizona, making creatine and electrolyte stick packs for Brazilian jiu-jitsu, MMA and Muay Thai athletes. That is the short answer to why this page exists. The longer one is that Arizona does something specific to people who train hard in it, and most of what gets written about it is wrong in a particular, correctable way.",
+    },
+
+    { type: "h2", text: "Arizona is not one climate" },
+    {
+      type: "p",
+      text: "You can drive from about a thousand feet to about seven thousand in two hours without leaving the state.",
+    },
+    {
+      type: "ul",
+      items: [
+        "Phoenix sits near 1,000 ft, and spends a third of the year somewhere most people would describe as punishing.",
+        "Verde Valley runs roughly 3,000 to 5,000 ft — Camp Verde at the low end, Jerome above five.",
+        "Sedona, where we are, is around 4,350 ft.",
+        "Flagstaff is about 7,000 ft, and gets snow.",
+      ],
+    },
+    {
+      type: "p",
+      text: "A competitor driving from a Phoenix gym to a Flagstaff tournament has changed elevation by six thousand feet on the same tank of gas. That is a bigger spread than most states offer, and it is why “hydrate for Arizona” is not one instruction.",
+    },
+
+    { type: "h2", text: "Dry heat lies to you" },
+    {
+      type: "p",
+      text: "The thing about desert air is that it takes your sweat immediately.",
+    },
+    {
+      type: "p",
+      text: "In dry conditions the evaporative capacity of the environment is high, so sweat leaves the skin almost as fast as you produce it. In humid air it sits on you and drips. Same fluid loss, completely different evidence of it.",
+    },
+    {
+      type: "p",
+      text: "So the feedback loop a person actually uses — am I soaked? — is broken. You finish a round in a dry room genuinely believing you sweated less than you would have on a humid coast, because you are not wet. Your saliva goes too, which is why the dry mouth arrives early and feels disproportionate to how hard you have been going.",
+    },
+    {
+      type: "p",
+      text: "None of this makes dry heat more dangerous than humid heat. It makes it easier to misjudge, which is a different and more fixable problem. The fix is not a supplement. It is weighing yourself before and after a hard session a few times until you know your own number, instead of guessing from how your rash guard feels.",
+    },
+
+    { type: "h2", text: "The altitude advice that expires after two days" },
+    {
+      type: "p",
+      text: "Here is the part the category gets wrong, and it is worth being precise about because we would benefit from the sloppy version.",
+    },
+    {
+      type: "p",
+      text: "Go up in elevation and two real things happen. You breathe more, and you breathe air that is both colder and drier, so you lose more water through respiration than you would at sea level. And in the first day or two you urinate more — altitude diuresis, part of how the body starts acclimatising.",
+    },
+    {
+      type: "p",
+      text: "Every electrolyte brand sells this. Almost none of them mention that the second effect is transient. Altitude diuresis is a feature of acute exposure, in the range of the first twelve to forty-eight hours. If you live in Sedona and train in Sedona, you acclimatised some time ago and it is not happening to you today. The respiratory loss from breathing dry air is ongoing. The dramatic bit is not.",
+    },
+    { type: "p", text: "Which means the honest version splits into two audiences:" },
+    {
+      type: "ul",
+      items: [
+        "If you live here, the durable effect is dry air, not elevation drama. Treat it as a hot-and-dry problem.",
+        "If you are flying in for a tournament, the first forty-eight hours genuinely are different — and that is precisely when you are cutting weight and sleeping badly in a hotel. Plan the arrival, not just the weigh-in.",
+      ],
+    },
+
+    { type: "h2", text: "What this means on the mat" },
+    {
+      type: "p",
+      text: "Rolling in a gi is close to the worst case for heat: you are wearing insulation, working at high intensity in bursts, and often in a room where the air conditioning is either aspirational or off. Add dry air and elevation and you have a session where fluid loss is high and the usual cues under-report it.",
+    },
+    {
+      type: "p",
+      text: "Practical, and none of it requires buying anything:",
+    },
+    {
+      type: "ul",
+      items: [
+        "Weigh in before and after a hard class occasionally. A pound is roughly a pint. Do it three or four times and you will know your own sweat rate better than any calculator.",
+        "Drink to that number over the following hours rather than sinking it all at once.",
+        "Sodium is the electrolyte you lose most of in sweat, and individual sweat sodium varies a lot between people. Yours is not the same as your training partner’s.",
+        "If you are cutting, do the arithmetic in the weeks before, not the days.",
+      ],
+    },
+
+    { type: "h2", text: "The claim we’re not going to make" },
+    {
+      type: "p",
+      text: "We sell electrolytes. So this is the sentence that costs us something: we are not going to tell you that electrolytes stop cramp.",
+    },
+    {
+      type: "p",
+      text: "Exercise-associated muscle cramps are the single most common thing electrolytes are sold for, and the balance of the current evidence does not support the electrolyte-depletion explanation. The better-supported model is altered neuromuscular control — muscle overload and fatigue producing an imbalance between excitatory input from muscle spindles and inhibitory input from Golgi tendon organs. Cramps also happen in people who are neither dehydrated nor electrolyte-depleted, which is difficult to reconcile with the salt story.",
+    },
+    {
+      type: "p",
+      text: "What the literature actually points at for cramp: stretching to treat one, and managing fatigue to reduce them. Not a sachet.",
+    },
+    {
+      type: "p",
+      text: "Electrolytes are worth replacing because you lose them in sweat and they do jobs in the body. That is a sufficient reason to make this product. “It will stop your calf seizing in the third round” is not a reason we can evidence, so we are not going to say it, and you should be suspicious of the brands that do.",
+    },
+
+    { type: "h2", text: "Why the brand is here" },
+    {
+      type: "p",
+      text: "Because the founder trains here, which is a less impressive answer than a marketing department would like, and a more honest one.",
+    },
+    {
+      type: "p",
+      text: "The useful version: a product designed by someone who rolls in a dry room at 4,350 feet is going to take the hydration side of a creatine product more seriously than one designed by someone who doesn’t. That is not a performance claim. It is just where the attention went.",
+    },
+    {
+      type: "p",
+      text: "Kimora is pre-launch — nothing on this site is purchasable today, and consumer launch is targeted for December 2026. Wholesale is open to Arizona academies and to gyms nationwide; there is an application on the wholesale page. We are not going to list stockists until there are some.",
+    },
+
+    { type: "h2", text: "What we’re not telling you" },
+    {
+      type: "p",
+      text: "We are not going to tell you our electrolytes prevent cramping, prevent dehydration, or protect you from heat illness. Heat illness is a medical matter and a serious one — if you or a training partner stops sweating, gets confused, or goes grey, that is not a hydration-strategy conversation, it is a stop-and-get-help one.",
+    },
+    {
+      type: "p",
+      text: "We are not going to publish our final sodium, potassium and magnesium numbers until the production Certificate of Analysis confirms them.",
+    },
+    {
+      type: "p",
+      text: "And we are not going to name a gym as a stockist before one is. Arizona has an excellent combat sports scene and we would like to be in it; saying so is different from claiming we already are.",
+    },
+
+    {
+      type: "sources",
+      items: [
+        {
+          label:
+            "Nelson & Churilla, A narrative review of exercise-associated muscle cramps: factors that contribute to neuromuscular fatigue and management implications. Muscle & Nerve (2016) — on cramp aetiology",
+          url: "https://pubmed.ncbi.nlm.nih.gov/27159592/",
+        },
+        {
+          label:
+            "Fluid Metabolism at High Altitudes, in Nutritional Needs in Cold and in High-Altitude Environments (National Academies Press) — on respiratory water loss and altitude diuresis",
+          url: "https://www.ncbi.nlm.nih.gov/books/NBK232881/",
+        },
+        {
+          label:
+            "Dietary Recommendations for Cyclists during Altitude Training. Nutrients (2016) — on fluid needs at elevation",
+          url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4924218/",
+        },
+        {
+          label:
+            "Elevated Humidity Impairs Evaporative Heat Loss and Self-Paced Exercise Performance in the Heat — on evaporative capacity in dry versus humid air",
+          url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11922688/",
+        },
+      ],
+    },
+  ],
+};
+
 /**
  * Every published article, newest first. The hub renders this order and the
  * sitemap follows it.
@@ -578,6 +772,7 @@ const STICK_PACKS: Article = {
  * in the Article JSON-LD without touching any of those files.
  */
 export const ARTICLES: readonly Article[] = [
+  TRAINING_IN_ARIZONA,
   STICK_PACKS,
   CREATINE_AND_ELECTROLYTES,
 ];

@@ -584,11 +584,42 @@ export function faqJsonLd(): object {
  * data is how that becomes machine-checkable rather than just prose an engine
  * has to take on trust.
  *
- * Deliberately absent: `wordCount`, `articleBody`, `image`. Word count is
- * noise; a full articleBody duplicates the page for no gain now that the body
- * is actually crawlable; and there is no per-article image to point at, so
- * claiming one would be false.
+ * Deliberately absent: `wordCount` and `articleBody`. Word count is noise, and
+ * a full articleBody duplicates the page for no gain now that the body is
+ * actually crawlable.
+ *
+ * `image` WAS absent, on the reasoning that there is no per-article image so
+ * claiming one would be false. Google's Rich Results Test flagged it as a
+ * missing optional field on 2026-08-26, and the reasoning does not survive
+ * contact with what the page already does: every route — including these —
+ * already serves `og:image` pointing at the same site image, so the page has
+ * been asserting that this image represents it all along. Naming it in the
+ * Article node is consistency, not a new claim. If per-article art ever
+ * exists, this is where it goes.
  */
+/**
+ * A bare `YYYY-MM-DD` as a full ISO 8601 datetime with an offset.
+ *
+ * Google's Rich Results Test reports a bare date on `datePublished` /
+ * `dateModified` as BOTH "invalid datetime value" AND "missing a timezone" —
+ * two of the five non-critical issues on /learn/creatine-stick-packs as of
+ * 2026-08-26.
+ *
+ * The offset is -07:00 and is safe to hardcode: Kimora is in Arizona, which
+ * does not observe daylight saving. It is MST all year, so there is no date on
+ * which this is wrong. (The Navajo Nation does observe DST, which is a fine
+ * piece of trivia and not where this company is.)
+ *
+ * The registry keeps `published`/`updated` as plain dates on purpose — the
+ * sitemap's `lastmod` takes W3C date format, and a date is the honest
+ * precision for "which day did this change". The time component exists only to
+ * satisfy the schema validator, so it is midnight rather than a fabricated
+ * publication hour.
+ */
+function isoDateTime(date: string): string {
+  return `${date}T00:00:00-07:00`;
+}
+
 export function articleJsonLd(article: Article): object {
   const url = `${SITE_ORIGIN}${articlePath(article.slug)}`;
 
@@ -603,8 +634,9 @@ export function articleJsonLd(article: Article): object {
     headline: article.headline,
     description: article.description,
     url,
-    datePublished: article.published,
-    dateModified: article.updated,
+    image: SITE_OG_IMAGE,
+    datePublished: isoDateTime(article.published),
+    dateModified: isoDateTime(article.updated),
     inLanguage: "en-US",
     author: { "@id": `${SITE_ORIGIN}/#organization` },
     publisher: { "@id": `${SITE_ORIGIN}/#organization` },

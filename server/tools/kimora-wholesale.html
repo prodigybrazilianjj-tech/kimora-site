@@ -204,7 +204,7 @@
       <tr class="tier-row" data-price="31.00" data-discount="38" data-min="12" onclick="selectTier(this)">
         <td class="tier-check">✓</td>
         <td class="tier-name">Gym Wholesale <small>All gym accounts</small></td>
-        <td>12+ units</td>
+        <td>1 case (12 bags)</td>
         <td class="tier-price">$31.00</td>
         <td class="tier-discount">38% off</td>
         <td class="tier-save">$18.99 / unit</td>
@@ -278,7 +278,7 @@
       <tr>
         <th style="width:36%">Product</th>
         <th style="width:24%">Flavor / Variant</th>
-        <th style="width:12%" class="r">Qty</th>
+        <th style="width:12%" class="r">Cases<span style="display:block;font-weight:400;opacity:.55">12 bags ea.</span></th>
         <th style="width:14%" class="r">Unit Price</th>
         <th style="width:14%" class="r">Line Total</th>
       </tr>
@@ -374,6 +374,10 @@
 
 <script>
 const MSRP = 49.99;
+// Gym orders ship in full CASES, never loose bags (locked 8/26/2026). The Qty
+// column is a CASE count; bags = cases * CASE_SIZE. Keep in sync with CASE_SIZE
+// in server/services/wholesaleTokenService.ts.
+const CASE_SIZE = 12;
 const PIN  = '0702';
 const PRODUCTS = [
   { name: 'Strawberry Guava',      sku: 'KIM-SG' },
@@ -407,8 +411,8 @@ function selectTier(row) {
   const banner = document.getElementById('active-banner');
   banner.classList.add('show');
   document.getElementById('banner-tier').textContent   = name;
-  document.getElementById('banner-price').textContent  = `$${activePrice.toFixed(2)} / unit`;
-  document.getElementById('banner-detail').textContent = `${activeDiscount}% off MSRP · Min ${row.dataset.min} units · Save $${(MSRP - activePrice).toFixed(2)} per unit`;
+  document.getElementById('banner-price').textContent  = `$${(activePrice * CASE_SIZE).toFixed(2)} / case`;
+  document.getElementById('banner-detail').textContent = `$${activePrice.toFixed(2)}/bag · ${activeDiscount}% off MSRP · gym keeps $${((MSRP - activePrice) * CASE_SIZE).toFixed(2)} per case at shelf`;
   recalc();
 }
 
@@ -416,7 +420,8 @@ function recalc() {
   if (!activePrice) return;
   let totalQty = 0, afterDiscount = 0;
   PRODUCTS.forEach((_, i) => {
-    const qty = parseFloat(document.getElementById(`qty-${i}`)?.value) || 0;
+    const cases = Math.max(0, parseInt(document.getElementById(`qty-${i}`)?.value) || 0);
+    const qty = cases * CASE_SIZE;
     totalQty += qty;
     const lt = qty * activePrice;
     afterDiscount += lt;
@@ -430,10 +435,9 @@ function recalc() {
   document.getElementById('t-discount').textContent = saved > 0 ? `−$${saved.toFixed(2)}` : '—';
   document.getElementById('t-after').textContent    = `$${afterDiscount.toFixed(2)}`;
   document.getElementById('t-total').textContent    = `$${(afterDiscount + tax).toFixed(2)}`;
-  const minQty = parseInt(document.querySelector('.tier-row.active')?.dataset.min || 0);
   const noteEl = document.getElementById('qty-note');
-  if (totalQty > 0 && totalQty < minQty) { noteEl.textContent = `⚠ ${totalQty} units — need ${minQty - totalQty} more to qualify for this tier.`; noteEl.style.color = '#e07070'; }
-  else if (totalQty >= minQty && minQty > 0) { noteEl.textContent = `✓ Qualifies (${totalQty} units).`; noteEl.style.color = 'var(--green)'; }
+  const caseCount = totalQty / CASE_SIZE;
+  if (totalQty > 0) { noteEl.textContent = `${caseCount} case${caseCount !== 1 ? 's' : ''} · ${totalQty} bags`; noteEl.style.color = 'var(--green)'; }
   else { noteEl.textContent = ''; }
 }
 
@@ -544,7 +548,8 @@ document.getElementById('f-businessType').addEventListener('change', function() 
 function buildLineItems() {
   const items = [];
   PRODUCTS.forEach((p, i) => {
-    const qty = parseFloat(document.getElementById(`qty-${i}`)?.value) || 0;
+    const cases = Math.max(0, parseInt(document.getElementById(`qty-${i}`)?.value) || 0);
+    const qty = cases * CASE_SIZE; // server contract is in BAGS
     if (qty <= 0) return;
     const row = document.querySelector(`#order-body tr:nth-child(${i + 1})`);
     const name = p.name || row?.querySelector('td:first-child input')?.value?.trim() || 'Custom Product';

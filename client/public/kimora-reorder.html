@@ -156,7 +156,7 @@
       <thead>
         <tr>
           <th style="width:34%">Product</th>
-          <th style="width:30%" class="c">Qty</th>
+          <th style="width:30%" class="c">Cases <span style="opacity:.55;font-weight:400">(12 bags)</span></th>
           <th style="width:12%" class="r hide-sm">Unit</th>
           <th style="width:12%" class="r">Your Margin</th>
           <th style="width:12%" class="r">Line Total</th>
@@ -192,6 +192,10 @@
 
 <script>
 const MSRP = 49.99; // retail price per bag — used to show the gym its margin
+// Gym orders ship in full CASES, never loose bags (locked 8/26/2026).
+// The input below is a CASE count; bags = cases * CASE_SIZE. Keep in sync
+// with CASE_SIZE in server/services/wholesaleTokenService.ts.
+const CASE_SIZE = 12;
 const PRODUCTS = [
   { name: 'Strawberry Guava',      sku: 'KIM-SG' },
   { name: 'Lemon Lychee',          sku: 'KIM-LL' },
@@ -271,22 +275,22 @@ function lastQtyFor(name) {
 function buildOrderRows() {
   const tbody = document.getElementById('order-body');
   tbody.innerHTML = '';
-  const marginUnit = Math.max(0, MSRP - activePrice);
-  const marginPct  = MSRP > 0 ? Math.round((marginUnit / MSRP) * 100) : 0;
+  const marginUnit = Math.max(0, MSRP - activePrice) * CASE_SIZE; // per case
+  const marginPct  = MSRP > 0 ? Math.round((Math.max(0, MSRP - activePrice) / MSRP) * 100) : 0;
 
   PRODUCTS.forEach((p, i) => {
-    const qty = lastQtyFor(p.name); // pre-fill from last order (0 if none)
+    const cases = Math.round(lastQtyFor(p.name) / CASE_SIZE); // pre-fill from last order, in cases
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="product-name">${p.name}</span><span class="product-sku">SKU: ${p.sku}</span></td>
       <td class="c">
         <span class="stepper">
           <button type="button" class="step" onclick="stepQty(${i},-1)" aria-label="decrease">−</button>
-          <input type="number" class="qty" min="0" inputmode="numeric" value="${qty > 0 ? qty : ''}" placeholder="0" oninput="recalc()" id="qty-${i}">
+          <input type="number" class="qty" min="0" inputmode="numeric" value="${cases > 0 ? cases : ''}" placeholder="0" oninput="recalc()" id="qty-${i}">
           <button type="button" class="step" onclick="stepQty(${i},1)" aria-label="increase">+</button>
         </span>
       </td>
-      <td class="unit-price r hide-sm" id="up-${i}">$${activePrice.toFixed(2)}</td>
+      <td class="unit-price r hide-sm" id="up-${i}">$${(activePrice * CASE_SIZE).toFixed(2)}<span class="pct" style="display:block;opacity:.55">per case</span></td>
       <td class="margin-cell r">$${marginUnit.toFixed(2)}<span class="pct"> (${marginPct}%)</span></td>
       <td class="line-total r" id="lt-${i}">—</td>`;
     tbody.appendChild(tr);
@@ -307,8 +311,8 @@ function reorderLast() {
   PRODUCTS.forEach((p, i) => {
     const el = document.getElementById(`qty-${i}`);
     if (!el) return;
-    const q = lastQtyFor(p.name);
-    el.value = q > 0 ? q : '';
+    const c = Math.round(lastQtyFor(p.name) / CASE_SIZE);
+    el.value = c > 0 ? c : '';
   });
   recalc();
   document.getElementById('btn-submit').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -318,7 +322,8 @@ function recalc() {
   if (!activePrice) return;
   let subtotal = 0, totalQty = 0;
   PRODUCTS.forEach((_, i) => {
-    const qty = parseFloat(document.getElementById(`qty-${i}`)?.value) || 0;
+    const cases = Math.max(0, parseInt(document.getElementById(`qty-${i}`)?.value) || 0);
+    const qty = cases * CASE_SIZE;
     totalQty += qty;
     const lt = qty * activePrice;
     subtotal += lt;
@@ -337,14 +342,18 @@ function recalc() {
     ? `$${retailValue.toFixed(2)} retail value · you keep ~$${profit.toFixed(2)} at full retail`
     : '';
   const noteEl = document.getElementById('qty-note');
-  noteEl.textContent = totalQty > 0 ? `${totalQty} bag${totalQty !== 1 ? 's' : ''} · $${subtotal.toFixed(2)} before tax` : '';
+  const caseCount = totalQty / CASE_SIZE;
+  noteEl.textContent = totalQty > 0
+    ? `${caseCount} case${caseCount !== 1 ? 's' : ''} · ${totalQty} bags · $${subtotal.toFixed(2)} before tax`
+    : '';
 }
 
 // ── Build line items ──────────────────────────────────────────────────────────
 function buildLineItems() {
   const items = [];
   PRODUCTS.forEach((p, i) => {
-    const qty = parseFloat(document.getElementById(`qty-${i}`)?.value) || 0;
+    const cases = Math.max(0, parseInt(document.getElementById(`qty-${i}`)?.value) || 0);
+    const qty = cases * CASE_SIZE; // server contract is in BAGS
     if (qty > 0) items.push({ name: p.name, flavor: '', qty });
   });
   return items;

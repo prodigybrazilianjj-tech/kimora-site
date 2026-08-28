@@ -18,6 +18,8 @@ import {
   generateReorderToken,
   validateReorderToken,
   inferUnitPrice,
+  caseQuantityError,
+  CASE_SIZE,
 } from "../services/wholesaleTokenService";
 import { consumeWholesaleInventory } from "../services/inventoryService";
 import {
@@ -870,6 +872,11 @@ export function registerWholesaleRoutes(app: Express) {
       if (!lineItems.length) {
         return res.status(400).json({ ok: false, message: "Order must have at least one line item with quantity > 0." });
       }
+      // Gym orders ship in full cases of CASE_SIZE — validated on the total, not per flavor.
+      const caseErr = caseQuantityError(lineItems);
+      if (caseErr) {
+        return res.status(400).json({ ok: false, message: caseErr, caseSize: CASE_SIZE });
+      }
 
       // Map payment terms → Stripe days_until_due
       const daysMap: Record<string, number> = {
@@ -1082,6 +1089,11 @@ export function registerWholesaleRoutes(app: Express) {
 
       if (!lineItems.length) {
         return res.status(400).json({ ok: false, message: "Add at least one product with quantity > 0." });
+      }
+      // Gym orders ship in full cases of CASE_SIZE — validated on the total, not per flavor.
+      const reorderCaseErr = caseQuantityError(lineItems);
+      if (reorderCaseErr) {
+        return res.status(400).json({ ok: false, message: reorderCaseErr, caseSize: CASE_SIZE });
       }
 
       // Tax is decided by the resale-cert record on file (source of truth), not the

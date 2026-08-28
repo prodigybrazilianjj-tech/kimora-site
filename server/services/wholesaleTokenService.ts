@@ -42,6 +42,35 @@ export function inferUnitPrice(_tier?: string): number {
   return WHOLESALE_UNIT_PRICE;
 }
 
+// Gym orders ship in CASES, never loose bags (locked 8/26/2026). A case is 12
+// pouches / 360 sticks = $372.00 at the flat $31 wholesale price. The gym keeps
+// $227.88 selling them whole at the $49.99 shelf, or $348.00 broken into $2
+// singles off the counter display. Validation is on the ORDER TOTAL, not per
+// flavor — a gym may split one case across flavors (the MAT close is "a first PO
+// of 12 pouches mixed flavors"). DTC / subscription / Amazon are single pouches
+// and are NOT subject to this rule.
+export const CASE_SIZE = 12;
+export const CASE_PRICE = WHOLESALE_UNIT_PRICE * CASE_SIZE;
+
+export function isWholeCaseOrder(totalQty: number): boolean {
+  return Number.isInteger(totalQty) && totalQty > 0 && totalQty % CASE_SIZE === 0;
+}
+
+/** Total bags across line items, rounded the same way the invoice paths round. */
+export function totalQtyOf(lineItems: Array<{ qty: number | string }>): number {
+  return lineItems.reduce((s, l) => s + Math.max(0, Math.round(Number(l.qty) || 0)), 0);
+}
+
+/** null when valid; otherwise a gym-readable message. */
+export function caseQuantityError(lineItems: Array<{ qty: number | string }>): string | null {
+  const total = totalQtyOf(lineItems);
+  if (total <= 0) return "Add at least one product.";
+  if (isWholeCaseOrder(total)) return null;
+  const cases = Math.floor(total / CASE_SIZE);
+  const up = (cases + 1) * CASE_SIZE;
+  return `Orders ship in full cases of ${CASE_SIZE}. That's ${total} bags — use ${cases > 0 ? `${cases * CASE_SIZE} or ` : ""}${up}.`;
+}
+
 export function generateReorderToken(payload: ReorderTokenPayload): string {
   const data = {
     ...payload,

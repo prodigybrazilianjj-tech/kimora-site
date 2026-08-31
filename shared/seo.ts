@@ -356,6 +356,39 @@ export function buildSitemapXml(lastmod = new Date().toISOString().slice(0, 10))
 const PRICE_ONE_TIME = "49.99";
 const STICKS_PER_POUCH = 30;
 
+// ── Shipping, mirrored from checkout ─────────────────────────────────────
+//
+// ⚠️ These three are the SAME NUMBERS as `buildShippingOptions()` in
+// server/routes/checkoutRoutes.ts, which is where the shipping policy actually
+// lives. They are duplicated here rather than imported because shared/ must not
+// depend on server/. If checkout changes, change these in the same commit — the
+// failure mode is structured data quoting a shipping price we do not charge,
+// on the surface most likely to be read back verbatim.
+const SHIPPING_FLAT_RATE = "6.95";
+const FREE_SHIPPING_THRESHOLD = "99.00";
+
+/**
+ * 3–7 days, from the `delivery_estimate` carried on BOTH checkout rates.
+ *
+ * Expressed entirely as `transitTime` with no `handlingTime`. Stripe's
+ * delivery_estimate is a total time-to-arrival, not a transit leg, and no
+ * separate handling figure exists anywhere in the codebase — so splitting the
+ * range across handling and transit would be inventing the split. Reporting the
+ * total as transit keeps the number a customer is shown identical to the number
+ * a machine reads, which is the property that matters. Checkout says *business*
+ * days; schema.org's DAY unit does not distinguish, and rounding toward the
+ * longer real-world window is the conservative direction.
+ */
+const DELIVERY_TIME = {
+  "@type": "ShippingDeliveryTime",
+  transitTime: {
+    "@type": "QuantitativeValue",
+    minValue: 3,
+    maxValue: 7,
+    unitCode: "DAY",
+  },
+} as const;
+
 /** Organization + WebSite. Safe on every page. */
 export function siteJsonLd(): object[] {
   return [
@@ -558,20 +591,51 @@ export function productJsonLd(): object {
       // cannot drift from the real node.
       hasMerchantReturnPolicy: { "@id": `${SITE_ORIGIN}/#returnpolicy` },
 
-      // NO shippingDetails, deliberately — and this is a reversal of the first
-      // draft, which shipped an OfferShippingDetails carrying only
-      // shippingDestination on the reasoning that a partial node beats none.
-      // It does not. shippingRate is what makes the shipping enhancement
-      // eligible; a destination on its own is consumed by nothing, so the node
-      // was inert while still asserting an @id and tripping a missing-required
-      // -field flag. Worse than absence, not better.
+      // Transcribed from buildShippingOptions() in server/routes/checkoutRoutes.ts,
+      // which is the only place the shipping policy actually exists. An earlier
+      // pass concluded these numbers were unknown and left the node out — that
+      // was wrong, and wrong in an instructive way: the policy docs were
+      // searched and the implementation was not. The checkout code is the
+      // primary artifact for what a customer is charged.
       //
-      // The two facts needed are a flat shipping rate and a delivery window.
-      // Neither is published anywhere on this site — Terms defers delivery
-      // estimates to checkout and there is no rate card — so under the
-      // no-unverified-specs guardrail they cannot be invented. [ALEX] has both
-      // numbers; add shippingRate (a MonetaryAmount, "0" if shipping is free)
-      // and deliveryTime together when he supplies them.
+      // Two rates, because there are two: $5.00 flat, free at or above the
+      // threshold. Google reads multiple OfferShippingDetails on one Offer, so
+      // both ship rather than picking one and misrepresenting the other.
+      //
+      // ⚠️ VERBATIM-SYNC, same obligation faqJsonLd() and the return policy
+      // carry: FREE_SHIPPING_THRESHOLD and SHIPPING_FLAT_RATE above are the
+      // same numbers as FREE_THRESHOLD_CENTS and the fixed_amount in
+      // buildShippingOptions(). If checkout changes, this changes in the same
+      // commit, or the structured data starts quoting a price we do not charge.
+      shippingDetails: [
+        {
+          "@type": "OfferShippingDetails",
+          shippingRate: {
+            "@type": "MonetaryAmount",
+            value: SHIPPING_FLAT_RATE,
+            currency: "USD",
+          },
+          shippingDestination: { "@type": "DefinedRegion", addressCountry: "US" },
+          deliveryTime: DELIVERY_TIME,
+        },
+        {
+          "@type": "OfferShippingDetails",
+          shippingRate: {
+            "@type": "MonetaryAmount",
+            value: "0",
+            currency: "USD",
+          },
+          // Google expresses a free-shipping threshold as an order-value
+          // condition on the free rate, not as prose.
+          shippingDestination: { "@type": "DefinedRegion", addressCountry: "US" },
+          deliveryTime: DELIVERY_TIME,
+          eligibleTransactionVolume: {
+            "@type": "PriceSpecification",
+            minPrice: FREE_SHIPPING_THRESHOLD,
+            priceCurrency: "USD",
+          },
+        },
+      ],
     },
   };
 }

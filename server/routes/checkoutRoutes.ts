@@ -353,7 +353,24 @@ async function saveRestockAlertsForFailedCheckout(params: {
 function buildShippingOptions(params: { currency: string; subtotalCents: number }): any[] {
   const currency = params.currency || "usd";
 
-  const FREE_THRESHOLD_CENTS = 10000;
+  // $99, deliberately not $100.
+  //
+  // Two pouches is 2 x $49.99 = $99.98 — two cents under a $100 threshold, so
+  // the most natural multi-pouch order in the catalogue missed free shipping by
+  // an amount no customer would read as anything but a gotcha. A round number
+  // was the wrong shape for a catalogue priced at $49.99.
+  //
+  // The margin holds. Two pouches cross the sub-1-lb band into 1 lb (see
+  // Kimora_Parcel_Cost_Analysis_2026-08-21), so this grants free shipping
+  // exactly where the parcel gets more expensive — $7.61 low zone to $10.67
+  // Zone 8, against $5.50-$8.40 under a pound. Even at the Zone 8 worst case,
+  // $99.98 less 2x $13.42 landed COGS, less Stripe, less $10.67 parcel nets
+  // ~59%, which beats a single pouch with $5.00 collected. The threshold is
+  // sound; only its position was wrong.
+  //
+  // ⚠️ If the pouch price ever changes, revisit this number — it is derived
+  // from the price, not chosen independently of it.
+  const FREE_THRESHOLD_CENTS = 9900;
   const isFree = params.subtotalCents >= FREE_THRESHOLD_CENTS;
 
   if (isFree) {
@@ -362,7 +379,7 @@ function buildShippingOptions(params: { currency: string; subtotalCents: number 
         shipping_rate_data: {
           type: "fixed_amount",
           fixed_amount: { amount: 0, currency },
-          display_name: "Free Shipping (orders $100+)",
+          display_name: "Free Shipping (orders $99+)",
           delivery_estimate: {
             minimum: { unit: "business_day", value: 3 },
             maximum: { unit: "business_day", value: 7 },
@@ -376,7 +393,25 @@ function buildShippingOptions(params: { currency: string; subtotalCents: number 
     {
       shipping_rate_data: {
         type: "fixed_amount",
-        fixed_amount: { amount: 500, currency },
+        // $6.95, raised from $5.00 on 2026-08-31.
+        //
+        // $5.00 lost money on every single sub-threshold order. Real outbound
+        // parcel cost is $5.50 (Zone 1-2, Arizona) to $8.40 (Zone 8), blended
+        // roughly $6.50-$7.50 — see Kimora_Parcel_Cost_Analysis_2026-08-21,
+        // which established that the $4.50 the COGS model had carried since
+        // July was never validated against a carrier and is simply wrong.
+        //
+        // $6.95 recovers on the majority of zones and still under-recovers on
+        // Zone 8 rural, which is the deliberate trade: full recovery would mean
+        // ~$8, and $8 shipping against a $49.99 product reads punitive on a
+        // first order. Under-recovering at the tail is a cost of acquisition;
+        // under-recovering everywhere was just an unpriced subsidy.
+        //
+        // Raised pre-launch, with zero customers, which is the only moment this
+        // costs nothing. ⚠️ Mirrored in SHIPPING_FLAT_RATE in shared/seo.ts —
+        // both move together or the structured data quotes a price we do not
+        // charge.
+        fixed_amount: { amount: 695, currency },
         display_name: "Standard Shipping",
         delivery_estimate: {
           minimum: { unit: "business_day", value: 3 },

@@ -393,7 +393,25 @@ function buildShippingOptions(params: { currency: string; subtotalCents: number 
     {
       shipping_rate_data: {
         type: "fixed_amount",
-        fixed_amount: { amount: 500, currency },
+        // $6.95, raised from $5.00 on 2026-08-31.
+        //
+        // $5.00 lost money on every single sub-threshold order. Real outbound
+        // parcel cost is $5.50 (Zone 1-2, Arizona) to $8.40 (Zone 8), blended
+        // roughly $6.50-$7.50 — see Kimora_Parcel_Cost_Analysis_2026-08-21,
+        // which established that the $4.50 the COGS model had carried since
+        // July was never validated against a carrier and is simply wrong.
+        //
+        // $6.95 recovers on the majority of zones and still under-recovers on
+        // Zone 8 rural, which is the deliberate trade: full recovery would mean
+        // ~$8, and $8 shipping against a $49.99 product reads punitive on a
+        // first order. Under-recovering at the tail is a cost of acquisition;
+        // under-recovering everywhere was just an unpriced subsidy.
+        //
+        // Raised pre-launch, with zero customers, which is the only moment this
+        // costs nothing. ⚠️ Mirrored in SHIPPING_FLAT_RATE in shared/seo.ts —
+        // both move together or the structured data quotes a price we do not
+        // charge.
+        fixed_amount: { amount: 695, currency },
         display_name: "Standard Shipping",
         delivery_estimate: {
           minimum: { unit: "business_day", value: 3 },

@@ -364,7 +364,7 @@ const STICKS_PER_POUCH = 30;
 // depend on server/. If checkout changes, change these in the same commit — the
 // failure mode is structured data quoting a shipping price we do not charge,
 // on the surface most likely to be read back verbatim.
-const SHIPPING_FLAT_RATE = "5.00";
+const SHIPPING_FLAT_RATE = "6.95";
 const FREE_SHIPPING_THRESHOLD = "99.00";
 
 /**

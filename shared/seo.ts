@@ -503,6 +503,45 @@ export function productJsonLd(): object {
         ? "https://schema.org/PreOrder"
         : "https://schema.org/InStock",
       seller: { "@id": `${SITE_ORIGIN}/#organization` },
+
+      // Transcribed verbatim from /refunds (effective 2026-04-27). Nothing here
+      // is a new commitment — if the policy page changes, this must change with
+      // it, the same verbatim-sync rule faqJsonLd() carries.
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        "@id": `${SITE_ORIGIN}/refunds#returnpolicy`,
+        url: `${SITE_ORIGIN}/refunds`,
+        applicableCountry: "US",
+        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+        merchantReturnDays: 30,
+        returnMethod: "https://schema.org/ReturnByMail",
+        // Change-of-mind returns: customer pays return shipping, no restocking
+        // fee. Damaged/defective/incorrect orders get a prepaid label, but that
+        // is a separate policy branch schema.org has no clean way to express, so
+        // the conservative (customer-pays) case is the one declared.
+        returnFees: "https://schema.org/ReturnShippingFees",
+        restockingFee: {
+          "@type": "MonetaryAmount",
+          currency: "USD",
+          value: 0,
+        },
+      },
+
+      // ⚠️ PARTIAL, deliberately. `shippingDestination` is verified — Terms says
+      // "We currently ship within the United States," so US-only is a true and
+      // currently undeclared fact. `shippingRate` and `deliveryTime` are NOT
+      // published anywhere on the site (Terms defers delivery estimates to
+      // checkout, and no rate card exists), so under the no-unverified-specs
+      // rule they are omitted rather than guessed. Google will keep reporting
+      // them as optional warnings until [ALEX] confirms the real numbers.
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        "@id": `${SITE_ORIGIN}/product#shipping`,
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "US",
+        },
+      },
     },
   };
 }

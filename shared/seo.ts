@@ -411,6 +411,54 @@ export function siteJsonLd(): object[] {
         { "@type": "Country", name: "United States" },
       ],
       email: "support@kimoraco.com",
+
+      // Transcribed from /refunds (effective 2026-04-27). Nothing here is a new
+      // commitment — it inherits the same verbatim-sync obligation faqJsonLd()
+      // carries. If /refunds changes, this changes in the same commit.
+      //
+      // WHY IT LIVES ON Organization AND NOT ON THE Offer, which is where the
+      // first draft put it: Google's offer-level MerchantReturnPolicy supports
+      // exactly six properties — applicableCountry and returnPolicyCategory
+      // (required), merchantReturnDays, returnFees, returnMethod and
+      // returnShippingFeesAmount (recommended). itemCondition, restockingFee
+      // and merchantReturnLink are NOT in that subset and are silently ignored
+      // there. itemCondition is the one that matters: it is the only way to say
+      // "unopened only," which for a consumable supplement is the whole policy.
+      // Google also states outright that offer-level policies are for
+      // OVERRIDING a standard policy, and recommends Organization level for a
+      // policy that applies to most or all products. Kimora has one product and
+      // one policy, so there is nothing to override.
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        "@id": `${SITE_ORIGIN}/#returnpolicy`,
+        merchantReturnLink: `${SITE_ORIGIN}/refunds`,
+        applicableCountry: "US",
+        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+        merchantReturnDays: 30,
+        returnMethod: "https://schema.org/ReturnByMail",
+        // "Unopened and unused products in their original packaging may be
+        // returned within 30 days of delivery"; opened products are not
+        // eligible at all. NewCondition is the documented way to say that.
+        // Without it the markup reads as "any unit, 30 days," which is a
+        // materially more generous policy than the one we actually offer.
+        itemCondition: "https://schema.org/NewCondition",
+        // ⚠️ ReturnFeesCustomerResponsibility, NOT ReturnShippingFees. Google
+        // defines the latter as "a shipping fee CHARGED BY THE MERCHANT to the
+        // consumer" and requires a non-zero returnShippingFeesAmount with it.
+        // Kimora charges nothing; the customer arranges and pays for their own
+        // return carrier on a change-of-mind return. The first draft of this
+        // block used ReturnShippingFees and so invented a Kimora fee that does
+        // not exist, in the single field a merchant listing is likeliest to
+        // surface. Damaged, defective and incorrect orders get a prepaid label
+        // and are a separate branch; the conservative branch is the one
+        // declared here, and /refunds carries the rest.
+        returnFees: "https://schema.org/ReturnFeesCustomerResponsibility",
+        restockingFee: {
+          "@type": "MonetaryAmount",
+          currency: "USD",
+          value: 0,
+        },
+      },
     },
     {
       "@context": "https://schema.org",
@@ -504,44 +552,26 @@ export function productJsonLd(): object {
         : "https://schema.org/InStock",
       seller: { "@id": `${SITE_ORIGIN}/#organization` },
 
-      // Transcribed verbatim from /refunds (effective 2026-04-27). Nothing here
-      // is a new commitment — if the policy page changes, this must change with
-      // it, the same verbatim-sync rule faqJsonLd() carries.
-      hasMerchantReturnPolicy: {
-        "@type": "MerchantReturnPolicy",
-        "@id": `${SITE_ORIGIN}/refunds#returnpolicy`,
-        url: `${SITE_ORIGIN}/refunds`,
-        applicableCountry: "US",
-        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-        merchantReturnDays: 30,
-        returnMethod: "https://schema.org/ReturnByMail",
-        // Change-of-mind returns: customer pays return shipping, no restocking
-        // fee. Damaged/defective/incorrect orders get a prepaid label, but that
-        // is a separate policy branch schema.org has no clean way to express, so
-        // the conservative (customer-pays) case is the one declared.
-        returnFees: "https://schema.org/ReturnShippingFees",
-        restockingFee: {
-          "@type": "MonetaryAmount",
-          currency: "USD",
-          value: 0,
-        },
-      },
+      // Points at the Organization-level policy rather than restating it. All
+      // JSON-LD on this site ships as one @graph precisely so @id references
+      // resolve (see the Article/author precedent), so this costs one line and
+      // cannot drift from the real node.
+      hasMerchantReturnPolicy: { "@id": `${SITE_ORIGIN}/#returnpolicy` },
 
-      // ⚠️ PARTIAL, deliberately. `shippingDestination` is verified — Terms says
-      // "We currently ship within the United States," so US-only is a true and
-      // currently undeclared fact. `shippingRate` and `deliveryTime` are NOT
-      // published anywhere on the site (Terms defers delivery estimates to
-      // checkout, and no rate card exists), so under the no-unverified-specs
-      // rule they are omitted rather than guessed. Google will keep reporting
-      // them as optional warnings until [ALEX] confirms the real numbers.
-      shippingDetails: {
-        "@type": "OfferShippingDetails",
-        "@id": `${SITE_ORIGIN}/product#shipping`,
-        shippingDestination: {
-          "@type": "DefinedRegion",
-          addressCountry: "US",
-        },
-      },
+      // NO shippingDetails, deliberately — and this is a reversal of the first
+      // draft, which shipped an OfferShippingDetails carrying only
+      // shippingDestination on the reasoning that a partial node beats none.
+      // It does not. shippingRate is what makes the shipping enhancement
+      // eligible; a destination on its own is consumed by nothing, so the node
+      // was inert while still asserting an @id and tripping a missing-required
+      // -field flag. Worse than absence, not better.
+      //
+      // The two facts needed are a flat shipping rate and a delivery window.
+      // Neither is published anywhere on this site — Terms defers delivery
+      // estimates to checkout and there is no rate card — so under the
+      // no-unverified-specs guardrail they cannot be invented. [ALEX] has both
+      // numbers; add shippingRate (a MonetaryAmount, "0" if shipping is free)
+      // and deliveryTime together when he supplies them.
     },
   };
 }

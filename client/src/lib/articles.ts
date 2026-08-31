@@ -822,6 +822,213 @@ const TRAINING_IN_ARIZONA: Article = {
   ],
 };
 
+const THIRD_PARTY_TESTING: Article = {
+  slug: "third-party-testing",
+  // 41 characters.
+  title: "Is Kimora Third-Party Tested? | Kimora Co.",
+  headline: "Is Kimora creatine third-party tested?",
+  dek: "Not yet, for an unglamorous reason. Plus how to read the phrase when a brand that has launched uses it.",
+  // 152 characters.
+  description:
+    "Not yet — nothing has been made at production scale, so there is nothing to test. What third-party testing actually covers, and how to read the claim.",
+  published: "2026-08-31",
+  updated: "2026-08-31",
+  targetQuery: "Is Kimora creatine third-party tested?",
+  // DRIFT: prose source is marketing/seo/third-party-testing.md. Edit both
+  // together.
+  //
+  // ⚠️ CLAIMS GATE, read before editing. This piece names no laboratory,
+  // claims no engagement and promises no certification, because none is
+  // secured: Advanced Laboratories was contacted 2026-04-29 and never
+  // responded, the Eurofins nutrition-panel scope is not confirmed booked, the
+  // creatine source is pending Pb confirmation and the co-manufacturer is not
+  // locked. Every forward-looking sentence is scoped to "before we sell
+  // anything," which is a condition and not a date. Do not add a lab name, a
+  // certification program or a timeline here until one is real — this is the
+  // one page on the site where an overstatement costs more than it earns.
+  blocks: [
+    {
+      type: "p",
+      text: "Not yet. Nothing has been manufactured at production scale, so there is nothing to test.",
+    },
+    {
+      type: "p",
+      text: "That is the whole answer, and we would rather give you the flat version than a warmer one that means less. What follows is what that actually implies, what has to happen before the answer changes, and how to read the phrase “third-party tested” when a brand that has launched puts it in front of you — because it is doing more work in this category than it has earned.",
+    },
+
+    { type: "h2", text: "Why the answer is “not yet” and not “no”" },
+    {
+      type: "p",
+      text: "Kimora has not launched. Consumer launch is targeted for December 2026, the formula is through its third sample round, and there is no production lot in existence. A certificate of analysis is a document about a specific batch of a specific product made on a specific day. You cannot hold one for a batch that has not been made.",
+    },
+    {
+      type: "p",
+      text: "So “not yet” is a statement about the calendar, not about the standard. The order matters: manufacture, then test, then publish. Brands that publish before they test are not being fast, they are describing an intention.",
+    },
+
+    { type: "h2", text: "What “third-party tested” actually covers, and what it doesn’t" },
+    {
+      type: "p",
+      text: "The phrase gets used as though it were one thing. It is at least three, and they answer different questions.",
+    },
+    {
+      type: "ul",
+      items: [
+        "Identity and potency. Is the ingredient the label names actually in there, at the amount the label claims? This is the one most people picture, and it is the narrowest.",
+        "Contaminants. Heavy metals — lead, arsenic, cadmium, mercury — plus microbial limits and whatever else the raw material can carry. This is the one that matters most for a powder you take every day for years.",
+        "Banned substances. Screening against the WADA prohibited list for anything that would end a competitor’s season. This is a different test, run by different programs, and a brand can pass the first two and never have attempted the third.",
+      ],
+    },
+    {
+      type: "p",
+      text: "A brand can say “third-party tested” while meaning only the first, and be telling the literal truth. The sentence is not a lie. It is just much smaller than the impression it leaves.",
+    },
+
+    { type: "h2", text: "What we are not going to do" },
+    {
+      type: "p",
+      text: "We are not going to describe a nutrition-panel analysis as a purity test. Working out how much sodium is in a stick so the Supplement Facts panel is accurate is a lab assay, performed by a third party, and calling it “third-party tested” would be defensible in a way we think is beneath the point. It measures whether our label is correct. It does not tell you whether there is lead in your creatine. Those are different questions and they deserve different sentences.",
+    },
+    {
+      type: "p",
+      text: "We are also not going to publish mineral amounts before the production certificate of analysis confirms them. Our formula targets are set. They are not the same thing as a measured result, and this is the exact category where the gap gets papered over — a number that started as a formulation target, appeared on a label, and was never checked against a finished lot.",
+    },
+    {
+      type: "p",
+      text: "You will notice this page contains no milligram figures. That is why.",
+    },
+
+    { type: "h2", text: "What we can tell you today" },
+    {
+      type: "p",
+      text: "These are locked, and they are true of the product as formulated:",
+    },
+    {
+      type: "ul",
+      items: [
+        "5 g creatine monohydrate per stick. Monohydrate specifically — not a blend, not a buffered or esterified variant sold at a premium on thinner evidence.",
+        "Naturally sweetened with stevia and monk fruit. No sugar, no sugar alcohols, no artificial sweeteners.",
+        "No silicon dioxide, no artificial colors, no artificial flavors.",
+        "No proprietary blends. Every active is named with its own number on the panel.",
+        "Stimulant free.",
+        `${STICKS_PER_POUCH} single-serve sticks per pouch.`,
+      ],
+    },
+    {
+      type: "p",
+      text: "What is deliberately absent: sodium, potassium and magnesium amounts, and the finished net weight. Those publish when the certificate of analysis confirms them, and not before.",
+    },
+
+    { type: "h2", text: "What has to happen before the answer is yes" },
+    {
+      type: "p",
+      text: "In this order, because the order is not optional:",
+    },
+    {
+      type: "ul",
+      items: [
+        "The formula clears its final sample round and the co-manufacturer is locked.",
+        "A production lot is actually run.",
+        "That lot is assayed — identity and potency against the label, and a contaminant panel including heavy metals.",
+        "The certificate of analysis for that lot is published here, as a document, not as a claim.",
+      ],
+    },
+    {
+      type: "p",
+      text: "Banned-substance certification is a separate decision on a separate timeline, and we are not going to pre-announce it. If we pursue it, the mark will appear on the pouch and the program will be named on this page. If we do not, this page will say so.",
+    },
+
+    { type: "h2", text: "How to read anyone else’s testing claim" },
+    {
+      type: "p",
+      text: "This is the useful part, and it applies to every brand on the shelf including the ones that compete with us. Four questions, in rough order of how much they tell you.",
+    },
+    {
+      type: "p",
+      text: "“Can I see the certificate of analysis?” Not a summary, not a badge — the document, with a lot number on it. A brand that tests will generally show you. A brand that says “our products are tested” and cannot produce a lot-specific document is describing a policy, not a result.",
+    },
+    {
+      type: "p",
+      text: "“Does the lot number on the CoA match the tub in my hand?” This is the question almost nobody asks and it separates the field. A single flattering certificate from three years ago can sit on a product page indefinitely.",
+    },
+    {
+      type: "p",
+      text: "“Every batch, or one batch?” These are very different programs. Informed Sport tests every batch of a certified product before it is released, which is what makes it usable by someone subject to testing. Other schemes certify a product once and audit periodically. Both are real; only one tells you about the specific pouch you bought.",
+    },
+    {
+      type: "p",
+      text: "“Tested for what?” NSF Certified for Sport screens for more than 280 banned substances alongside label-claim and contaminant review, and it is the program USADA points athletes toward. A generic “third-party tested” with no program named and no analyte list is not comparable to that, and should not be read as if it were.",
+    },
+    {
+      type: "p",
+      text: "If you compete under a tested rule set, the last two questions are the only ones that matter, and “third-party tested” on its own does not answer either.",
+    },
+
+    { type: "h2", text: "The obvious objection" },
+    {
+      type: "p",
+      text: "Writing a page about testing standards while having no test results is a slightly ridiculous position to hold, and we know it.",
+    },
+    {
+      type: "p",
+      text: "We would rather hold it than the alternative. The alternative is the badge that means less than it looks like, the certificate with no lot number, the target value printed as a measurement. Those are all available to us right now, today, and they are why the phrase has stopped carrying information.",
+    },
+    {
+      type: "p",
+      text: "Ask us again when there is a lot to test. The answer will be a document.",
+    },
+
+    {
+      type: "qa",
+      q: "Is the creatine at least tested by the manufacturer?",
+      a: "Contract manufacturers run their own quality checks and raw material suppliers provide their own certificates — that is standard in the industry and it is not what “third-party tested” means to an athlete. In-house testing is the manufacturer grading its own work. We will not present it as independent verification, and neither should anyone else.",
+    },
+    {
+      type: "qa",
+      q: "Will you publish the certificate of analysis, or just say you have one?",
+      a: "Publish it. That is the point of the exercise. A claim that a certificate exists is worth roughly nothing compared to the certificate.",
+    },
+    {
+      type: "qa",
+      q: "Should I avoid untested supplements in the meantime?",
+      a: "If you compete under a tested rule set, the conservative position is to use products certified by a batch-testing program, and to check that the specific batch is listed. That advice does not favour us — we do not currently qualify under it. It is still the right advice.",
+    },
+    {
+      type: "qa",
+      q: "Does creatine monohydrate need testing more than other supplements?",
+      a: "Creatine is cheap to manufacture, which historically has attracted producers working to a low standard, and the contaminants of concern are process residues and heavy metals rather than anything exotic. It is not uniquely dangerous. It is a product most people take daily for years, which is a good reason to care what is in it.",
+    },
+
+    {
+      type: "sources",
+      items: [
+        {
+          label: "NSF — Certified for Sport® certification program",
+          url: "https://www.nsfsport.com/",
+        },
+        {
+          label:
+            "NSF — Certified for Sport program overview, on label-claim, toxicology and contaminant review",
+          url: "https://www.nsf.org/consumer-resources/articles/certified-for-sport-program",
+        },
+        {
+          label:
+            "USADA — Supplement Connect, on reducing the risk of an adverse finding from supplements",
+          url: "https://www.usada.org/substances/supplement-connect/reduce-risk-testing-positive-experiencing-adverse-health-effects/",
+        },
+        {
+          label: "Informed Sport — sports supplement certification, on batch-by-batch testing",
+          url: "https://sport.wetestyoutrust.com/",
+        },
+        {
+          label: "Informed Sport — the difference between Informed Sport and Informed Choice",
+          url: "https://sport.wetestyoutrust.com/news/informed-sport-informed-choice-what-difference",
+        },
+      ],
+    },
+  ],
+};
+
 /**
  * Every published article, newest first. The hub renders this order and the
  * sitemap follows it.
@@ -831,6 +1038,7 @@ const TRAINING_IN_ARIZONA: Article = {
  * in the Article JSON-LD without touching any of those files.
  */
 export const ARTICLES: readonly Article[] = [
+  THIRD_PARTY_TESTING,
   TRAINING_IN_ARIZONA,
   STICK_PACKS,
   CREATINE_AND_ELECTROLYTES,

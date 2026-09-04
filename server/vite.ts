@@ -61,6 +61,14 @@ export async function setupVite(server: Server, app: Express) {
     const pathOnly = qIndex === -1 ? url : url.slice(0, qIndex);
     const query = qIndex === -1 ? "" : url.slice(qIndex);
 
+    // /index.html -> "/" as well. This one is NOT about the route table: the
+    // path is not in ROUTES, so without the redirect the 404 rule below would
+    // answer it 404 in dev while production 301s it — a status-code
+    // divergence, which is the exact class of bug this block exists to close.
+    // Caught in verification, after the first pass mirrored the two decisions
+    // that read ROUTES and missed the one that does not.
+    if (pathOnly === "/index.html") return res.redirect(301, "/" + query);
+
     if (!pathOnly.startsWith("/api")) {
       const target = redirectFor(pathOnly);
       if (target) return res.redirect(301, target + query);

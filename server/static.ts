@@ -5,6 +5,21 @@ import path from "path";
 import { injectBody, injectHead } from "./seo";
 import { isKnownRoute, redirectFor } from "../shared/seo";
 
+/**
+ * The query string of a request target, including the leading "?".
+ *
+ * Sliced at the first "?" rather than at `req.path.length`. The two agree for
+ * an origin-form target ("/faq?x=1") and disagree for an absolute-form one
+ * ("http://host/faq?x=1"), which HTTP/1.1 permits: `req.path` is just the
+ * pathname, so slicing by its length would cut in the middle of the URI and
+ * splice host characters into the Location header. Not reachable behind a
+ * normal reverse proxy; also not worth relying on that.
+ */
+function queryOf(originalUrl: string): string {
+  const i = originalUrl.indexOf("?");
+  return i === -1 ? "" : originalUrl.slice(i);
+}
+
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {
@@ -27,7 +42,11 @@ export function serveStatic(app: Express) {
   // BEFORE the 404 handler at the bottom of this file, and before
   // express.static so an old URL can never be shadowed by a file of the same
   // name. redirectFor() returns null for every path in the route table, so
-  // this can only ever fire on a path that would otherwise have 404ed.
+  // this can only ever fire on a path that is not a route — note that is NOT
+  // the same as "a path that would otherwise have 404ed", precisely because
+  // this sits ahead of express.static: a future entry naming a filename in
+  // dist/public would take priority over the file. That is the intended
+  // ordering, but it is worth stating rather than implying the opposite.
   //
   // Today the list is one entry, /coming-soon, and it is the reason the 404
   // work below was safe to do at all — see LEGACY_REDIRECTS in shared/seo.ts.
@@ -37,8 +56,11 @@ export function serveStatic(app: Express) {
     const target = redirectFor(req.path);
     if (!target) return next();
 
-    const query = req.originalUrl.slice(req.path.length);
-    return res.redirect(301, target + query);
+    // A day, not forever. A bare 301 is cached heuristically and effectively
+    // permanently, and these are retired URLs rather than URLs that can never
+    // come back. Making it a decision rather than an omission.
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    return res.redirect(301, target + queryOf(req.originalUrl));
   });
 
   // index: false is load-bearing. express.static's default is to answer a
@@ -78,8 +100,7 @@ export function serveStatic(app: Express) {
     if (lower === req.path) return next();
     if (!isKnownRoute(lower)) return next();
 
-    const query = req.originalUrl.slice(req.path.length);
-    return res.redirect(301, lower + query);
+    return res.redirect(301, lower + queryOf(req.originalUrl));
   });
 
   // The SPA shell, read once. Every route is served this same file, so the
@@ -134,20 +155,56 @@ export function serveStatic(app: Express) {
     // tension, and shipping the shell keeps in-app client-side navigation
     // away from the bad URL working exactly as before.
     //
-    // isKnownRoute() is matched on the LOWERCASE path for the same reason the
-    // case-normalising redirect above exists: wouter matches case
-    // insensitively, so /FAQ renders the FAQ page. It is 301'd above, but if
-    // that redirect is ever narrowed this must not start 404ing a page the
-    // router happily renders.
-    const notFound = !isKnownRoute(req.path.toLowerCase());
+    // isKnownRoute() is matched on the LOWERCASE, PERCENT-DECODED path.
+    //
+    // Lowercase for the same reason the case-normalising redirect above
+    // exists: wouter matches case insensitively, so /FAQ renders the FAQ page.
+    // It is 301'd above, but if that redirect is ever narrowed this must not
+    // start 404ing a page the router happily renders.
+    //
+    // Decoded because req.path is not: "/%66aq" is the FAQ page to wouter,
+    // which decodes, and a raw comparison would 404 it while React rendered
+    // the real page underneath — the same server/router disagreement the case
+    // redirect exists to eliminate, on a second axis. decodeURI throws on a
+    // malformed escape; a path we cannot decode is not a route we own, so the
+    // catch falls through to 404, which is the right answer for it anyway.
+    let decoded = req.path;
+    try {
+      decoded = decodeURI(req.path);
+    } catch {
+      /* malformed escape — leave it encoded and let it 404 */
+    }
+    const notFound = !isKnownRoute(decoded.toLowerCase());
 
     if (!template) {
-      return res.status(notFound ? 404 : 200).sendFile(indexPath);
+      // The degraded branch: index.html was unreadable at boot. injectHead
+      // never runs here, so the shell would go out carrying the template's
+      // BASELINE head — the homepage title, the homepage description,
+      // og:url pointing at "/" — under a 404 status. That is exactly the
+      // contradiction DEFAULT_ROUTE exists to avoid, so a 404 gets a minimal
+      // honest document instead of a shell that claims to be the homepage.
+      if (notFound) {
+        return res
+          .status(404)
+          .type("html")
+          .send(
+            '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+              "<title>Page Not Found | Kimora Co.</title>" +
+              '<meta name="robots" content="noindex, follow">' +
+              "</head><body><h1>Page not found</h1></body></html>",
+          );
+      }
+      return res.sendFile(indexPath);
     }
 
     // sendFile used to set this; res.send does not. Keeping it avoids an
-    // unintended caching change on every HTML response.
-    res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    // unintended caching change on every HTML response — but only on the
+    // responses it was written for. "public" on a 404 is not what anyone
+    // means by it.
+    res.setHeader(
+      "Cache-Control",
+      notFound ? "no-store" : "public, max-age=0, must-revalidate",
+    );
 
     // Head first, then body. Both are pure string transforms over the same
     // template and neither depends on the request beyond its path — in

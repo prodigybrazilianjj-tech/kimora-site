@@ -7,6 +7,7 @@ import path from "path";
 import { nanoid } from "nanoid";
 
 import { injectBody, injectHead } from "./seo";
+import { isKnownRoute, redirectFor } from "../shared/seo";
 
 const viteLogger = createLogger();
 
@@ -35,6 +36,45 @@ export async function setupVite(server: Server, app: Express) {
 
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
+
+    // ── The two decisions production makes that change a status code ──────
+    //
+    // server/static.ts 301s legacy URLs and answers unknown paths with 404.
+    // Dev used to end every response `res.status(200)` unconditionally, which
+    // would have put the two environments back out of step on exactly the
+    // axis the comment below says was fixed for head stamping: a route added
+    // to App.tsx and forgotten in the ROUTES table would work perfectly
+    // locally and 404 only on kimoraco.com, and /coming-soon would be a 200
+    // here and a 301 there. The first sight of either would be a deploy.
+    //
+    // NOT mirrored, deliberately: the case-normalising 301 (/FAQ -> /faq).
+    // That one exists in production to sit after express.static so it cannot
+    // 404 a case-sensitive asset filename on disk, a constraint dev does not
+    // have — and both environments end on the same rendered page either way,
+    // so the only difference is one redirect hop. Status codes are what
+    // matter here.
+    //
+    // `url` is originalUrl and carries the query string; both helpers strip
+    // it via normalizePath, but the redirect has to preserve it, so the path
+    // is split out explicitly here.
+    const qIndex = url.indexOf("?");
+    const pathOnly = qIndex === -1 ? url : url.slice(0, qIndex);
+    const query = qIndex === -1 ? "" : url.slice(qIndex);
+
+    if (!pathOnly.startsWith("/api")) {
+      const target = redirectFor(pathOnly);
+      if (target) return res.redirect(301, target + query);
+    }
+
+    // decodeURI for the same reason as production: wouter decodes, req paths
+    // do not, and a raw compare would 404 a page the router renders.
+    let decoded = pathOnly;
+    try {
+      decoded = decodeURI(pathOnly);
+    } catch {
+      /* malformed escape — leave it encoded and let it 404 */
+    }
+    const notFound = !isKnownRoute(decoded.toLowerCase());
 
     try {
       const clientTemplate = path.resolve(
@@ -65,7 +105,10 @@ export async function setupVite(server: Server, app: Express) {
       // helpers strip via normalizePath.
       const stamped = injectBody(injectHead(page, url), url);
 
-      res.status(200).set({ "Content-Type": "text/html" }).end(stamped);
+      res
+        .status(notFound ? 404 : 200)
+        .set({ "Content-Type": "text/html" })
+        .end(stamped);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);

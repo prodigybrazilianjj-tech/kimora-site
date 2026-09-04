@@ -280,26 +280,70 @@ export const DEFAULT_ROUTE: RouteSeo = {
  *
  * `/coming-soon` is the one that matters and the one the 404 work above could
  * have broken. client/src/App.tsx has always carried
- * `<Route path="/coming-soon">{() => <Redirect to="/" />}</Route>`, i.e. a
- * CLIENT-side redirect — and the waitlist's `source` column defaults to
- * "coming-soon" with server/routes/waitlistRoutes.ts writing that value
- * literally, which is what a campaign landing URL looks like in the schema
- * after the fact. It is not in ROUTES, so under the new 404 rule it would have
- * started returning 404 to every crawler and to anyone following an old ad,
- * social bio or QR code. That is exactly the failure playbook finding #10
- * warned about when it deferred this work three times.
+ * `<Route path="/coming-soon">{() => <Redirect to="/" />}</Route>` — a
+ * CLIENT-side redirect. It is not in ROUTES, so under the new 404 rule it
+ * would have started returning 404 to every crawler and to anyone following
+ * an old link. That is exactly the failure playbook finding #10 warned about
+ * when it deferred this work three times.
  *
- * A server-side 301 is strictly better than what was there: a crawler that
- * does not run JS never saw the client-side redirect at all, and a 301 passes
- * the link equity of every historical inbound link to "/" instead of stranding
- * it on a noindex page.
+ * Why a 301 rather than a ROUTES entry: the app itself does not treat
+ * /coming-soon as a page. It treats it as an alias for "/", and it says so in
+ * the router. A server-side 301 says the same thing to the clients the
+ * router cannot reach — a crawler that does not run JS never saw the
+ * client-side <Redirect> at all — and it passes the equity of any inbound
+ * link to "/" instead of stranding it on a noindex page.
+ *
+ * ⚠️ WHAT IS *NOT* EVIDENCE HERE, recorded because the first draft of this
+ * comment got it wrong and an adversarial review caught it: the waitlist's
+ * `source` column reading "coming-soon". server/routes/waitlistRoutes.ts
+ * writes that string as an UNCONDITIONAL literal on every insert from every
+ * page, and shared/schema.ts makes it the column default as well. It would
+ * read "coming-soon" if the URL had never been fetched once, so it says
+ * nothing about traffic. If anyone ever needs the real answer, the same
+ * insert stores `metadata.referer`. The 301 stands on the router entry above,
+ * which is a fact about the code, and needs no traffic claim to justify it.
  *
  * Keep the client-side <Route> as well. It costs nothing and it keeps an
  * in-app navigation to /coming-soon working without a round trip.
  */
-export const LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
+export const LEGACY_REDIRECTS: Readonly<Partial<Record<string, string>>> = {
   "/coming-soon": "/",
 };
+
+// ⚠️ Fail at import time, which means at build and at boot, rather than in
+// production. Three ways to add a broken entry to the table above, none of
+// which is visible by reading it:
+//
+//   1. A key that is already a real route. redirectFor() returns null for
+//      those, so the entry silently never fires — and the person who added it
+//      is retiring a route and has every reason to believe it did.
+//   2. A target that is neither a route nor another redirect: a 301 into a
+//      404.
+//   3. A chain or a cycle. normalizePath strips the trailing slash on the way
+//      back in, so even {"/foo": "/foo/"} is an infinite loop.
+//
+// One pass catches all three. The table is tiny and this runs once.
+for (const [from, to] of Object.entries(LEGACY_REDIRECTS)) {
+  // `to` is `string | undefined` because the record is Partial. It is never
+  // actually undefined for a key Object.entries yielded; narrowing here keeps
+  // the checks below typed without an assertion.
+  if (typeof to !== "string") {
+    throw new Error(`LEGACY_REDIRECTS: "${from}" has no target.`);
+  }
+  if (isKnownRoute(from)) {
+    throw new Error(
+      `LEGACY_REDIRECTS: "${from}" is already in ROUTES, so this entry would never fire.`,
+    );
+  }
+  if (normalizePath(to) === normalizePath(from)) {
+    throw new Error(`LEGACY_REDIRECTS: "${from}" redirects to itself.`);
+  }
+  if (!isKnownRoute(to)) {
+    throw new Error(
+      `LEGACY_REDIRECTS: "${from}" -> "${to}", which is not a route. A 301 must land on a page.`,
+    );
+  }
+}
 
 /**
  * Where should this path 301 to, if anywhere?

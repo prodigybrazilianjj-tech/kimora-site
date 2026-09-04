@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 
 import { injectBody, injectHead } from "./seo";
-import { isKnownRoute } from "../shared/seo";
+import { isKnownRoute, redirectFor } from "../shared/seo";
 
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
@@ -20,6 +20,25 @@ export function serveStatic(app: Express) {
   app.use((req, res, next) => {
     if (req.path === "/index.html") return res.redirect(301, "/");
     next();
+  });
+
+  // ── Legacy URLs ─────────────────────────────────────────────────────────
+  //
+  // BEFORE the 404 handler at the bottom of this file, and before
+  // express.static so an old URL can never be shadowed by a file of the same
+  // name. redirectFor() returns null for every path in the route table, so
+  // this can only ever fire on a path that would otherwise have 404ed.
+  //
+  // Today the list is one entry, /coming-soon, and it is the reason the 404
+  // work below was safe to do at all — see LEGACY_REDIRECTS in shared/seo.ts.
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api")) return next();
+
+    const target = redirectFor(req.path);
+    if (!target) return next();
+
+    const query = req.originalUrl.slice(req.path.length);
+    return res.redirect(301, target + query);
   });
 
   // index: false is load-bearing. express.static's default is to answer a
@@ -85,7 +104,46 @@ export function serveStatic(app: Express) {
   app.use((req, res, next) => {
     if (req.path.startsWith("/api")) return next();
 
-    if (!template) return res.sendFile(indexPath);
+    // ── Real 404s ─────────────────────────────────────────────────────────
+    //
+    // Playbook finding #10, deferred three times. This middleware used to
+    // answer HTTP 200 with the SPA shell for EVERY non-/api path, including
+    // paths that have never existed. Google reads a 200 carrying no content
+    // as a soft 404, and once it has decided a site does that it can pull
+    // real pages into the same bucket — which for a nine-page site that has
+    // spent three weeks becoming legible to crawlers is the expensive kind of
+    // failure.
+    //
+    // Everything that legitimately answers has already had its turn by this
+    // point in the stack, and each was enumerated rather than assumed:
+    //
+    //   /api/*             → returned above, and registerRoutes() runs BEFORE
+    //                        serveStatic() in server/index.ts anyway
+    //   /tools/:name,      → registered by registerToolRoutes(), same reason.
+    //   /tools/login,       Token-gated, its param is not ours, and it never
+    //   /tools/logout       reaches this file
+    //   real files          → express.static above (favicon2.png,
+    //                        opengraph.jpg, kimora-reorder.html, /assets/*)
+    //   /index.html         → 301 to "/" above
+    //   /Faq, /LEARN, …     → 301 to the lowercase form above
+    //   /coming-soon        → 301 to "/" above, via LEGACY_REDIRECTS
+    //
+    // What is left is a path that matches nothing, and the honest answer to
+    // that is 404. The shell is still served with it, so React still boots
+    // and renders NotFound — a 404 status and a rendered page are not in
+    // tension, and shipping the shell keeps in-app client-side navigation
+    // away from the bad URL working exactly as before.
+    //
+    // isKnownRoute() is matched on the LOWERCASE path for the same reason the
+    // case-normalising redirect above exists: wouter matches case
+    // insensitively, so /FAQ renders the FAQ page. It is 301'd above, but if
+    // that redirect is ever narrowed this must not start 404ing a page the
+    // router happily renders.
+    const notFound = !isKnownRoute(req.path.toLowerCase());
+
+    if (!template) {
+      return res.status(notFound ? 404 : 200).sendFile(indexPath);
+    }
 
     // sendFile used to set this; res.send does not. Keeping it avoids an
     // unintended caching change on every HTML response.
@@ -98,6 +156,12 @@ export function serveStatic(app: Express) {
     // than cloaking. See shared/prerender.ts.
     const stamped = injectBody(injectHead(template, req.path), req.path);
 
-    res.status(200).type("html").send(stamped);
+    // The head is already correct for a 404 without any special-casing here:
+    // seoForPath() falls back to DEFAULT_ROUTE for an unknown path, and
+    // DEFAULT_ROUTE now carries 404 copy and `indexable: false`, so the page
+    // ships "Page Not Found", a noindex, and no Product/Article/FAQ block.
+    // prerenderFor() likewise returns null, so #root stays empty. The only
+    // thing that was missing was the status code.
+    res.status(notFound ? 404 : 200).type("html").send(stamped);
   });
 }

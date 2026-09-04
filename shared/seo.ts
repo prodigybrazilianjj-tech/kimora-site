@@ -242,13 +242,76 @@ export const ROUTES: readonly RouteSeo[] = [
   },
 ];
 
-/** Fallback used for any path not in ROUTES (404s and anything new). */
+/**
+ * Fallback used for any path not in ROUTES.
+ *
+ * As of 2026-09-04 this is the **404 route**, not merely a fallback:
+ * server/static.ts now sends HTTP 404 for any non-API path whose lowercase
+ * form is neither a known route nor a legacy redirect. Before that change
+ * every unknown path returned 200 with the SPA shell, which Google reads as a
+ * soft 404 and which lets a whole site drift into the same bucket.
+ *
+ * ⚠️ It therefore carries 404 copy, NOT the homepage's. A page that returns
+ * 404 while its head says "Kimora Co. | Creatine + Electrolyte Stick Packs"
+ * and carries the homepage's description is still telling a crawler it is the
+ * homepage; the status code and the head have to agree or the status code is
+ * the only honest half of the response.
+ *
+ * ⚠️ AND: a route added to client/src/App.tsx but forgotten here no longer
+ * fails quietly. It used to render fine and merely ship noindex. It will now
+ * return 404 and say "not found" while React renders the real page beneath it.
+ * That is the correct failure — a page this table does not know about should
+ * not be served as a 200 — but it is loud, and it is the thing to check first
+ * if a working page starts 404ing. Add the route here in the same commit.
+ */
 export const DEFAULT_ROUTE: RouteSeo = {
   path: "/",
-  title: ROUTES[0].title,
-  description: ROUTES[0].description,
+  title: "Page Not Found | Kimora Co.",
+  description:
+    "That page does not exist. Everything Kimora Co. publishes is linked from the homepage, the shop and the Learn library.",
   indexable: false,
 };
+
+/**
+ * Permanent redirects for URLs that are NOT routes but are still reachable
+ * from the outside world.
+ *
+ * Keyed by normalised (lowercased, trailing-slash-stripped) path.
+ *
+ * `/coming-soon` is the one that matters and the one the 404 work above could
+ * have broken. client/src/App.tsx has always carried
+ * `<Route path="/coming-soon">{() => <Redirect to="/" />}</Route>`, i.e. a
+ * CLIENT-side redirect — and the waitlist's `source` column defaults to
+ * "coming-soon" with server/routes/waitlistRoutes.ts writing that value
+ * literally, which is what a campaign landing URL looks like in the schema
+ * after the fact. It is not in ROUTES, so under the new 404 rule it would have
+ * started returning 404 to every crawler and to anyone following an old ad,
+ * social bio or QR code. That is exactly the failure playbook finding #10
+ * warned about when it deferred this work three times.
+ *
+ * A server-side 301 is strictly better than what was there: a crawler that
+ * does not run JS never saw the client-side redirect at all, and a 301 passes
+ * the link equity of every historical inbound link to "/" instead of stranding
+ * it on a noindex page.
+ *
+ * Keep the client-side <Route> as well. It costs nothing and it keeps an
+ * in-app navigation to /coming-soon working without a round trip.
+ */
+export const LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
+  "/coming-soon": "/",
+};
+
+/**
+ * Where should this path 301 to, if anywhere?
+ *
+ * Returns null for everything else, including known routes — a route in the
+ * table must never be redirected away from itself.
+ */
+export function redirectFor(pathname: string): string | null {
+  const key = normalizePath(pathname);
+  if (isKnownRoute(key)) return null;
+  return LEGACY_REDIRECTS[key] ?? null;
+}
 
 /** Normalise a request path: strip the query, strip a trailing slash. */
 export function normalizePath(pathname: string): string {

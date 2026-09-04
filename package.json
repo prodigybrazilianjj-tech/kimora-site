@@ -10,7 +10,8 @@
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push",
-    "audit:channels": "tsx script/audit-channel-tags.ts"
+    "audit:channels": "tsx script/audit-channel-tags.ts",
+    "indexnow": "tsx script/indexnow.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -11,6 +11,7 @@ import { registerWholesaleRoutes } from "./routes/wholesaleRoutes";
 import { registerWaitlistRoutes } from "./routes/waitlistRoutes";
 import { registerEmailCaptureRoutes } from "./routes/emailCaptureRoutes";
 import { registerToolRoutes } from "./routes/toolRoutes";
+import { registerIndexNowRoutes } from "./routes/indexNowRoutes";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
@@ -27,6 +28,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Internal tool pages (wholesale order sheet, cert admin, DTC sheet), served
   // behind a token gate from server/tools/ instead of being public static files.
   registerToolRoutes(app);
+
+  // The IndexNow ownership key file. Registered here rather than in
+  // server/static.ts so it exists in dev and production from one line — and
+  // so it lands before static.ts's 404 handler, which would otherwise 404 the
+  // key file and turn every IndexNow submission into a 403.
+  registerIndexNowRoutes(app);
 
   return httpServer;
 }

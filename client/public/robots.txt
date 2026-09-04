@@ -9,7 +9,9 @@
 # most-specific-group-wins, so a named group that carries only "Allow: /" would
 # hand that crawler the admin and checkout routes.
 #
-# Route list mirrors `indexable: false` in shared/seo.ts.
+# Route list mirrors `indexable: false` in shared/seo.ts, with TWO deliberate
+# exceptions — /preview-home and /manage-subscription. Both are noindex and
+# both are left crawlable on purpose. See the note above the Sitemap line.
 
 User-agent: GPTBot
 User-agent: OAI-SearchBot
@@ -31,7 +33,6 @@ Disallow: /admin
 Disallow: /cart
 Disallow: /checkout
 Disallow: /order-success
-Disallow: /manage-subscription
 Disallow: /wholesale/apply
 Disallow: /api/
 Disallow: /kimora-reorder.html
@@ -42,7 +43,6 @@ Disallow: /admin
 Disallow: /cart
 Disallow: /checkout
 Disallow: /order-success
-Disallow: /manage-subscription
 Disallow: /wholesale/apply
 Disallow: /api/
 Disallow: /kimora-reorder.html
@@ -50,5 +50,27 @@ Disallow: /kimora-reorder.html
 # /preview-home is intentionally NOT disallowed. It carries a noindex, and a
 # disallowed URL is never fetched — so the noindex would never be read, and the
 # URL could still be indexed link-only. Let crawlers in to see the noindex.
+#
+# /manage-subscription joined it on 2026-09-04, and it is here because the rule
+# above stopped being hypothetical. Bing Site Explorer showed the page INDEXED,
+# crawled 24 Aug 2026 — the day before this file first shipped. Bing had a copy
+# from before the disallow existed, and because the disallow then arrived, Bing
+# could never refetch the page to read its noindex. A permanently indexed page
+# we had explicitly marked noindex, held there BY the disallow that was meant to
+# hide it. Exactly the failure the paragraph above describes, one line below it.
+#
+# A 90-day "block" was filed in Bing Webmaster Tools the same day to suppress it
+# now. That is a stopgap: it expires, and it does not remove the page from the
+# index. Removing the Disallow is the actual fix — it lets the crawler back in
+# to read the noindex it has never been allowed to see.
+#
+# Crawling it costs nothing: the page is token-gated, so a crawler with no token
+# gets a shell and a noindex, which is precisely what we want it to take away.
+#
+# ⚠️ The same conflict still exists for /cart, /checkout, /order-success,
+# /wholesale/apply and /admin — all are `indexable: false` AND disallowed. None
+# is currently stuck in an index, so they are deliberately left alone rather
+# than changed on spec. If any of them ever appears in Site Explorer, this is
+# the fix, and the reasoning is already written down here.
 
 Sitemap: https://www.kimoraco.com/sitemap.xml

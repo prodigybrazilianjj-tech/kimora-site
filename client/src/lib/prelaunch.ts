@@ -19,11 +19,11 @@ export const PRELAUNCH_GATE = true;
 
 export const PRELAUNCH_GATE_WHOLESALE = false;
 
-// Where the marketing homepage lives right now. While the gate is on, the
-// waitlist page owns "/" and Home is parked at /preview-home; at launch Home
-// takes "/" back. App.tsx routes from this and the navbar resolves its section
-// links against it, so the two cannot drift.
-export const HOME_PATH = PRELAUNCH_GATE ? "/preview-home" : "/";
+// Where the marketing homepage lives. Home has owned "/" since 2026-09-09,
+// when the separate Coming Soon front door was retired; the gate no longer
+// moves it. Kept as a constant because the navbar resolves section links
+// against it.
+export const HOME_PATH = "/";
 
 // ── The waitlist offer ───────────────────────────────────────────────────
 // The discount is quoted in three places — the hero's pricing line, the
@@ -40,13 +40,8 @@ export function waitlistPrice(pouchPrice: number): string {
 }
 
 /**
- * Where the navbar's Home link goes — always the public front door, never
- * HOME_PATH.
- *
- * These differ while the gate is on. HOME_PATH is where the marketing homepage
- * currently *lives* (/preview-home), which is a staging address, not somewhere
- * to send a visitor: clicking Home from the shop used to drop them on a page
- * the front door deliberately isn't. Both pages carry #flavors, #formula and
- * #about, so the section links can point here too.
+ * Where the navbar's Home link goes. Same as HOME_PATH now that Home is the
+ * front door; both names are kept so the navbar and the section links read
+ * as what they are.
  */
 export const FRONT_DOOR = "/";

@@ -191,11 +191,8 @@ const PRELAUNCH_NOTE =
  * the fallback genuinely misrepresents the page.
  */
 export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
-  // While PRELAUNCH_GATE is on, "/" renders ComingSoon, not Home (App.tsx) —
-  // this copy mirrors ComingSoon's hero and spec bands. Home lives at
-  // /preview-home, which is noindex and deliberately gets no fallback: the one
-  // route we do not want a crawler quoting is the staging copy of the homepage.
-  // At launch the gate flips, Home takes "/", and this entry still describes it.
+  // "/" renders Home (App.tsx; pages/Home.tsx is the page that was called
+  // ComingSoon until 2026-09-09). This copy mirrors its hero and spec bands.
   "/": {
     heading: "Kimora Co. — Creatine + Electrolytes, Built for Fighters",
     paragraphs: [

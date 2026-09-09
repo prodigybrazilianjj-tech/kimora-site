@@ -5,8 +5,8 @@
 //                            robots and JSON-LD into the served index.html
 //   2. script/build.ts     → writes dist/public/sitemap.xml at build time
 //   3. client/public/robots.txt → its disallow list tracks `indexable: false`,
-//                            with one deliberate exception: /preview-home is
-//                            noindex but NOT disallowed, so crawlers are
+//                            with one deliberate exception: /manage-subscription
+//                            is noindex but NOT disallowed, so crawlers are
 //                            allowed in to read the noindex.
 //
 // The site is a client-rendered SPA: every route is served the same
@@ -183,27 +183,9 @@ export const ROUTES: readonly RouteSeo[] = [
   },
 
   // ── Not for the index ──────────────────────────────────────────────────
-  // /preview-home only EXISTS while the gate is on (App.tsx renders the route
-  // conditionally), so its entry here is conditional too — otherwise this
-  // table would keep describing a route that 404s after launch. It is noindex
-  // because it is a staging address for the launch-day homepage; indexing it
-  // would put a second copy of the homepage in the index.
-  //
-  // Deliberately NOT disallowed in robots.txt. A disallowed URL is never
-  // fetched, so the noindex below would never be read — and a blocked URL can
-  // still be indexed URL-only from an inbound link. noindex alone is the
-  // stronger signal, but only if the crawler is allowed to see it.
-  ...(PRELAUNCH_GATE
-    ? [
-        {
-          path: "/preview-home",
-          title: "Kimora Co. | Creatine + Electrolyte Stick Packs for BJJ & MMA",
-          description:
-            "5 g creatine monohydrate plus real electrolytes in a single-serve stick. Naturally sweetened with stevia and monk fruit. Built for BJJ, MMA and lifters.",
-          indexable: false,
-        } satisfies RouteSeo,
-      ]
-    : []),
+  // /preview-home is gone: it was Home's staging address while the Coming
+  // Soon page owned "/", and Home took "/" on 2026-09-09. It now 301s to "/"
+  // (LEGACY_REDIRECTS below), which is why it has no entry here.
   {
     path: "/wholesale/apply",
     title: "Wholesale Application | Kimora Co.",
@@ -308,6 +290,9 @@ export const DEFAULT_ROUTE: RouteSeo = {
  */
 export const LEGACY_REDIRECTS: Readonly<Partial<Record<string, string>>> = {
   "/coming-soon": "/",
+  // Home's staging address while the gate parked it there (until 2026-09-09).
+  // It was noindex, and it carried inbound links from the team's own reviews.
+  "/preview-home": "/",
 };
 
 // ⚠️ Fail at import time, which means at build and at boot, rather than in

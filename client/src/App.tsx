@@ -7,7 +7,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { CartProvider } from "@/lib/cart";
 import { PRELAUNCH_GATE } from "@/lib/prelaunch";
 
-import ComingSoon from "@/pages/ComingSoon";
 import Home from "@/pages/Home";
 import FAQ from "@/pages/FAQ";
 import Shop from "@/pages/Shop";
@@ -69,13 +68,16 @@ function Router() {
       <ScrollToTop />
 
       <Switch>
-        {/* Pre-launch front door. Home is the launch-day homepage and lives at
-            /preview-home until then — flip these two lines to go live. */}
-        <Route path="/" component={PRELAUNCH_GATE ? ComingSoon : Home} />
-        {PRELAUNCH_GATE && <Route path="/preview-home" component={Home} />}
+        {/* Home is the front door, gated or not. The gate only decides
+            whether anything on it is buyable (PURCHASE_GATED below); the
+            separate Coming Soon page was retired 2026-09-09. */}
+        <Route path="/" component={Home} />
 
-        {/* Old direct link, kept so bookmarks and any ad URLs still land. */}
+        {/* Old direct links, kept so bookmarks and any ad URLs still land.
+            /preview-home was Home's staging address while Coming Soon owned
+            "/"; both are 301s server-side too (shared/seo.ts LEGACY_REDIRECTS). */}
         <Route path="/coming-soon">{() => <Redirect to="/" />}</Route>
+        <Route path="/preview-home">{() => <Redirect to="/" />}</Route>
         <Route path="/faq" component={FAQ} />
 
         {/* Storefront is always browsable so visitors can see products + prices. */}

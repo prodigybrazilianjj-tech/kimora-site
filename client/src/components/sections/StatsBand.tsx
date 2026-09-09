@@ -4,12 +4,23 @@ import { Band, EASE, bodyOn, headOn, type Tone } from "./Band";
 import { cn } from "@/lib/utils";
 
 /**
- * The dose numbers, counting up on scroll-into-view. Shared by the pre-launch
- * page and the homepage — it replaced the old text-only fact strip, since the
- * actual milligrams say more than "electrolytes" does.
+ * The dose numbers, counting up on scroll-into-view. It replaced the old
+ * text-only fact strip, since the actual milligrams say more than
+ * "electrolytes" does.
+ *
+ * With `product` the launch stick lies across the band above the numbers —
+ * the pack first, then what is in it. It is a still image on purpose: the
+ * numbers are the motion here.
  *
  * Values mirror FORMULA_VALUES_LOCKED_2026-06-17.
  */
+
+const STICK = {
+  src: "/assets/products/strawberry-guava/stick-floating-sg.webp",
+  alt: "Kimora Strawberry Guava creatine + electrolyte stick",
+  width: 1517,
+  height: 417,
+};
 
 const STATS = [
   { value: 5, suffix: "g", label: "Creatine" },
@@ -48,17 +59,41 @@ function Counter({ target }: { target: number }) {
 export function StatsBand({
   tone = "ink",
   rules = false,
+  product = false,
 }: {
   tone?: Tone;
   /** Gold hairlines top and bottom — used where this sits directly under the hero. */
   rules?: boolean;
+  /** Lay the launch stick across the band, above the numbers. */
+  product?: boolean;
 }) {
   return (
     <Band
       tone={tone}
       className={cn(rules && "border-y border-primary")}
-      innerClassName="py-12 lg:py-14"
+      innerClassName={product ? "py-12 lg:py-16" : "py-12 lg:py-14"}
     >
+      {product ? (
+        <div className="mx-auto mb-10 w-full max-w-[900px] px-2 lg:mb-14">
+          <img
+            src={STICK.src}
+            alt={STICK.alt}
+            width={STICK.width}
+            height={STICK.height}
+            // Sits just under the hero, so it is in the first viewport on
+            // most screens — fetch it eagerly.
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
+            className={cn(
+              "block h-auto w-full",
+              tone === "ink"
+                ? "drop-shadow-[0_28px_30px_rgba(0,0,0,0.55)]"
+                : "drop-shadow-[0_22px_26px_rgba(33,30,26,0.28)]"
+            )}
+          />
+        </div>
+      ) : null}
       <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-5 md:gap-4">
         {STATS.map((stat, i) => (
           <motion.div

@@ -9,9 +9,9 @@
 # most-specific-group-wins, so a named group that carries only "Allow: /" would
 # hand that crawler the admin and checkout routes.
 #
-# Route list mirrors `indexable: false` in shared/seo.ts, with TWO deliberate
-# exceptions — /preview-home and /manage-subscription. Both are noindex and
-# both are left crawlable on purpose. See the note above the Sitemap line.
+# Route list mirrors `indexable: false` in shared/seo.ts, with ONE deliberate
+# exception — /manage-subscription, which is noindex and left crawlable on
+# purpose. See the note above the Sitemap line.
 
 User-agent: GPTBot
 User-agent: OAI-SearchBot
@@ -47,12 +47,13 @@ Disallow: /wholesale/apply
 Disallow: /api/
 Disallow: /kimora-reorder.html
 
-# /preview-home is intentionally NOT disallowed. It carries a noindex, and a
-# disallowed URL is never fetched — so the noindex would never be read, and the
-# URL could still be indexed link-only. Let crawlers in to see the noindex.
+# A noindex page must NOT be disallowed: a disallowed URL is never fetched, so
+# the noindex would never be read, and the URL could still be indexed link-only.
+# Let crawlers in to see the noindex. (/preview-home used to be the example
+# here; it was retired 2026-09-09 and now 301s to "/".)
 #
-# /manage-subscription joined it on 2026-09-04, and it is here because the rule
-# above stopped being hypothetical. Bing Site Explorer showed the page INDEXED,
+# /manage-subscription is here because the rule above stopped being
+# hypothetical on 2026-09-04. Bing Site Explorer showed the page INDEXED,
 # crawled 24 Aug 2026 — the day before this file first shipped. Bing had a copy
 # from before the disallow existed, and because the disallow then arrived, Bing
 # could never refetch the page to read its noindex. A permanently indexed page

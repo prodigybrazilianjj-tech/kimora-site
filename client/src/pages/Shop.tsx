@@ -12,7 +12,7 @@ import { FLAVORS, isFlavorAvailable } from "@/lib/product";
 const ACCENTS: Record<string, { accent: string; bgAccent: string }> = {
   "strawberry-guava": { accent: "from-red-800/25 to-transparent", bgAccent: "from-red-800/20" },
   "lemon-lychee": { accent: "from-yellow-500/20 to-transparent", bgAccent: "from-yellow-500/20" },
-  "raspberry-dragonfruit": { accent: "from-red-600/25 to-transparent", bgAccent: "from-red-500/20" },
+  "raspberry-dragonfruit": { accent: "from-pink-900/25 to-transparent", bgAccent: "from-pink-900/20" },
 };
 
 const products = FLAVORS.map((f) => ({

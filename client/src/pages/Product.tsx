@@ -44,9 +44,10 @@ const productData: Record<string, any> = {
   "raspberry-dragonfruit": {
     name: "Raspberry Dragonfruit",
     desc: "Bold, juicy, and perfectly balanced. Deep berry notes with a smooth, exotic finish.",
-    // Bright true red — rose-400 read pink on cream (Alex 7/6)
-    color: "text-red-600",
-    gradient: "from-red-500/20",
+    // Wine-berry to match the #7A1E4F colorway (was red-600; moved off red 9/9 so it
+    // stops colliding with SG, which is now red-800)
+    color: "text-pink-900",
+    gradient: "from-pink-900/20",
     pouch: "/assets/products/raspberry-dragonfruit/pouch_sticks_v8.webp",
     stick: "/assets/products/raspberry-dragonfruit/stick_render.png",
   },

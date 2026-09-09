@@ -26,9 +26,9 @@ const productData: Record<string, any> = {
   "strawberry-guava": {
     name: "Strawberry Guava",
     desc: "Tart, tropical, and refreshingly smooth. A perfect balance of island sweetness and punchy tartness.",
-    // Darker terracotta — orange-400 was too bright/light on cream (Alex 7/6)
-    color: "text-orange-700",
-    gradient: "from-orange-500/20",
+    // Deep crimson to match the #A32B35 colorway (was terracotta orange-700 pre-9/9)
+    color: "text-red-800",
+    gradient: "from-red-800/20",
     pouch: "/assets/products/strawberry-guava/pouch_sticks_v1.webp",
     stick: "/assets/products/strawberry-guava/stick_render.png",
   },

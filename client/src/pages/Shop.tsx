@@ -10,7 +10,7 @@ import { FLAVORS, isFlavorAvailable } from "@/lib/product";
 
 // Card gradients are Shop-only styling; everything factual comes from the catalog.
 const ACCENTS: Record<string, { accent: string; bgAccent: string }> = {
-  "strawberry-guava": { accent: "from-orange-600/20 to-transparent", bgAccent: "from-orange-500/20" },
+  "strawberry-guava": { accent: "from-red-800/25 to-transparent", bgAccent: "from-red-800/20" },
   "lemon-lychee": { accent: "from-yellow-500/20 to-transparent", bgAccent: "from-yellow-500/20" },
   "raspberry-dragonfruit": { accent: "from-red-600/25 to-transparent", bgAccent: "from-red-500/20" },
 };

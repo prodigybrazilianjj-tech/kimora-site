@@ -24,6 +24,7 @@ import {
   seoForPath,
 } from "../shared/seo";
 import {
+  PRERENDER_REMOVE_SCRIPT,
   PRERENDER_WRAPPER_STYLE,
   prerenderFor,
   renderPrerenderHtml,
@@ -227,9 +228,13 @@ const ROOT_PATTERN =
  * Put the route's fallback prose inside #root.
  *
  * Served to every user agent — there is no user-agent branch here and there
- * must never be one. React's first render replaces the container's children,
- * so this is what a browser shows for the few hundred milliseconds before
- * hydration and what a non-JS crawler reads instead of nothing at all.
+ * must never be one. A non-JS crawler reads this instead of nothing at all.
+ *
+ * PRERENDER_REMOVE_SCRIPT follows the block and strips it during parsing, so a
+ * browser no longer shows the prose while it waits for the bundle. React mounts
+ * with createRoot(), which replaces #root's children, so before that script
+ * existed this stayed on screen until the bundle landed — the load "glitch"
+ * Alex reported 2026-09-09.
  *
  * A replacer FUNCTION, not a replacement string: the copy carries prices, and
  * `$` is special in a replacement string — "$49.99" would otherwise be read as
@@ -247,7 +252,8 @@ export function injectBody(html: string, pathname: string): string {
   const out = html.replace(
     ROOT_PATTERN,
     (_match, open: string, _quote: string, _ws: string, close: string) =>
-      `${open}<div data-prerender="1" style="${PRERENDER_WRAPPER_STYLE}">${body}</div>${close}`,
+      `${open}<div data-prerender="1" style="${PRERENDER_WRAPPER_STYLE}">${body}</div>` +
+      `${PRERENDER_REMOVE_SCRIPT}${close}`,
   );
 
   // We had content for this route and could not place it, which means the

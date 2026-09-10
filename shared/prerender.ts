@@ -106,6 +106,36 @@ export const PRERENDER_WRAPPER_STYLE = [
   "font-size:1rem",
 ].join(";");
 
+/**
+ * Removes the prerendered block during HTML parsing, before the first paint.
+ *
+ * Why this exists: React mounts with createRoot(), which REPLACES #root's
+ * children rather than hydrating them. So the block above used to stay on
+ * screen until the bundle finished — a column of SEO prose that then vanished.
+ * Alex flagged it 2026-09-09 as "a weird glitch when you first load".
+ *
+ * Why it costs the feature nothing: the crawlers this prose is for — GPTBot,
+ * ClaudeBot, PerplexityBot — do not execute JavaScript (see server/seo.ts), so
+ * they never run this and still read the full block. Clients that DO run JS are
+ * exactly the ones that were seeing the flash, and they get the real app.
+ *
+ * Why it is still not cloaking: the bytes are identical for every user agent.
+ * There is no user-agent branch here and there must never be one. The prose is
+ * genuinely served to everyone; JS-capable clients simply replace it a few
+ * hundred milliseconds sooner than they used to.
+ *
+ * Classic inline script on purpose — `type="module"` would defer and paint the
+ * block first, which is the whole thing we are removing. It also removes
+ * itself, so #root ends up in the empty state React expects.
+ *
+ * ⚠️ If the CSP ever moves from report-only to enforcing, this needs a nonce or
+ * a sha256 hash in script-src or it will be blocked and the flash returns.
+ */
+export const PRERENDER_REMOVE_SCRIPT =
+  '<script>try{var e=document.currentScript,p=e&&e.previousElementSibling;' +
+  'if(p&&p.getAttribute("data-prerender")==="1")p.remove();' +
+  'if(e)e.remove()}catch(_){}</script>';
+
 /** Escape a string for use as HTML text. */
 function esc(value: string): string {
   return value

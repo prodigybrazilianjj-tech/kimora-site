@@ -57,6 +57,11 @@ import {
   articlePath,
   type ArticleBlock,
 } from "../client/src/lib/articles";
+import {
+  REFUNDS_POLICY,
+  legalSpansToText,
+  type LegalBlock,
+} from "../client/src/lib/legal";
 
 const LAUNCH =
   FLAVORS.find((f) => f.slug === LAUNCH_FLAVOR) ?? FLAVORS[0];
@@ -173,6 +178,16 @@ export interface PrerenderContent {
    * the same order, subheadings and citations included.
    */
   blocks?: readonly ArticleBlock[];
+  /**
+   * Full policy body, for the legal routes. Rendered after `blocks`.
+   *
+   * A SECOND block vocabulary rather than a widened first one, on purpose.
+   * LegalBlock carries inline emphasis and hard line breaks that ArticleBlock
+   * has no need for, and widening ArticleBlock to gain them would put a change
+   * with blast radius across four live /learn articles inside a commit about
+   * legal pages. The two renderers share no code path.
+   */
+  legalBlocks?: readonly LegalBlock[];
 }
 
 const launchFlavor = LAUNCH.name;
@@ -215,10 +230,33 @@ const PRELAUNCH_NOTE =
 /**
  * Fallback body copy, keyed by normalised pathname.
  *
- * Only the indexable marketing routes are here. The legal pages are omitted
- * deliberately: their real body is the full policy text, and a four-line
- * summary standing in for a terms-of-service page would be the one case where
- * the fallback genuinely misrepresents the page.
+ * ⚠️ REVISED 2026-09-18. This comment used to read:
+ *
+ *   "Only the indexable marketing routes are here. The legal pages are omitted
+ *    deliberately: their real body is the full policy text, and a four-line
+ *    summary standing in for a terms-of-service page would be the one case
+ *    where the fallback genuinely misrepresents the page."
+ *
+ * The premise was right. The conclusion was a FALSE DICHOTOMY — summary or
+ * nothing — and the cost of it was that /privacy, /terms and /refunds served
+ * zero words to any crawler that does not run JavaScript, for eight weeks of a
+ * program whose entire purpose is the opposite. Playbook finding #39.
+ *
+ * The third option is to serve the policy IN FULL, from the same array the
+ * page component renders (client/src/lib/legal.ts). That does not misrepresent
+ * the page in any degree: it is the page.
+ *
+ * The lesson is worth more than the fix. Six consecutive site audits read this
+ * comment, found it well argued, and moved on — while a first-party instrument
+ * (GSC → Generative AI) was reporting that half of this site's AI-surface
+ * impressions land on /refunds and /terms. **A well-reasoned comment is the
+ * hardest kind of stale assumption to see.** Finding #33 recorded a written
+ * RULE that was never audited against; this is a written DECISION that was
+ * never re-examined after the evidence changed.
+ *
+ * /refunds went first because it is the shortest policy and because its
+ * content is corroborated by structured data already on the site. /terms and
+ * /privacy follow the identical pattern once one build has confirmed it.
  */
 export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
   // "/" renders Home (App.tsx; pages/Home.tsx is the page that was called
@@ -281,6 +319,21 @@ export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
     // and that faqJsonLd() serialises, so the page, the structured data and
     // this fallback cannot drift apart.
     paragraphs: FAQ_QA.map(([q, a]) => `${q} ${a}`),
+  },
+
+  // The full Refund & Return Policy, from the same array Refunds.tsx renders.
+  //
+  // `paragraphs` is EMPTY on purpose. The first legalBlock is already the
+  // dateline ("Effective Date: … Last Updated: …"), so anything here would be
+  // the second copy of it — and the first draft of this entry did exactly
+  // that, restating the dateline in prose one line above the block that
+  // carries it. The whole point of this route reading REFUNDS_POLICY is that
+  // there is one source; adding a hand-written line here would have
+  // reintroduced, in the same commit, the drift the commit exists to remove.
+  "/refunds": {
+    heading: REFUNDS_POLICY.heading,
+    paragraphs: [],
+    legalBlocks: REFUNDS_POLICY.blocks,
   },
 
   [LEARN_BASE]: {
@@ -393,6 +446,37 @@ function renderBlockHtml(block: ArticleBlock): string {
 }
 
 /**
+ * One legal block as HTML.
+ *
+ * Mirrors the `Block` component in client/src/pages/Refunds.tsx: same elements
+ * in the same order, minus the styling wrappers — and, unlike that component,
+ * flattening `{ b }` and `{ br }` to plain text. The fallback carries no
+ * styling by design (see PRERENDER_WRAPPER_STYLE), and bolding a phrase is
+ * presentation; an answer engine quoting the policy should get the sentence,
+ * not the emphasis.
+ *
+ * The switch is exhaustive over LegalBlock's union. Adding a block type without
+ * adding a case here is a TypeScript error at the return statement.
+ */
+function renderLegalBlockHtml(block: LegalBlock): string {
+  switch (block.type) {
+    case "h2":
+      return `<h2>${esc(block.text)}</h2>`;
+
+    case "p": {
+      const text = legalSpansToText(block.spans);
+      return text.trim() === "" ? "" : `<p>${esc(text)}</p>`;
+    }
+
+    case "ul":
+      return `<ul>${block.items
+        .filter((i) => i.trim() !== "")
+        .map((i) => `<li>${esc(i)}</li>`)
+        .join("")}</ul>`;
+  }
+}
+
+/**
  * Render one content block to HTML.
  *
  * Empty paragraphs are dropped — the launch-gate lines above collapse to ""
@@ -409,6 +493,11 @@ export function renderPrerenderHtml(content: PrerenderContent): string {
 
   for (const block of content.blocks ?? []) {
     const rendered = renderBlockHtml(block);
+    if (rendered) parts.push(rendered);
+  }
+
+  for (const block of content.legalBlocks ?? []) {
+    const rendered = renderLegalBlockHtml(block);
     if (rendered) parts.push(rendered);
   }
 

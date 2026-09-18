@@ -59,8 +59,11 @@ import {
 } from "../client/src/lib/articles";
 import {
   REFUNDS_POLICY,
-  legalSpansToText,
+  PRIVACY_POLICY,
+  TERMS_POLICY,
+  legalSpanKind,
   type LegalBlock,
+  type LegalSpan,
 } from "../client/src/lib/legal";
 
 const LAUNCH =
@@ -254,9 +257,11 @@ const PRELAUNCH_NOTE =
  * RULE that was never audited against; this is a written DECISION that was
  * never re-examined after the evidence changed.
  *
- * /refunds went first because it is the shortest policy and because its
- * content is corroborated by structured data already on the site. /terms and
- * /privacy follow the identical pattern once one build has confirmed it.
+ * /refunds went first because it is the shortest policy and because its content
+ * is corroborated by structured data already on the site. It merged, built and
+ * deployed on 2026-09-18 (origin/main 9f624b9), which confirmed the pattern —
+ * and /terms and /privacy followed the same day on the identical shape.
+ * Finding #39 is closed; all three legal routes now serve their full policy.
  */
 export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
   // "/" renders Home (App.tsx; pages/Home.tsx is the page that was called
@@ -334,6 +339,21 @@ export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
     heading: REFUNDS_POLICY.heading,
     paragraphs: [],
     legalBlocks: REFUNDS_POLICY.blocks,
+  },
+
+  // /privacy and /terms joined /refunds on 2026-09-18, completing finding #39.
+  // Same shape, same reasoning, same empty `paragraphs` — the first legalBlock
+  // is each policy's own dateline.
+  "/privacy": {
+    heading: PRIVACY_POLICY.heading,
+    paragraphs: [],
+    legalBlocks: PRIVACY_POLICY.blocks,
+  },
+
+  "/terms": {
+    heading: TERMS_POLICY.heading,
+    paragraphs: [],
+    legalBlocks: TERMS_POLICY.blocks,
   },
 
   [LEARN_BASE]: {
@@ -468,16 +488,71 @@ function renderLegalBlockHtml(block: LegalBlock): string {
       return `<h2>${esc(block.text)}</h2>`;
 
     case "p": {
-      const text = legalSpansToText(block.spans);
-      return text.trim() === "" ? "" : `<p>${esc(text)}</p>`;
+      const html = legalSpansToHtml(block.spans);
+      return html.trim() === "" ? "" : `<p>${html}</p>`;
     }
 
-    case "ul":
-      return `<ul>${block.items
-        .filter((i) => i.trim() !== "")
-        .map((i) => `<li>${esc(i)}</li>`)
-        .join("")}</ul>`;
+    case "ul": {
+      const items = block.items
+        .map((spans) => legalSpansToHtml(spans))
+        .filter((html) => html.trim() !== "")
+        .map((html) => `<li>${html}</li>`)
+        .join("");
+      return items ? `<ul>${items}</ul>` : "";
+    }
   }
+}
+
+/**
+ * Spans to HTML.
+ *
+ * Text, bold and break all flatten to escaped plain text — the fallback is
+ * unstyled by design, and emphasis is presentation. Links do NOT flatten: a
+ * link is the only span whose information is not in its label, and on /privacy
+ * five of them are a data subject's actual route to exercising a right
+ * (Google, TikTok and Meta privacy policies; the NAI and DAA opt-outs).
+ * Dropping them would leave the crawler copy saying "opt out here" with no
+ * "here" — which is the shape of failure the playbook logged when
+ * ArticleBlock had no list type.
+ */
+function legalSpansToHtml(spans: readonly LegalSpan[]): string {
+  return spans
+    .map((span) => {
+      switch (legalSpanKind(span)) {
+        case "text":
+          return esc(span as string);
+        case "bold":
+          return esc((span as { b: string }).b);
+        case "break":
+          return " ";
+        case "link": {
+          const l = span as { link: string; href: string; external: boolean };
+          // Same https-only guard the article `sources` renderer uses, for the
+          // same reason: the value lands in an href in server-rendered HTML,
+          // and `javascript:` in that position is a live link rather than a
+          // dead citation. Internal hrefs are root-relative and are allowed
+          // through explicitly rather than by falling out of a failed parse.
+          const internalOk = !l.external && l.href.startsWith("/") && !l.href.startsWith("//");
+          let externalOk = false;
+          if (l.external) {
+            try {
+              externalOk = new URL(l.href).protocol === "https:";
+            } catch {
+              externalOk = false;
+            }
+          }
+          // A rejected href degrades to its label rather than vanishing: the
+          // sentence still reads, it just stops being clickable.
+          if (!internalOk && !externalOk) return esc(l.link);
+          const rel = l.external ? ' rel="noopener noreferrer"' : "";
+          return `<a href="${escAttr(l.href)}"${rel}>${esc(l.link)}</a>`;
+        }
+      }
+    })
+    .join("")
+    // Matches legalSpansToText: two consecutive {br}s are a deliberate blank
+    // line on the page and should not become a double space in the fallback.
+    .replace(/ {2,}/g, " ");
 }
 
 /**

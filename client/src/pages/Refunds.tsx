@@ -1,8 +1,9 @@
-import { Fragment } from "react";
+import { Fragment, type ReactElement } from "react";
 import { Navbar } from "@/components/sections/Navbar";
 import { Footer } from "@/components/sections/Footer";
 import {
   REFUNDS_POLICY,
+  legalSpanKind,
   type LegalBlock,
   type LegalSpan,
 } from "@/lib/legal";
@@ -22,19 +23,37 @@ import {
  * ul classes. Only the source of the words moved.
  */
 
-function Spans({ spans }: { spans: readonly LegalSpan[] }) {
+function Spans({ spans }: { spans: readonly LegalSpan[] }): ReactElement {
   return (
     <>
       {spans.map((span, i) => {
-        if (typeof span === "string") return <Fragment key={i}>{span}</Fragment>;
-        if ("b" in span) return <strong key={i}>{span.b}</strong>;
-        return <br key={i} />;
+        // Routed through legalSpanKind so a new LegalSpan variant is a compile
+        // error rather than silently falling through to <br>.
+        switch (legalSpanKind(span)) {
+          case "text":
+            return <Fragment key={i}>{span as string}</Fragment>;
+          case "bold":
+            return <strong key={i}>{(span as { b: string }).b}</strong>;
+          case "break":
+            return <br key={i} />;
+        }
       })}
     </>
   );
 }
 
-function Block({ block }: { block: LegalBlock }) {
+/**
+ * Return type is annotated ON PURPOSE.
+ *
+ * Under React 19's types a component returning `undefined` is a valid
+ * ReactNode, so an unannotated switch with a missing case compiles clean and
+ * the block just vanishes from the page while still appearing in the
+ * prerender — a page/prerender divergence, which is the exact failure this
+ * whole change exists to make impossible. `renderLegalBlockHtml` in
+ * shared/prerender.ts is annotated `: string` for the same reason. Caught in
+ * adversarial review.
+ */
+function Block({ block }: { block: LegalBlock }): ReactElement {
   switch (block.type) {
     case "h2":
       return (

@@ -448,9 +448,13 @@ function renderBlockHtml(block: ArticleBlock): string {
 /**
  * One legal block as HTML.
  *
- * Mirrors the `Block` component in client/src/pages/Refunds.tsx: same elements
+ * Follows the `Block` component in client/src/pages/Refunds.tsx: same elements
  * in the same order, minus the styling wrappers — and, unlike that component,
- * flattening `{ b }` and `{ br }` to plain text. The fallback carries no
+ * flattening `{ b }` and `{ br }` to plain text. It is deliberately NOT an
+ * exact mirror: this renderer drops an empty `<p>` and filters empty `<li>`,
+ * where `Block` renders both. Unreachable with today's data, and stated rather
+ * than glossed because the first draft of this comment claimed a strict mirror
+ * the code does not hold. The fallback carries no
  * styling by design (see PRERENDER_WRAPPER_STYLE), and bolding a phrase is
  * presentation; an answer engine quoting the policy should get the sentence,
  * not the emphasis.

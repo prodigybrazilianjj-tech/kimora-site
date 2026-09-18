@@ -69,6 +69,24 @@
 export type LegalSpan = string | { b: string } | { br: true };
 
 /**
+ * Narrow a span to its kind.
+ *
+ * Exists so that BOTH renderers — Refunds.tsx's `Spans` and legalSpansToText
+ * below — go through one exhaustive switch instead of two `"b" in span` chains.
+ * Adding a fourth variant without handling it is then a compile error here,
+ * rather than silently rendering a <br> on the page and a space in the
+ * prerender. Found in adversarial review: LegalBlock's switch was guarded and
+ * the span union, which carries the inline structure, was not.
+ */
+export function legalSpanKind(span: LegalSpan): "text" | "bold" | "break" {
+  if (typeof span === "string") return "text";
+  if ("b" in span) return "bold";
+  if ("br" in span) return "break";
+  const exhaustive: never = span;
+  return exhaustive;
+}
+
+/**
  * One block of policy copy.
  *
  * Intentionally small. If a policy ever needs a structure this cannot express,
@@ -97,10 +115,26 @@ const h2 = (text: string): LegalBlock => ({ type: "h2", text });
 const SUPPORT_EMAIL = "support@kimoraco.com";
 
 /**
+ * The dateline, as ONE value each.
+ *
+ * These feed both `REFUNDS_POLICY.effectiveDate` / `.lastUpdated` AND the
+ * dateline block that actually renders. The first version of this file
+ * declared the two fields and then hardcoded the same dates again in
+ * `blocks[0]` — nothing read the fields, so bumping `effectiveDate` to a new
+ * date would have shipped a page and a prerender that both still said April
+ * 27. Two sources for one date, with the authoritative-looking one inert, in
+ * the file whose entire purpose is to have one source. Caught in adversarial
+ * review.
+ */
+const REFUNDS_EFFECTIVE = "April 27, 2026";
+const REFUNDS_UPDATED = "April 27, 2026";
+
+/**
  * /refunds — Refund & Return Policy.
  *
  * Transcribed verbatim from Refunds.tsx as of origin/main 4d088bb. Every
- * sentence, every bolded run and both line-break groups are preserved; the JSX
+ * sentence, every bolded run and all THREE line-break groups — the dateline,
+ * Return Address and Contact — are preserved; the JSX
  * whitespace collapse is preserved too (e.g. "health regulations," is followed
  * by a bolded run that opens with a space, which is how the page reads today).
  *
@@ -113,17 +147,17 @@ const SUPPORT_EMAIL = "support@kimoraco.com";
  */
 export const REFUNDS_POLICY: LegalPage = {
   heading: "Refund & Return Policy",
-  effectiveDate: "April 27, 2026",
-  lastUpdated: "April 27, 2026",
+  effectiveDate: REFUNDS_EFFECTIVE,
+  lastUpdated: REFUNDS_UPDATED,
   blocks: [
     {
       type: "p",
       spans: [
         { b: "Effective Date:" },
-        " April 27, 2026",
+        ` ${REFUNDS_EFFECTIVE}`,
         { br: true },
         { b: "Last Updated:" },
-        " April 27, 2026",
+        ` ${REFUNDS_UPDATED}`,
       ],
     },
     p(
@@ -274,7 +308,28 @@ export const REFUNDS_POLICY: LegalPage = {
  * a newline inside a <p> renders as a space in HTML anyway.
  */
 export function legalSpansToText(spans: readonly LegalSpan[]): string {
-  return spans
-    .map((s) => (typeof s === "string" ? s : "b" in s ? s.b : " "))
+  const text = spans
+    .map((s) => {
+      switch (legalSpanKind(s)) {
+        case "text":
+          return s as string;
+        case "bold":
+          return (s as { b: string }).b;
+        case "break":
+          return " ";
+      }
+    })
     .join("");
+
+  // Collapse runs of whitespace. The Return Address block opens with two
+  // consecutive {br}s — a deliberate blank line on the page — which flattened
+  // to "mailed to:  Kimora Co." with a double space. HTML collapses it anyway,
+  // so this is tidiness rather than a bug, but the fallback is the copy an
+  // answer engine quotes and it should not carry the page's layout artifacts.
+  //
+  // Accepted and NOT changed: the dateline flattens to "Effective Date: April
+  // 27, 2026 Last Updated: April 27, 2026", two labelled values with only a
+  // space between them. Both facts are present and unambiguous, and inserting
+  // a separator here would be the fallback saying something the page does not.
+  return text.replace(/ {2,}/g, " ");
 }

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 const IN = [
   "5g creatine monohydrate (200 mesh — no underdose)",
   "A real electrolyte panel — sodium, potassium, magnesium",
-  "Naturally sweetened with stevia and monk fruit",
+  "Naturally sweetened with stevia",
   "Acid flavor system — citric, malic, ascorbic",
 ];
 

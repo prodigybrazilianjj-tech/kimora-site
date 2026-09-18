@@ -30,7 +30,7 @@ import {
   verifyResaleCert,
   setResaleCertStatus,
 } from "../services/resaleCertService";
-import { generateForm5000APdf } from "../services/form5000aService";
+import { generateForm5000APdf, CERT_PERIOD_MONTHS } from "../services/form5000aService";
 
 // Allowed upload types + size cap for an attached resale-cert image/PDF.
 const ALLOWED_CERT_FILE_MIMES = new Set([
@@ -725,7 +725,7 @@ export function registerWholesaleRoutes(app: Express) {
       const certType = safeString(b.certType, 32) || "az_5000a";
       const licenseNumber = safeString(b.licenseNumber, 100) || null;
       const issuingState = safeString(b.issuingState, 8) || "AZ";
-      const expiresAt = parseDate(b.expiresAt);
+      let expiresAt = parseDate(b.expiresAt);
       const resaleDescription = safeString(b.description, 500) || null;
 
       let fileData: string | null = null;
@@ -741,19 +741,36 @@ export function registerWholesaleRoutes(app: Express) {
             .status(400)
             .json({ ok: false, message: "A signature is required to generate the certificate." });
         }
+        // Fills the real ADOR 5000A (server/assets/AZ5000A.pdf). Period
+        // certificate: signup date → +CERT_PERIOD_MONTHS, and that "through"
+        // date doubles as the cert's expiresAt so the tax gate stops honoring
+        // it automatically.
+        const signedAt = new Date();
+        const periodThrough = new Date(signedAt.getTime());
+        periodThrough.setMonth(periodThrough.getMonth() + CERT_PERIOD_MONTHS);
+        const fmt = (d: Date) =>
+          d.toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" });
         const pdfBytes = await generateForm5000APdf({
           purchaserName: businessName,
           purchaserAddress: safeString(b.purchaserAddress, 300),
+          purchaserCity: safeString(b.purchaserCity, 120),
+          purchaserState: safeString(b.purchaserState, 8),
+          purchaserZip: safeString(b.purchaserZip, 16),
           purchaserPhone: safeString(b.purchaserPhone, 64),
+          purchaserEmail: email,
           licenseNumber: licenseNumber || "",
           issuingState,
           certType,
+          natureOfBusiness: safeString(b.natureOfBusiness, 300),
           description: safeString(b.description, 300),
           signerName: safeString(b.signerName, 200) || businessName,
           signerTitle: safeString(b.signerTitle, 120) || "Owner",
           signatureDataUrl: sig,
-          signedDate: new Date().toLocaleDateString("en-US"),
+          signedDate: fmt(signedAt),
+          periodFrom: signedAt.toISOString(),
+          periodThrough: periodThrough.toISOString(),
         });
+        if (!expiresAt) expiresAt = periodThrough;
         fileData = Buffer.from(pdfBytes).toString("base64");
         fileMime = "application/pdf";
         fileName = "kimora-5000a-resale-certificate.pdf";

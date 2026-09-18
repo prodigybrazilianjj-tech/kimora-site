@@ -83,7 +83,7 @@ export const ROUTES: readonly RouteSeo[] = [
     path: "/",
     title: "Kimora Co. | Creatine + Electrolyte Stick Packs for BJJ & MMA",
     description:
-      "5 g creatine monohydrate plus real electrolytes in a single-serve stick. Naturally sweetened with stevia and monk fruit. Built for BJJ, MMA and lifters.",
+      "5 g creatine monohydrate plus real electrolytes in a single-serve stick. Naturally sweetened with stevia. Built for BJJ, MMA and lifters.",
     indexable: true,
     changefreq: "weekly",
     priority: 1.0,
@@ -613,7 +613,7 @@ export function productJsonLd(): object {
     brand: { "@type": "Brand", name: SITE_NAME },
     category: "Sports Nutrition > Creatine",
     description:
-      "Daily creatine monohydrate and electrolytes in single-serve stick packs, built for grappling and combat sports. 5 g creatine monohydrate per stick, naturally sweetened with stevia and monk fruit. No sugar, no artificial colors, no proprietary blends.",
+      "Daily creatine monohydrate and electrolytes in single-serve stick packs, built for grappling and combat sports. 5 g creatine monohydrate per stick, naturally sweetened with stevia. No sugar, no artificial colors, no proprietary blends.",
     image: SITE_OG_IMAGE,
     url: `${SITE_ORIGIN}/product`,
     additionalProperty: [
@@ -630,7 +630,7 @@ export function productJsonLd(): object {
       {
         "@type": "PropertyValue",
         name: "Sweetener",
-        value: "Stevia and monk fruit",
+        value: "Stevia",
       },
       {
         "@type": "PropertyValue",

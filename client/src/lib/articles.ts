@@ -221,7 +221,7 @@ const CREATINE_AND_ELECTROLYTES: Article = {
     },
     {
       type: "p",
-      text: "Kimora is sweetened with stevia and monk fruit. No sugar, no sugar alcohols, no artificial colors, no silicon dioxide. That constraint is a large part of why the formula took as long as it did.",
+      text: "Kimora is sweetened with stevia. No sugar, no sugar alcohols, no artificial colors, no silicon dioxide. That constraint is a large part of why the formula took as long as it did.",
     },
 
     { type: "h2", text: "The practical answers" },
@@ -284,7 +284,7 @@ const CREATINE_AND_ELECTROLYTES: Article = {
     },
     {
       type: "p",
-      text: "What we will say: 5 g creatine monohydrate per stick. Thirty sticks to a pouch, which is a month. Naturally sweetened with stevia and monk fruit. No proprietary blends, because a blend is where a number goes to hide.",
+      text: "What we will say: 5 g creatine monohydrate per stick. Thirty sticks to a pouch, which is a month. Naturally sweetened with stevia. No proprietary blends, because a blend is where a number goes to hide.",
     },
 
     {
@@ -558,7 +558,7 @@ const STICK_PACKS: Article = {
     },
     {
       type: "p",
-      text: `What we will say: 5 g creatine monohydrate per stick. ${STICKS_PER_POUCH} sticks to a pouch, which is a month. Naturally sweetened with stevia and monk fruit. No sugar, no artificial colors, no proprietary blends.`,
+      text: `What we will say: 5 g creatine monohydrate per stick. ${STICKS_PER_POUCH} sticks to a pouch, which is a month. Naturally sweetened with stevia. No sugar, no artificial colors, no proprietary blends.`,
     },
 
     {
@@ -907,7 +907,7 @@ const THIRD_PARTY_TESTING: Article = {
       type: "ul",
       items: [
         "5 g creatine monohydrate per stick. Monohydrate specifically — not a blend, not a buffered or esterified variant sold at a premium on thinner evidence.",
-        "Naturally sweetened with stevia and monk fruit. No sugar, no sugar alcohols, no artificial sweeteners.",
+        "Naturally sweetened with stevia. No sugar, no sugar alcohols, no artificial sweeteners.",
         "No silicon dioxide, no artificial colors, no artificial flavors.",
         "No proprietary blends. Every active is named with its own number on the panel.",
         "Stimulant free.",

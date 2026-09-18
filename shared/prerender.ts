@@ -193,7 +193,7 @@ const SPEC_BULLETS = [
   `${STICKS_PER_POUCH} single-serve sticks per pouch — one month of daily dosing.`,
   "5 g creatine monohydrate per stick.",
   "Contains sodium, potassium and magnesium. Amounts finalize on our production Certificate of Analysis.",
-  "Naturally sweetened with stevia and monk fruit. No sugar, no artificial colors, no proprietary blends.",
+  "Naturally sweetened with stevia. No sugar, no artificial colors, no proprietary blends.",
   "Stimulant free.",
   `$${PRICE_ONE_TIME} one-time, $${PRICE_SUB} on subscription.`,
 ];
@@ -270,7 +270,7 @@ export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
     ],
     bullets: [
       `Retail is $${PRICE_ONE_TIME} per pouch of ${STICKS_PER_POUCH} sticks.`,
-      "5 g creatine monohydrate per stick, naturally sweetened with stevia and monk fruit.",
+      "5 g creatine monohydrate per stick, naturally sweetened with stevia.",
       "Apply at /wholesale/apply.",
     ],
   },

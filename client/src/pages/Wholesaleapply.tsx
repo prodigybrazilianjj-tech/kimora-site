@@ -56,6 +56,19 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+// Section C of the AZ 5000A ("Precise Nature of Purchaser's Business").
+function natureOfBusinessFor(f: FormState): string {
+  const base: Record<FormState["businessType"], string> = {
+    gym: "Martial arts / fitness gym",
+    bjj: "Brazilian jiu-jitsu academy",
+    performance: "Athletic performance / training facility",
+    trainer: "Personal training business",
+    retail: "Retail store",
+    other: f.businessTypeOther.trim() || "Fitness business",
+  };
+  return `${base[f.businessType]} — retail sales of supplements and merchandise to members`;
+}
+
 // Downscale big phone photos before upload so we stay under the ~6MB cert cap.
 async function compressImage(file: File): Promise<string> {
   const dataUrl = await fileToDataUrl(file);
@@ -123,6 +136,7 @@ export default function WholesaleApply() {
     issuingState: "AZ",
     certType: "az_5000a" as "az_5000a" | "mtc",
     purchaserAddress: "",
+    purchaserZip: "",
     signerTitle: "Owner",
     expiresAt: "",
     fileData: "",
@@ -331,6 +345,10 @@ export default function WholesaleApply() {
             certBody.signatureDataUrl =
               sigCanvasRef.current?.toDataURL("image/png") || "";
             certBody.purchaserAddress = cert.purchaserAddress || undefined;
+            certBody.purchaserCity = form.city.trim() || undefined;
+            certBody.purchaserState = (form.state || cert.issuingState || "AZ").trim().toUpperCase();
+            certBody.purchaserZip = cert.purchaserZip.trim() || undefined;
+            certBody.natureOfBusiness = natureOfBusinessFor(form);
             certBody.purchaserPhone = phoneDigits || undefined;
             certBody.signerName = form.contactName.trim() || undefined;
             certBody.signerTitle = cert.signerTitle || "Owner";
@@ -885,17 +903,33 @@ export default function WholesaleApply() {
                         placeholder="AZ"
                       />
                     </div>
-                    <div className="md:col-span-2">
+                    <div>
                       <Label className="text-xs text-foreground/70 mb-1 block" htmlFor="certAddr">
-                        Business address
+                        Street address
                       </Label>
                       <Input
                         id="certAddr"
                         value={cert.purchaserAddress}
                         onChange={(e) => updateCert("purchaserAddress", e.target.value)}
                         className="h-11 bg-background border-foreground/10 text-foreground"
-                        placeholder="Street, City, State ZIP"
+                        placeholder="123 Main St, Suite B"
                       />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-foreground/70 mb-1 block" htmlFor="certZip">
+                        ZIP code
+                      </Label>
+                      <Input
+                        id="certZip"
+                        value={cert.purchaserZip}
+                        onChange={(e) => updateCert("purchaserZip", e.target.value)}
+                        className="h-11 bg-background border-foreground/10 text-foreground"
+                        placeholder="86326"
+                        inputMode="numeric"
+                      />
+                      <p className="mt-1 text-[11px] text-foreground/50">
+                        City and state come from the application above. Your certificate is valid for 12 months from today.
+                      </p>
                     </div>
                   </div>
 

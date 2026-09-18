@@ -76,6 +76,11 @@ async function buildAll() {
   // served only through the token gate in server/routes/toolRoutes.ts.
   console.log("copying internal tool pages...");
   await cp("server/tools", "dist/tools", { recursive: true });
+
+  // Server-side assets (the fillable ADOR Form 5000A the wholesale onboarding
+  // fills and signs). Read from disk at runtime by form5000aService.ts.
+  console.log("copying server assets...");
+  await cp("server/assets", "dist/assets", { recursive: true });
 }
 
 buildAll().catch((err) => {

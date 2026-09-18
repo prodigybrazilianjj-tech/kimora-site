@@ -62,6 +62,7 @@ import {
   PRIVACY_POLICY,
   TERMS_POLICY,
   legalSpanKind,
+  legalHrefKind,
   type LegalBlock,
   type LegalSpan,
 } from "../client/src/lib/legal";
@@ -259,9 +260,8 @@ const PRELAUNCH_NOTE =
  *
  * /refunds went first because it is the shortest policy and because its content
  * is corroborated by structured data already on the site. It merged, built and
- * deployed on 2026-09-18 (origin/main 9f624b9), which confirmed the pattern —
- * and /terms and /privacy followed the same day on the identical shape.
- * Finding #39 is closed; all three legal routes now serve their full policy.
+ * deployed on 2026-09-18 (origin/main 9f624b9), which confirmed the pattern;
+ * /terms and /privacy follow on the identical shape, closing finding #39.
  */
 export const PRERENDER: Readonly<Record<string, PrerenderContent>> = {
   // "/" renders Home (App.tsx; pages/Home.tsx is the page that was called
@@ -517,7 +517,10 @@ function renderLegalBlockHtml(block: LegalBlock): string {
  */
 function legalSpansToHtml(spans: readonly LegalSpan[]): string {
   return spans
-    .map((span) => {
+    // The `: string` annotation is load-bearing. Without it a missing case
+    // compiles clean and the span renders as nothing — see legalSpanKind's
+    // note. With it, a new LegalSpan variant is TS2366 here.
+    .map((span): string => {
       switch (legalSpanKind(span)) {
         case "text":
           return esc(span as string);
@@ -526,32 +529,26 @@ function legalSpansToHtml(spans: readonly LegalSpan[]): string {
         case "break":
           return " ";
         case "link": {
-          const l = span as { link: string; href: string; external: boolean };
-          // Same https-only guard the article `sources` renderer uses, for the
-          // same reason: the value lands in an href in server-rendered HTML,
-          // and `javascript:` in that position is a live link rather than a
-          // dead citation. Internal hrefs are root-relative and are allowed
-          // through explicitly rather than by falling out of a failed parse.
-          const internalOk = !l.external && l.href.startsWith("/") && !l.href.startsWith("//");
-          let externalOk = false;
-          if (l.external) {
-            try {
-              externalOk = new URL(l.href).protocol === "https:";
-            } catch {
-              externalOk = false;
-            }
-          }
+          const l = span as { link: string; href: string };
+          // Same guard the PAGE uses — legalHrefKind in client/src/lib/legal.ts
+          // — so the two surfaces accept and reject exactly the same hrefs. An
+          // earlier draft had this guard here only, which meant a `javascript:`
+          // href was a dead string to a crawler and a live link to a reader.
+          const kind = legalHrefKind(l.href);
           // A rejected href degrades to its label rather than vanishing: the
           // sentence still reads, it just stops being clickable.
-          if (!internalOk && !externalOk) return esc(l.link);
-          const rel = l.external ? ' rel="noopener noreferrer"' : "";
+          if (kind === null) return esc(l.link);
+          const rel = kind === "external" ? ' rel="noopener noreferrer"' : "";
           return `<a href="${escAttr(l.href)}"${rel}>${esc(l.link)}</a>`;
         }
       }
     })
     .join("")
-    // Matches legalSpansToText: two consecutive {br}s are a deliberate blank
-    // line on the page and should not become a double space in the fallback.
+    // Two consecutive {br}s are a deliberate blank line on the page (the
+    // Refunds return address) and should not become a double space in the
+    // fallback. Safe after escaping: esc() never emits a space, so it cannot
+    // manufacture a run for this to eat, and the collapse cannot land inside
+    // an entity. No policy string contains two consecutive spaces.
     .replace(/ {2,}/g, " ");
 }
 

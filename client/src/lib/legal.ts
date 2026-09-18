@@ -1,9 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Legal policy copy — ONE source, rendered by two surfaces.
 //
-// STATUS: all three legal routes now serve their full policy to crawlers.
-// /refunds shipped 2026-09-18 (origin/main 9f624b9); /privacy and /terms
-// followed the same day on the identical shape. Playbook finding #39 closed.
+// STATUS: /refunds shipped and deployed 2026-09-18 (origin/main 9f624b9).
+// /privacy and /terms follow on this branch, on the identical shape — which
+// closes playbook finding #39 once this merges. (Written in the present tense
+// on purpose: the previous draft of this block asserted all three were already
+// live, on an unmerged branch.)
 //
 // WHY THIS FILE EXISTS. Until 2026-09-18 /privacy, /terms and /refunds served
 // `<div id="root"></div>` to any crawler that does not run JavaScript: correct
@@ -85,21 +87,37 @@ export type LegalSpan =
    * Terms -> Refunds cross-reference, on pages whose entire job is to point a
    * reader at their actual rights.
    *
-   * `external: true` renders <a target="_blank" rel="noopener noreferrer">;
-   * `false` renders wouter's <Link>, for in-app navigation. The prerender
-   * emits a plain <a> either way, because a crawler does not route.
+   * Internal vs external is DERIVED from the href by legalHrefKind(), not
+   * stored. An `external: boolean` field alongside the href would be a second
+   * source of truth for something the href already says, and the two can
+   * disagree: `{ external: false, href: "https://…" }` typechecks and produces
+   * a prerender that degrades to plain text AND a wouter <Link> treating an
+   * absolute URL as an in-app path — two different wrong behaviours from one
+   * typo, neither caught by tsc. Same lesson as the dateline constants one
+   * commit earlier: two values that agree today are not therefore one value,
+   * and the cure is to keep only the one that is load-bearing.
    */
-  | { link: string; href: string; external: boolean };
+  | { link: string; href: string };
 
 /**
  * Narrow a span to its kind.
  *
- * Exists so that BOTH renderers — Refunds.tsx's `Spans` and legalSpansToText
- * below — go through one exhaustive switch instead of two `"b" in span` chains.
- * Adding a fourth variant without handling it is then a compile error here,
- * rather than silently rendering a <br> on the page and a space in the
- * prerender. Found in adversarial review: LegalBlock's switch was guarded and
- * the span union, which carries the inline structure, was not.
+ * Exists so that all three consumers — `Spans` in components/LegalBody.tsx and
+ * `legalSpansToHtml` in shared/prerender.ts — go through one switch instead of
+ * their own `"b" in span` chains.
+ *
+ * ⚠️ THIS FUNCTION IS THE ONLY EXHAUSTIVENESS GUARD, and the comment here
+ * previously claimed the callers were guarded too. They are not, and the
+ * adversarial review proved it by experiment: both callers' switches live in
+ * `.map()` callbacks, and an unannotated callback with a missing case compiles
+ * clean — the new variant then renders as nothing on the page AND nothing in
+ * the prerender, which hides even from a diff of the two surfaces. The
+ * callbacks now carry explicit return types so that a missing case is
+ * `TS2366: Function lacks ending return statement`; keep them.
+ *
+ * The `never` assignment below is what makes ADDING a variant a compile error
+ * here. One edit satisfies it, so it disarms nothing downstream on its own —
+ * that is exactly why the callback annotations matter.
  */
 export function legalSpanKind(
   span: LegalSpan,
@@ -110,6 +128,44 @@ export function legalSpanKind(
   if ("link" in span) return "link";
   const exhaustive: never = span;
   return exhaustive;
+}
+
+/**
+ * Classify a link span's href, or reject it.
+ *
+ * ONE guard, called by BOTH renderers. The first version of this put the guard
+ * only in the prerender, which inverted its own threat model: a `javascript:`
+ * href would have been a dead string to a crawler and a LIVE LINK on the page.
+ * It also meant an ordinary `http://` vendor link would render clickable for
+ * readers and as unclickable plain text for crawlers — a silent content
+ * divergence produced by the function written to prevent divergence. Caught in
+ * adversarial review.
+ *
+ * `null` means "render the label as plain text": the sentence still reads, it
+ * just stops being clickable. Failing closed on both surfaces identically is
+ * the point.
+ *
+ * The internal test rejects `//` AND `/\`, because `new URL("/\\evil.com",
+ * origin)` resolves to `https://evil.com/` — the WHATWG parser treats a
+ * backslash as a slash for special schemes, and so do browsers. Everything
+ * here is authored in-repo, so this guards a future edit rather than a live
+ * hazard; a guard you can step over is not one.
+ */
+export function legalHrefKind(href: string): "internal" | "external" | null {
+  // Validate EXACTLY the string that gets emitted. `new URL()` trims leading
+  // and trailing whitespace, so "  https://x.com" would be judged on a value
+  // the renderer never writes — the guard would approve one string and the
+  // attribute would carry another. Browsers happen to trim too, so nothing
+  // breaks today; a guard that inspects a different string from the one it is
+  // guarding is worth closing anyway, and whitespace in an authored href is a
+  // typo rather than an intention.
+  if (href !== href.trim()) return null;
+  if (/^\/(?![/\\])/.test(href)) return "internal";
+  try {
+    return new URL(href).protocol === "https:" ? "external" : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -355,44 +411,6 @@ export const REFUNDS_POLICY: LegalPage = {
   ],
 };
 
-/**
- * Flatten a paragraph's spans to plain text.
- *
- * Used by the prerender, which carries no styling. A `{ br }` becomes a single
- * space, because the fallback is prose for a machine to read rather than a
- * layout — an address run together on one line is still a correct address, and
- * a newline inside a <p> renders as a space in HTML anyway.
- */
-export function legalSpansToText(spans: readonly LegalSpan[]): string {
-  const text = spans
-    .map((s) => {
-      switch (legalSpanKind(s)) {
-        case "text":
-          return s as string;
-        case "bold":
-          return (s as { b: string }).b;
-        case "break":
-          return " ";
-        case "link":
-          // The label, not the href. This helper feeds plain-text contexts;
-          // the prerender renders links as real anchors through its own path.
-          return (s as { link: string }).link;
-      }
-    })
-    .join("");
-
-  // Collapse runs of whitespace. The Return Address block opens with two
-  // consecutive {br}s — a deliberate blank line on the page — which flattened
-  // to "mailed to:  Kimora Co." with a double space. HTML collapses it anyway,
-  // so this is tidiness rather than a bug, but the fallback is the copy an
-  // answer engine quotes and it should not carry the page's layout artifacts.
-  //
-  // Accepted and NOT changed: the dateline flattens to "Effective Date: April
-  // 27, 2026 Last Updated: April 27, 2026", two labelled values with only a
-  // space between them. Both facts are present and unambiguous, and inserting
-  // a separator here would be the fallback saying something the page does not.
-  return text.replace(/ {2,}/g, " ");
-}
 
 /**
  * /privacy — Privacy Policy.
@@ -434,10 +452,10 @@ export const PRIVACY_POLICY: LegalPage = {
     h2("Cookies & Tracking Technologies"),
     p("We use cookies and similar technologies (pixels, web beacons, SDKs) for three purposes:"),
     { type: "p", spans: [{ b: "Strictly necessary —" }, " required for core site functionality such as cart, checkout, and login. These cannot be disabled without breaking the site."] },
-    { type: "p", spans: [{ b: "Analytics —" }, " help us understand how visitors use our site. We use Google Analytics 4. Google may set first-party cookies and collect information about your site interactions. Review Google’s privacy practices at ", { link: "policies.google.com/privacy", href: "https://policies.google.com/privacy", external: true }, "."] },
+    { type: "p", spans: [{ b: "Analytics —" }, " help us understand how visitors use our site. We use Google Analytics 4. Google may set first-party cookies and collect information about your site interactions. Review Google’s privacy practices at ", { link: "policies.google.com/privacy", href: "https://policies.google.com/privacy" }, "."] },
     { type: "p", spans: [{ b: "Advertising —" }, " used to measure ad performance and show you relevant ads on third-party platforms. We use:"] },
-    { type: "ul", items: [[{ b: "TikTok Pixel and Events API." }, " Collects information about your interactions with our site and, when you provide it, hashed contact information for ad audience matching. See TikTok’s Privacy Policy at ", { link: "tiktok.com/legal/page/us/privacy-policy/en", href: "https://www.tiktok.com/legal/page/us/privacy-policy/en", external: true }, "."], [{ b: "Meta Pixel and Conversions API" }, " (Facebook and Instagram), when active. Collects similar information for Meta ad targeting and measurement. See Meta’s Privacy Policy at ", { link: "facebook.com/privacy/policy", href: "https://www.facebook.com/privacy/policy", external: true }, "."]] },
-    { type: "p", spans: ["You can opt out of pixel-based advertising through your browser settings, the Network Advertising Initiative (", { link: "optout.networkadvertising.org", href: "https://optout.networkadvertising.org/", external: true }, "), the Digital Advertising Alliance (", { link: "optout.aboutads.info", href: "https://optout.aboutads.info/", external: true }, "), or platform-specific settings (Google Ads Settings, Meta ad preferences, TikTok ad settings). We honor Global Privacy Control (GPC) signals where applicable."] },
+    { type: "ul", items: [[{ b: "TikTok Pixel and Events API." }, " Collects information about your interactions with our site and, when you provide it, hashed contact information for ad audience matching. See TikTok’s Privacy Policy at ", { link: "tiktok.com/legal/page/us/privacy-policy/en", href: "https://www.tiktok.com/legal/page/us/privacy-policy/en" }, "."], [{ b: "Meta Pixel and Conversions API" }, " (Facebook and Instagram), when active. Collects similar information for Meta ad targeting and measurement. See Meta’s Privacy Policy at ", { link: "facebook.com/privacy/policy", href: "https://www.facebook.com/privacy/policy" }, "."]] },
+    { type: "p", spans: ["You can opt out of pixel-based advertising through your browser settings, the Network Advertising Initiative (", { link: "optout.networkadvertising.org", href: "https://optout.networkadvertising.org/" }, "), the Digital Advertising Alliance (", { link: "optout.aboutads.info", href: "https://optout.aboutads.info/" }, "), or platform-specific settings (Google Ads Settings, Meta ad preferences, TikTok ad settings). We honor Global Privacy Control (GPC) signals where applicable."] },
     h2("Service Providers & Third Parties"),
     p("We share limited information with service providers that help us operate Kimora. These include:"),
     { type: "ul", items: [[{ b: "Stripe" }, " — payment processing"], [{ b: "Shopify" }, " — storefront and order management"], [{ b: "Klaviyo" }, " — email and SMS marketing"], [{ b: "Formspree" }, " — waitlist form processing"], [{ b: "Google (Analytics)" }, " — site analytics"], [{ b: "TikTok" }, " — advertising and analytics"], [{ b: "Meta" }, " — advertising and analytics (when active)"], [{ b: "Render" }, " — website hosting"], [{ b: "Third-party fulfillment partner" }, " — order shipping (when active)"]] },
@@ -513,7 +531,7 @@ export const TERMS_POLICY: LegalPage = {
     p("We currently ship within the United States. Estimated delivery times are provided at checkout and are estimates only — actual delivery times may vary. Risk of loss and title for products pass to you upon delivery to the carrier."),
     p("You are responsible for providing an accurate shipping address. Kimora is not responsible for orders delayed, lost, or damaged due to incorrect addresses, carrier issues, or theft after delivery confirmation."),
     h2("Returns & Refunds"),
-    { type: "p", spans: ["Our return and refund policy is described on our ", { link: "Refunds", href: "/refunds", external: false }, " page and is incorporated into these Terms by reference. Please review it before placing an order."] },
+    { type: "p", spans: ["Our return and refund policy is described on our ", { link: "Refunds", href: "/refunds" }, " page and is incorporated into these Terms by reference. Please review it before placing an order."] },
     h2("Promotional Codes & Discounts"),
     p("Promotional codes (including gym partnership codes such as MAT15) are limited to one use per customer unless otherwise stated, may not be combined with other offers unless explicitly permitted, have no cash value, and may be modified or revoked at any time. Promotional pricing applies only to the initial qualifying purchase unless we expressly state otherwise."),
     h2("Email & SMS Communications"),

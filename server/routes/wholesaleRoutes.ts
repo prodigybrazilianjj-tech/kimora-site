@@ -466,13 +466,22 @@ export function registerWholesaleRoutes(app: Express) {
       const phoneDigits = onlyDigits(phoneRaw);
 
       const websiteOrInstagram = safeString(body.websiteOrInstagram, 500);
+      const shippingAddress = safeString(body.shippingAddress, 300);
+      const shippingZip = safeString(body.shippingZip, 16);
       const city = safeString(body.city, 120);
       const state = safeString(body.state, 16);
 
       const businessType = safeString(body.businessType, 32);
       const businessTypeOther = safeString(body.businessTypeOther, 300);
 
-      const memberCount = parsePositiveInt(body.memberCount);
+      // Optional since 2026-09-18. Blank/absent → null. A value that was sent
+      // but is not a positive integer is still rejected below.
+      const memberCountProvided =
+        body.memberCount !== undefined &&
+        body.memberCount !== null &&
+        String(body.memberCount).trim() !== "" &&
+        String(body.memberCount).trim() !== "0";
+      const memberCount = memberCountProvided ? parsePositiveInt(body.memberCount) : null;
       const retailSetup = safeString(body.retailSetup, 32);
 
       const interestedIn: any = body.interestedIn ?? {};
@@ -502,17 +511,23 @@ export function registerWholesaleRoutes(app: Express) {
         });
       }
 
+      if (!shippingAddress) {
+        return res.status(400).json({ ok: false, message: "Shipping address is required." });
+      }
       if (!city) return res.status(400).json({ ok: false, message: "City is required." });
       if (!state) return res.status(400).json({ ok: false, message: "State is required." });
+      if (onlyDigits(shippingZip).length < 5) {
+        return res.status(400).json({ ok: false, message: "ZIP code is required." });
+      }
 
       if (businessType === "other" && !businessTypeOther) {
         return res.status(400).json({ ok: false, message: "Please specify business type." });
       }
 
-      if (!memberCount || memberCount <= 0) {
+      if (memberCountProvided && (!memberCount || memberCount <= 0)) {
         return res.status(400).json({
           ok: false,
-          message: "Approx members / active clients is required and must be > 0.",
+          message: "Approx members / active clients must be a whole number above 0, or left blank.",
         });
       }
 
@@ -531,8 +546,10 @@ export function registerWholesaleRoutes(app: Express) {
           contactName,
           email,
           phone: phoneDigits,
-          memberCount,
+          memberCount: memberCount ?? null,
           websiteOrInstagram: websiteOrInstagram || null,
+          shippingAddress,
+          shippingZip,
           city,
           state,
           businessType: businessType || "gym",
@@ -570,11 +587,11 @@ export function registerWholesaleRoutes(app: Express) {
           `Email: ${email}\n` +
           `Phone: ${phoneDigits}\n` +
           `Website/IG: ${websiteOrInstagram || "(not provided)"}\n` +
-          `City/State: ${city}, ${state}\n` +
+          `Ship to: ${shippingAddress}, ${city}, ${state} ${shippingZip}\n` +
           `Business type: ${businessType}${
             businessType === "other" ? ` (${businessTypeOther})` : ""
           }\n` +
-          `Member count: ${memberCount}\n` +
+          `Member count: ${memberCount ?? "(not provided)"}\n` +
           `Retail setup: ${retailSetup || "(not provided)"}\n` +
           `Interested: onShelf=${interestedOnShelf}, coachAffiliate=${interestedCoachAffiliate}, eventSponsorship=${interestedEventSponsorship}\n\n` +
           `Notes:\n${notes || "(none)"}\n\n` +
@@ -592,9 +609,11 @@ export function registerWholesaleRoutes(app: Express) {
   <div style="margin:0 0 8px;"><b>Website/IG:</b> ${escapeHtml(
     safeString(websiteOrInstagram || "(not provided)")
   )}</div>
-  <div style="margin:0 0 8px;"><b>City/State:</b> ${escapeHtml(
-    safeString(city)
-  )}, ${escapeHtml(safeString(state))}</div>
+  <div style="margin:0 0 8px;"><b>Ship to:</b> ${escapeHtml(
+    safeString(shippingAddress)
+  )}, ${escapeHtml(safeString(city))}, ${escapeHtml(safeString(state))} ${escapeHtml(
+          safeString(shippingZip)
+        )}</div>
   <div style="margin:0 0 8px;"><b>Business type:</b> ${escapeHtml(
     safeString(businessType)
   )}${
@@ -602,7 +621,9 @@ export function registerWholesaleRoutes(app: Express) {
             ? ` (${escapeHtml(safeString(businessTypeOther))})`
             : ""
         }</div>
-  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(safeString(memberCount))}</div>
+  <div style="margin:0 0 8px;"><b>Member count:</b> ${escapeHtml(
+    safeString(memberCount ?? "(not provided)")
+  )}</div>
   <div style="margin:0 0 8px;"><b>Retail setup:</b> ${escapeHtml(
     safeString(retailSetup || "(not provided)")
   )}</div>

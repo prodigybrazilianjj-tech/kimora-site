@@ -11,7 +11,9 @@ type WholesaleRow = {
   contactName: string;
   email: string;
   phone: string;
-  memberCount: number;
+  memberCount: number | null;
+  shippingAddress?: string | null;
+  shippingZip?: string | null;
   websiteOrInstagram?: string | null;
   city: string;
   state: string;

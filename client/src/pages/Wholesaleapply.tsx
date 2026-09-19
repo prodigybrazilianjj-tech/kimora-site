@@ -15,13 +15,16 @@ type FormState = {
   phone: string;
 
   websiteOrInstagram: string;
+  // Required since 2026-09-18: every approved gym has a ship-to on file.
+  shippingAddress: string;
+  shippingZip: string;
   city: string;
   state: string;
 
   businessType: "gym" | "bjj" | "performance" | "trainer" | "retail" | "other";
   businessTypeOther: string;
 
-  // ✅ now required (keep as string for input UX)
+  // Optional since 2026-09-18 (kept as string for input UX)
   memberCount: string;
 
   retailSetup: "front_desk" | "pro_shop" | "supplement_wall" | "not_sure";
@@ -106,6 +109,8 @@ export default function WholesaleApply() {
     phone: "",
 
     websiteOrInstagram: "",
+    shippingAddress: "",
+    shippingZip: "",
     city: "",
     state: "",
 
@@ -238,13 +243,16 @@ export default function WholesaleApply() {
     // ✅ now required
     if (!phoneDigits || phoneDigits.length < 10) return false;
 
+    if (!form.shippingAddress.trim()) return false;
     if (!form.city.trim()) return false;
     if (!form.state.trim()) return false;
+    if (onlyDigits(form.shippingZip).length < 5) return false;
 
     if (form.businessType === "other" && !form.businessTypeOther.trim()) return false;
 
-    // ✅ now required
-    if (!Number.isFinite(memberCountNum) || memberCountNum < 1) return false;
+    // Member count is optional — but if something was typed it must be a real number.
+    if (form.memberCount.trim() && (!Number.isFinite(memberCountNum) || memberCountNum < 1))
+      return false;
 
     return true;
   }, [form, emailNormalized, phoneDigits, memberCountNum]);
@@ -269,8 +277,9 @@ export default function WholesaleApply() {
 
       // ✅ new required
       phone: true,
-      memberCount: true,
 
+      shippingAddress: true,
+      shippingZip: true,
       city: true,
       state: true,
       businessTypeOther: true,
@@ -302,7 +311,10 @@ export default function WholesaleApply() {
         ...form,
         email: emailNormalized,
         phone: phoneDigits, // ✅ required, always send digits
-        memberCount: memberCountNum, // ✅ required, always send number
+        shippingAddress: form.shippingAddress.trim(),
+        shippingZip: form.shippingZip.trim(),
+        // optional — null when left blank
+        memberCount: Number.isFinite(memberCountNum) ? memberCountNum : null,
       };
 
       const res = await fetch("/api/wholesale/apply", {
@@ -344,10 +356,12 @@ export default function WholesaleApply() {
           } else {
             certBody.signatureDataUrl =
               sigCanvasRef.current?.toDataURL("image/png") || "";
-            certBody.purchaserAddress = cert.purchaserAddress || undefined;
+            certBody.purchaserAddress =
+              cert.purchaserAddress || form.shippingAddress.trim() || undefined;
             certBody.purchaserCity = form.city.trim() || undefined;
             certBody.purchaserState = (form.state || cert.issuingState || "AZ").trim().toUpperCase();
-            certBody.purchaserZip = cert.purchaserZip.trim() || undefined;
+            certBody.purchaserZip =
+              cert.purchaserZip.trim() || form.shippingZip.trim() || undefined;
             certBody.natureOfBusiness = natureOfBusinessFor(form);
             certBody.purchaserPhone = phoneDigits || undefined;
             certBody.signerName = form.contactName.trim() || undefined;
@@ -575,6 +589,24 @@ export default function WholesaleApply() {
                 />
               </div>
 
+              <div className="md:col-span-2">
+                <Label className="text-sm text-foreground mb-2 block" htmlFor="shippingAddress">
+                  Shipping address <span className="text-foreground/40">*</span>
+                </Label>
+                <Input
+                  id="shippingAddress"
+                  autoComplete="street-address"
+                  value={form.shippingAddress}
+                  onChange={(e) => update("shippingAddress", e.target.value)}
+                  onBlur={() => markTouched("shippingAddress")}
+                  className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
+                  placeholder="Street address, suite / unit"
+                />
+                {showErr("shippingAddress") && !form.shippingAddress.trim() ? (
+                  <p className="text-xs text-red-200 mt-2">Shipping address is required.</p>
+                ) : null}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm text-foreground mb-2 block" htmlFor="city">
@@ -609,6 +641,25 @@ export default function WholesaleApply() {
                     <p className="text-xs text-red-200 mt-2">State is required.</p>
                   ) : null}
                 </div>
+              </div>
+
+              <div>
+                <Label className="text-sm text-foreground mb-2 block" htmlFor="shippingZip">
+                  ZIP code <span className="text-foreground/40">*</span>
+                </Label>
+                <Input
+                  id="shippingZip"
+                  autoComplete="postal-code"
+                  inputMode="numeric"
+                  value={form.shippingZip}
+                  onChange={(e) => update("shippingZip", e.target.value)}
+                  onBlur={() => markTouched("shippingZip")}
+                  className="h-12 bg-background border-foreground/10 text-foreground placeholder:text-foreground/40"
+                  placeholder="86336"
+                />
+                {showErr("shippingZip") && onlyDigits(form.shippingZip).length < 5 ? (
+                  <p className="text-xs text-red-200 mt-2">ZIP code is required.</p>
+                ) : null}
               </div>
             </div>
 
@@ -666,7 +717,8 @@ export default function WholesaleApply() {
 
               <div>
                 <Label className="text-sm text-foreground mb-2 block" htmlFor="memberCount">
-                  Approx members / active clients <span className="text-foreground/40">*</span>
+                  Approx members / active clients{" "}
+                  <span className="text-foreground/40">(optional)</span>
                 </Label>
                 <Input
                   id="memberCount"
@@ -677,8 +729,11 @@ export default function WholesaleApply() {
                   placeholder="e.g., 150"
                 />
                 {showErr("memberCount") &&
+                form.memberCount.trim() &&
                 (!Number.isFinite(memberCountNum) || memberCountNum < 1) ? (
-                  <p className="text-xs text-red-200 mt-2">Approx member count is required.</p>
+                  <p className="text-xs text-red-200 mt-2">
+                    Enter a number, or leave this blank.
+                  </p>
                 ) : null}
 
                 <div className="mt-4 text-sm text-foreground mb-2">Retail setup</div>

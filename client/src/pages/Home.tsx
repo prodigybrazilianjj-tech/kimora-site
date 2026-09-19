@@ -185,8 +185,11 @@ export default function Home() {
                   </div>
 
                   <p className={`mt-4 text-sm leading-6 ${INK_BODY}`}>
-                    ${LAUNCH.priceOneTime.toFixed(2)} for {STICKS_PER_POUCH}{" "}
-                    sticks — a month of daily dosing.{" "}
+                    <span className="text-base font-bold text-[#F7F0DE]">
+                      ${LAUNCH.priceSub.toFixed(2)} a month on subscription
+                    </span>{" "}
+                    for {STICKS_PER_POUCH} sticks — a month of daily dosing. $
+                    {LAUNCH.priceOneTime.toFixed(2)} one-time.{" "}
                     <span className="text-[#F7F0DE]">
                       Waitlist gets {WAITLIST_DISCOUNT_LABEL} off.
                     </span>

@@ -247,18 +247,18 @@
         <option value="other" style="background:#111">Other</option>
       </select>
     </div>
-    <div class="field"><label>Active Members / Students *</label><input type="number" id="f-memberCount" min="1" placeholder="e.g. 80"></div>
+    <div class="field"><label>Active Members / Students (optional)</label><input type="number" id="f-memberCount" min="1" placeholder="e.g. 80"></div>
   </div>
   <div class="field-row full" id="other-type-row" style="display:none">
     <div class="field"><label>Business Type (describe)</label><input type="text" id="f-businessTypeOther"></div>
   </div>
   <div class="field-row full">
-    <div class="field"><label>Shipping Address</label><input type="text" id="f-address"></div>
+    <div class="field"><label>Shipping Address *</label><input type="text" id="f-address" autocomplete="street-address"></div>
   </div>
   <div class="field-row three">
     <div class="field"><label>City *</label><input type="text" id="f-city"></div>
     <div class="field"><label>State *</label><input type="text" id="f-state" maxlength="2" placeholder="TX"></div>
-    <div class="field"><label>ZIP</label><input type="text" id="f-zip"></div>
+    <div class="field"><label>ZIP *</label><input type="text" id="f-zip" inputmode="numeric" autocomplete="postal-code"></div>
   </div>
   <div style="margin-top:14px;">
     <div style="font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;">Interested In</div>
@@ -596,7 +596,10 @@ async function submitOrder() {
   const memberCount       = parseInt(document.getElementById('f-memberCount').value) || 0;
   const city              = document.getElementById('f-city').value.trim();
   const state             = document.getElementById('f-state').value.trim();
-  const retailSetup       = document.getElementById('f-address').value.trim();
+  // The address used to be sent as `retailSetup`, a 32-character column, so
+  // it was truncated and the ZIP was never sent at all. It now has its own fields.
+  const shippingAddress   = document.getElementById('f-address').value.trim();
+  const shippingZip       = document.getElementById('f-zip').value.trim();
   const taxRate           = parseFloat(document.getElementById('tax-rate').value) || 0;
 
   // Validate required fields
@@ -606,9 +609,10 @@ async function submitOrder() {
   if (!email)         missing.push('Email');
   if (!phone)         missing.push('Phone');
   if (!businessType)  missing.push('Business Type');
-  if (!memberCount)   missing.push('Member Count');
+  if (!shippingAddress) missing.push('Shipping Address');
   if (!city)          missing.push('City');
   if (!state)         missing.push('State');
+  if (shippingZip.replace(/\D/g, '').length < 5) missing.push('ZIP');
 
   if (missing.length) {
     msg.className = 'error';
@@ -647,7 +651,8 @@ async function submitOrder() {
         businessName, contactName, email, phone,
         websiteOrInstagram: instagram,
         city, state, businessType, businessTypeOther,
-        memberCount, retailSetup,
+        shippingAddress, shippingZip,
+        memberCount: memberCount || null,   // optional
         interestedIn: {                                // ✅ correct nesting
           onShelf:          document.getElementById('f-onShelf').checked,
           coachAffiliate:   document.getElementById('f-coachAffiliate').checked,

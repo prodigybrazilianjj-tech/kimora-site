@@ -187,8 +187,21 @@ export default function Product() {
             <h1 className="text-5xl md:text-6xl font-display font-bold text-foreground mb-4">
               {product.name}
             </h1>
-            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
+            <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
               {product.desc}
+            </p>
+
+            {/* Headline price — subscription first, one-time as the footnote. */}
+            <p className="mb-8 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="font-display text-4xl font-bold text-foreground">
+                ${pricePerShipmentSub}
+              </span>
+              <span className="text-sm font-semibold text-primary-strong">
+                / month on subscription
+              </span>
+              <span className="text-sm text-muted-foreground">
+                or ${priceOneTime} one-time
+              </span>
             </p>
 
             <div className="mb-8">
@@ -268,11 +281,16 @@ export default function Product() {
                     </div>
                   </div>
 
-                  <span className="font-bold text-foreground">
-                    ${pricePerShipmentSub}
-                    <span className="text-xs text-muted-foreground font-normal">
-                      {" "}
-                      / month
+                  <span className="flex items-baseline gap-2 text-2xl font-bold text-foreground">
+                    <span className="text-sm font-normal text-muted-foreground line-through decoration-destructive/50">
+                      ${priceOneTime}
+                    </span>
+                    <span>
+                      ${pricePerShipmentSub}
+                      <span className="text-xs text-muted-foreground font-normal">
+                        {" "}
+                        / month
+                      </span>
                     </span>
                   </span>
                 </div>
@@ -320,7 +338,7 @@ export default function Product() {
                       One-time Purchase
                     </span>
                   </div>
-                  <span className="font-bold text-foreground">${priceOneTime}</span>
+                  <span className="font-medium text-muted-foreground">${priceOneTime}</span>
                 </div>
               </div>
             </div>

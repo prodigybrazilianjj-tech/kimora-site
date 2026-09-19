@@ -130,21 +130,27 @@ export function FlavorLineup({
                   {flavor.desc}
                 </p>
 
+                {/* Subscription leads. DTC subscription is where the business is
+                    headed, so it gets the display size; one-time is the
+                    footnote. Both still print pack size / per-stick cost. */}
                 <p
                   className={cn(
-                    "mt-4 font-display text-lg font-bold",
+                    "mt-4 font-display text-2xl font-bold",
                     headOn(tone)
                   )}
                 >
-                  ${flavor.priceOneTime.toFixed(2)}
+                  ${flavor.priceSub.toFixed(2)}
+                  <span className={cn("ml-1.5 text-sm font-semibold", headOn(tone))}>
+                    / month
+                  </span>
                   <span className={cn("ml-2 text-xs font-medium", bodyOn(tone))}>
-                    · {STICKS_PER_POUCH} sticks · ${perStickPrice(flavor.priceOneTime)} each
+                    on subscription · {STICKS_PER_POUCH} sticks · ${perStickPrice(flavor.priceSub)} each
                   </span>
                 </p>
 
                 <p className={cn("mt-1.5 text-xs leading-6", bodyOn(tone))}>
-                  ${flavor.priceSub.toFixed(2)} on subscription · $
-                  {perStickPrice(flavor.priceSub)} each
+                  ${flavor.priceOneTime.toFixed(2)} one-time · $
+                  {perStickPrice(flavor.priceOneTime)} each
                 </p>
 
               </div>

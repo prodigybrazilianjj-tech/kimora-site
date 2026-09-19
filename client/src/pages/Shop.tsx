@@ -48,16 +48,6 @@ export default function Shop() {
 
             <div className="flex items-center justify-center gap-4 bg-secondary/30 w-fit mx-auto p-1.5 rounded-full border border-foreground/5">
               <button
-                onClick={() => setIsSubscribe(false)}
-                className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
-                  !isSubscribe
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                One-time
-              </button>
-              <button
                 onClick={() => setIsSubscribe(true)}
                 className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
                   isSubscribe
@@ -66,6 +56,16 @@ export default function Shop() {
                 }`}
               >
                 Subscribe & Save 20%
+              </button>
+              <button
+                onClick={() => setIsSubscribe(false)}
+                className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
+                  !isSubscribe
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                One-time
               </button>
             </div>
           </div>
@@ -127,16 +127,33 @@ export default function Shop() {
                                 30 Sticks
                               </span>
                               <div className="flex items-baseline gap-2">
-                                <span className="text-2xl font-bold text-foreground">
+                                <span
+                                  className={cn(
+                                    "font-bold text-foreground",
+                                    isSubscribe ? "text-3xl" : "text-2xl"
+                                  )}
+                                >
                                   ${displayPrice}
                                 </span>
 
                                 {isSubscribe && (
-                                  <span className="text-sm text-muted-foreground line-through decoration-destructive/50">
-                                    ${product.priceOneTime}
-                                  </span>
+                                  <>
+                                    <span className="text-sm font-semibold text-foreground">
+                                      / month
+                                    </span>
+                                    <span className="text-sm text-muted-foreground line-through decoration-destructive/50">
+                                      ${product.priceOneTime}
+                                    </span>
+                                  </>
                                 )}
                               </div>
+                              {/* Even on the one-time view the subscription
+                                  price stays on the card. */}
+                              {!isSubscribe && (
+                                <span className="mt-1 text-sm font-semibold text-primary-strong">
+                                  or ${product.priceSub} / month on subscription
+                                </span>
+                              )}
                             </div>
                           </div>
 

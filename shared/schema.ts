@@ -278,13 +278,19 @@ export const wholesaleApplications = pgTable(
     phone: varchar("phone", { length: 32 }).notNull(),
 
     websiteOrInstagram: text("website_or_instagram"),
+    // Ship-to. Nullable in the DB because rows before 2026-09-18 have none;
+    // REQUIRED at the API (server/routes/wholesaleRoutes.ts) for new rows.
+    shippingAddress: text("shipping_address"),
+    shippingZip: varchar("shipping_zip", { length: 16 }),
     city: text("city").notNull(),
     state: varchar("state", { length: 16 }).notNull(),
 
     businessType: varchar("business_type", { length: 32 }).notNull(),
     businessTypeOther: text("business_type_other"),
 
-    memberCount: integer("member_count").notNull(),
+    // Optional since 2026-09-18. wholesale_member_count_chk (> 0) still holds
+    // for any value that IS present — a CHECK passes on NULL.
+    memberCount: integer("member_count"),
 
     retailSetup: varchar("retail_setup", { length: 32 }),
 

@@ -30,9 +30,11 @@ export function perStickPrice(pouchPrice: number): string {
 }
 
 // ── Per-stick nutrition (explicit dosing) ────────────────────────────────
-// ⚠️ PENDING FINAL BACTOLAC CoA. These are the 2026-06-17 locked targets and
-// are NOT yet confirmed against a production Certificate of Analysis.
-// Magnesium is 60 vs 50 mg pending the glycinate requote.
+// ⚠️ PENDING FINAL BACTOLAC CoA / NLEA PANEL. These match the claim column of
+// the signed Bactolac batch sheet (MF-20922, signed 2026-09-11): creatine
+// 5,000 mg, sodium 750 mg (as sodium chloride), potassium 250 mg (as potassium
+// citrate), magnesium 60 mg (as magnesium glycinate). They are formulation
+// targets, NOT yet lab-verified label values.
 //
 // The website MUST match the printed Supplement Facts panel EXACTLY. When the
 // CoA lands, update these amounts AND the pouch panel together — a site that
@@ -73,7 +75,7 @@ export const FLAVORS: readonly Flavor[] = [
     name: "Strawberry Guava",
     desc: "Tropical, richer, and fruit-forward with a fuller flavor profile.",
     image: "/assets/products/strawberry-guava/pouch_sticks_v1.webp",
-    hex: "#D25843",
+    hex: "#A32B35",
     priceOneTime: 49.99,
     priceSub: 39.99,
   },
@@ -91,7 +93,7 @@ export const FLAVORS: readonly Flavor[] = [
     name: "Raspberry Dragonfruit",
     desc: "Smooth, balanced, and built to be the daily driver.",
     image: "/assets/products/raspberry-dragonfruit/pouch_sticks_v8.webp",
-    hex: "#D62839",
+    hex: "#7A1E4F",
     priceOneTime: 49.99,
     priceSub: 39.99,
   },

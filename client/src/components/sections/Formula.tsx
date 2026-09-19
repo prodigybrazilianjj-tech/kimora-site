@@ -11,11 +11,11 @@ const IN = [
   "5g creatine monohydrate (200 mesh — no underdose)",
   "A real electrolyte panel — sodium, potassium, magnesium",
   "Naturally sweetened with stevia",
-  "Acid flavor system — citric, malic, ascorbic",
+  "Citric acid and natural fruit flavors",
 ];
 
 const OUT = [
-  "No silicon dioxide",
+  "No synthetic flow agents",
   "No artificial colors",
   "No sugar, no sucralose, no sugar alcohols",
   "No proprietary blends, no hidden doses",
@@ -62,7 +62,8 @@ export function Formula({
       </div>
 
       <p className={cn("mt-8 max-w-3xl leading-8", bodyOn(tone))}>
-        One formula behind all three flavors. Same dose, different profiles. Mix
+        Strawberry Guava ships first. Every flavor that follows carries the same
+        dose. Mix
         one stick into 12–20 oz of water and drink once daily.
       </p>
     </Band>

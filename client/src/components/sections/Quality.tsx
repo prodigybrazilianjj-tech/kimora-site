@@ -35,7 +35,7 @@ export function Quality({ tone = "ink" }: { tone?: Tone }) {
         <p className={cn("mt-6 leading-8", bodyOn(tone))}>
           No proprietary blends, no fairy dusting, no fillers you can't
           pronounce. Every stick is fully disclosed: 5g creatine monohydrate at
-          label dose, a real electrolyte panel, and natural sweeteners — that's
+          label dose, a real electrolyte panel, and stevia for sweetness — that's
           it. What's on the label is what's in the stick.
         </p>
       </motion.div>

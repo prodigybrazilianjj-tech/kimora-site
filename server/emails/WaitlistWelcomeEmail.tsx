@@ -32,7 +32,7 @@ export function WaitlistWelcomeEmail({
 
       <Text style={styles.muted}>
         We're building creatine + electrolytes in a single daily stick.
-        Clean formula, three flavors, nothing artificial. Built for people
+        Clean formula, nothing artificial, Strawberry Guava first. Built for people
         who train with intent.
       </Text>
 

@@ -636,7 +636,7 @@ export async function sendMarketingWelcomeEmail(args: {
     `Welcome to Kimora Co.\n\n` +
     `Your discount code: ${args.discountCode}\n\n` +
     `Shop now: ${shopUrl}\n\n` +
-    `Creatine + electrolytes in a single daily stick. Clean formula, three flavors, nothing artificial.\n\n` +
+    `Creatine + electrolytes in a single daily stick. Clean formula, nothing artificial. Strawberry Guava ships first.\n\n` +
     `OUT-TRAIN. OUT-SMART. OUT-LAST.\n`;
 
   const html = await render(

@@ -211,7 +211,7 @@ const flavorLine = FLAVORS.map(
 const SPEC_BULLETS = [
   `${STICKS_PER_POUCH} single-serve sticks per pouch — one month of daily dosing.`,
   "5 g creatine monohydrate per stick.",
-  "Contains sodium, potassium and magnesium. Amounts finalize on our production Certificate of Analysis.",
+  "Formulated to 750 mg sodium, 250 mg potassium and 60 mg magnesium per stick. Amounts finalize on our production Certificate of Analysis.",
   "Naturally sweetened with stevia. No sugar, no artificial colors, no proprietary blends.",
   "Stimulant free.",
   `$${PRICE_ONE_TIME} one-time, $${PRICE_SUB} on subscription.`,

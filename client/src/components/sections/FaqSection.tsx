@@ -16,7 +16,7 @@ type Item = { q: string; a: string };
 const CORE: Item[] = [
   {
     q: "What's in a stick?",
-    a: "5g creatine monohydrate, a real electrolyte panel (sodium, potassium, magnesium), naturally sweetened with stevia. No silicon dioxide, no artificial colors, no sugar alcohols.",
+    a: "5g creatine monohydrate, a real electrolyte panel (sodium, potassium, magnesium), naturally sweetened with stevia. No synthetic flow agents, no artificial colors, no sugar alcohols.",
   },
   {
     q: "How do I know it's dosed right?",

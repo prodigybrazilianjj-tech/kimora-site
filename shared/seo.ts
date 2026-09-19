@@ -18,8 +18,10 @@
 //
 // ⚠️ Descriptions are customer-facing copy. Brand voice is locked dry-witty
 // (BRAND_VOICE_GUIDELINES.md) and no unverified spec may appear here. Creatine
-// is 5 g per stick and locked; sodium, potassium, magnesium and net weight are
-// NOT confirmed against a production CoA and are deliberately absent.
+// is 5 g per stick and locked. Sodium / potassium / magnesium (750 / 250 /
+// 60 mg, signed batch sheet) are formulation targets: if they appear, they are
+// framed as finalizing on the production CoA (Alex, 2026-09-18). Net weight is
+// NOT confirmed and stays deliberately absent.
 // ─────────────────────────────────────────────────────────────────────────
 
 // PRELAUNCH_GATE decides which page owns "/" and where the marketing homepage

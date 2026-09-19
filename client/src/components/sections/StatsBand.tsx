@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
  * the pack first, then what is in it. It is a still image on purpose: the
  * numbers are the motion here.
  *
- * Values mirror FORMULA_VALUES_LOCKED_2026-06-17.
+ * Values mirror the signed Bactolac batch sheet MF-20922 (2026-09-11), which
+ * matches FORMULA_VALUES_LOCKED_2026-06-17. Keep in step with lib/product.ts.
  */
 
 const STICK = {
@@ -132,6 +133,17 @@ export function StatsBand({
           </motion.div>
         ))}
       </div>
+      {/* The article at /learn/third-party-testing promises this note travels
+          with the numbers. Do not remove one without the other. */}
+      <p
+        className={cn(
+          "mt-8 text-center text-[11px] leading-5 tracking-wide",
+          bodyOn(tone)
+        )}
+      >
+        Per stick. Formulated amounts — they finalize on our production
+        Certificate of Analysis.
+      </p>
     </Band>
   );
 }

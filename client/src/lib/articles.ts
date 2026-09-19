@@ -33,9 +33,10 @@
 // CLAIMS DISCIPLINE. This corpus is the most quotable surface Kimora has:
 // long-form, cited, and written to be lifted verbatim by an answer engine.
 // Every sentence in it should survive being read back by a stranger as a
-// product claim, because that is what happens. No disease claims. No spec
-// number the lab has not confirmed — sodium, potassium and magnesium amounts
-// are pending the production CoA and appear nowhere. No wholesale pricing.
+// product claim, because that is what happens. No disease claims. Sodium,
+// potassium and magnesium amounts (750 / 250 / 60 mg, per the signed batch
+// sheet) may appear ONLY framed as formulation targets that finalize on the
+// production CoA — Alex's ruling 2026-09-18. No net weight. No wholesale pricing.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { FLAVORS, LAUNCH_FLAVOR, STICKS_PER_POUCH } from "./product";
@@ -135,7 +136,7 @@ const CREATINE_AND_ELECTROLYTES: Article = {
   description:
     "Yes — and the reason is more boring than the internet says. What the sodium-dependent creatine transporter does, and what it doesn't do for you.",
   published: "2026-08-26",
-  updated: "2026-08-26",
+  updated: "2026-09-18",
   targetQuery: "Can you take creatine and electrolytes together?",
   // DRIFT: prose source is marketing/seo/creatine-and-electrolytes-together.md.
   // Written 2026-08-25, published here 2026-08-26. Edit both together.
@@ -221,7 +222,7 @@ const CREATINE_AND_ELECTROLYTES: Article = {
     },
     {
       type: "p",
-      text: "Kimora is sweetened with stevia. No sugar, no sugar alcohols, no artificial colors, no silicon dioxide. That constraint is a large part of why the formula took as long as it did.",
+      text: "Kimora is sweetened with stevia. No sugar, no sugar alcohols, no artificial colors, no synthetic flow agents. That constraint is a large part of why the formula took as long as it did.",
     },
 
     { type: "h2", text: "The practical answers" },
@@ -280,7 +281,7 @@ const CREATINE_AND_ELECTROLYTES: Article = {
     },
     {
       type: "p",
-      text: "We won’t publish our final sodium, potassium and magnesium numbers until the production Certificate of Analysis confirms them. The targets are set; the lab has the last word. A website that says one number and a pouch that says another is worse than a website that says nothing, so this page will stay quiet on that until the panel is signed off.",
+      text: "The sodium, potassium and magnesium figures on our product page — 750, 250 and 60 mg per stick — are formulation targets, and they are labelled that way. The final numbers publish when the production Certificate of Analysis confirms them. The lab has the last word, and if it disagrees with us the site changes to match.",
     },
     {
       type: "p",
@@ -333,7 +334,7 @@ const STICK_PACKS: Article = {
   description:
     "Which brands make creatine stick packs, how they differ, and the honest cost math against a tub — including ours. A stick is not better creatine.",
   published: "2026-08-26",
-  updated: "2026-08-26",
+  updated: "2026-09-18",
   targetQuery: "Creatine stick packs — which brands make them?",
   // DRIFT: prose source is marketing/seo/creatine-stick-packs.md. Edit both.
   //
@@ -541,7 +542,7 @@ const STICK_PACKS: Article = {
     },
     {
       type: "p",
-      text: "We are not going to publish our final sodium, potassium and magnesium numbers until the production Certificate of Analysis confirms them. The targets are set and the lab has the last word; a site that says one number while the pouch says another is worse than a site that says nothing.",
+      text: "The sodium, potassium and magnesium figures on our product page — 750, 250 and 60 mg per stick — are formulation targets, and they are labelled that way. The final numbers publish when the production Certificate of Analysis confirms them. The lab has the last word, and if it disagrees with us the site changes to match.",
     },
     {
       type: "p",
@@ -603,7 +604,7 @@ const TRAINING_IN_ARIZONA: Article = {
   description:
     "An Arizona BJJ and MMA supplement brand on what dry heat and elevation actually do to a grappler — and which of the usual altitude advice doesn’t hold up.",
   published: "2026-08-26",
-  updated: "2026-08-26",
+  updated: "2026-09-18",
   targetQuery: "BJJ supplement brands in Arizona",
   // DRIFT: prose source is marketing/seo/training-in-arizona.md. Edit both.
   //
@@ -787,7 +788,7 @@ const TRAINING_IN_ARIZONA: Article = {
     },
     {
       type: "p",
-      text: "We are not going to publish our final sodium, potassium and magnesium numbers until the production Certificate of Analysis confirms them.",
+      text: "The sodium, potassium and magnesium figures on our product page — 750, 250 and 60 mg per stick — are formulation targets, and they are labelled that way. The final numbers publish when the production Certificate of Analysis confirms them. The lab has the last word, and if it disagrees with us the site changes to match.",
     },
     {
       type: "p",
@@ -832,7 +833,7 @@ const THIRD_PARTY_TESTING: Article = {
   description:
     "Not yet — nothing has been made at production scale, so there is nothing to test. What third-party testing actually covers, and how to read the claim.",
   published: "2026-08-31",
-  updated: "2026-08-31",
+  updated: "2026-09-18",
   targetQuery: "Is Kimora creatine third-party tested?",
   // DRIFT: prose source is marketing/seo/third-party-testing.md. Edit both
   // together.
@@ -891,11 +892,11 @@ const THIRD_PARTY_TESTING: Article = {
     },
     {
       type: "p",
-      text: "We are also not going to publish mineral amounts before the production certificate of analysis confirms them. Our formula targets are set. They are not the same thing as a measured result, and this is the exact category where the gap gets papered over — a number that started as a formulation target, appeared on a label, and was never checked against a finished lot.",
+      text: "We publish the mineral amounts the product is formulated to — 750 mg sodium, 250 mg potassium and 60 mg magnesium per stick — and we label them as exactly that. A formulation target is not the same thing as a measured result, and this is the exact category where the gap gets papered over — a number that started as a formulation target, appeared on a label, and was never checked against a finished lot.",
     },
     {
       type: "p",
-      text: "You will notice this page contains no milligram figures. That is why.",
+      text: "So wherever those figures appear, they carry a note: they finalize on the production certificate of analysis. If the lab returns something different, the site changes to match the lab.",
     },
 
     { type: "h2", text: "What we can tell you today" },
@@ -908,7 +909,7 @@ const THIRD_PARTY_TESTING: Article = {
       items: [
         "5 g creatine monohydrate per stick. Monohydrate specifically — not a blend, not a buffered or esterified variant sold at a premium on thinner evidence.",
         "Naturally sweetened with stevia. No sugar, no sugar alcohols, no artificial sweeteners.",
-        "No silicon dioxide, no artificial colors, no artificial flavors.",
+        "No synthetic flow agents, no artificial colors, no artificial flavors.",
         "No proprietary blends. Every active is named with its own number on the panel.",
         "Stimulant free.",
         `${STICKS_PER_POUCH} single-serve sticks per pouch.`,
@@ -916,7 +917,7 @@ const THIRD_PARTY_TESTING: Article = {
     },
     {
       type: "p",
-      text: "What is deliberately absent: sodium, potassium and magnesium amounts, and the finished net weight. Those publish when the certificate of analysis confirms them, and not before.",
+      text: "What is deliberately absent: the finished net weight. It publishes when the certificate of analysis confirms it, and not before. The sodium, potassium and magnesium figures are formulation targets, labelled as such, and they finalize on the same document.",
     },
 
     { type: "h2", text: "What has to happen before the answer is yes" },
